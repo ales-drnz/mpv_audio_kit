@@ -50,9 +50,9 @@ void main() {
       await player.ready;
       await player.setRawProperty('ao', 'null');
       await player.open(Media(testUrl('fixtures/sine_5s.flac')), play: false);
-      await waitFor(() => player.state.duration > Duration.zero);
-      expect(player.state.duration.inMilliseconds, closeTo(5000, 50));
-      expect(player.state.audioParams.sampleRate, greaterThan(0));
+      await waitFor(() => player.state.playback.duration > Duration.zero);
+      expect(player.state.playback.duration.inMilliseconds, closeTo(5000, 50));
+      expect(player.state.file.audioParams.sampleRate, greaterThan(0));
     },
   );
 
@@ -71,7 +71,7 @@ void main() {
     source.add(tone.buffer.asUint8List());
     await source.close();
     await player.open(source.toMedia(), play: true);
-    await waitFor(() => player.state.completed);
-    expect(player.state.audioParams.sampleRate, 48000);
+    await waitFor(() => player.state.playback.completed);
+    expect(player.state.file.audioParams.sampleRate, 48000);
   });
 }

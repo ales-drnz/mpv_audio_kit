@@ -52,6 +52,7 @@ import '../pcm/pcm_format.dart';
 import '../pcm/pcm_source.dart';
 import '../reactive/default_reactives.dart';
 import '../reactive/default_specs.dart';
+import '../reactive/duration_hint.dart';
 import '../reactive/node_parsers.dart';
 import '../reactive/property_registry.dart';
 import '../reactive/reactive_property.dart';
@@ -159,7 +160,7 @@ class Player extends _PlayerBase
   /// `playlist-play-index` starts directly at [index]. The entry at
   /// position 0 is never loaded, played, or reported as current unless
   /// it IS the requested index, so a UI bound to
-  /// [PlayerState.playlist]'s `index` never flashes track 1 before the
+  /// [PlayerState.playback.playlist]'s `index` never flashes track 1 before the
   /// selected track, and no audio from track 1 leaks out. During the
   /// transition the outgoing track keeps playing (or stays parked) until
   /// the jump; while entries build up on an idle core the playlist
@@ -180,7 +181,7 @@ class Player extends _PlayerBase
   /// become the playlist. This is the path for internet-radio station lists
   /// and remote `.m3u` playlists.
   ///
-  /// [PlayerStream.playlist] and [PlayerState.playlist] reflect the parsed
+  /// [PlayerStream.playlist] and [PlayerState.playback.playlist] reflect the parsed
   /// entries once mpv expands them. When [play] is null the configuration's
   /// autoplay value decides. Replaces any currently loaded file or playlist.
   ///
@@ -335,6 +336,10 @@ abstract class _PlayerBase {
 
   // ── Property registry (the bulk of state: one spec per mpv property) ──
   late final DefaultPropertyReactives _reactives;
+
+  /// mpv's duration and its flag with the entry's hint; applied again at
+  /// each playlist update (see [DurationHint]).
+  late final DurationHint _durationHint;
   late final PropertyRegistry _registry;
 
   // ── Standalone reactive properties (no 1:1 mpv property backing) ───────
@@ -486,12 +491,14 @@ abstract class _PlayerBase {
   }) : _session = createMpvSession(wakeupCounterAddress: wakeupCounterAddress) {
     // Pure-Dart setup runs on the main isolate (microseconds).
     _reactives = DefaultPropertyReactives();
+    _durationHint = DurationHint(_reactives);
     _registry = PropertyRegistry()
       ..registerAll(
         buildDefaultSpecs(
           _reactives,
           onIdleActive: _transport.onIdle,
           onAudioOutputState: _onAudioOutputState,
+          durationHint: _durationHint,
         ),
       );
 
@@ -517,7 +524,7 @@ abstract class _PlayerBase {
       internalLog: _internalLogCtrl.stream,
       hook: _hookCtrl.stream,
       seekCompleted: _seekCompletedCtrl.stream,
-      coverArt: replayStream(() => _state.coverArt, _coverArtCtrl.stream),
+      coverArt: replayStream(() => _state.file.coverArt, _coverArtCtrl.stream),
       fft: _fftCtrl.stream,
       pcm: _pcmStreamCtrl.stream,
       spectrum: _reactives.spectrum.stream,
@@ -623,6 +630,10 @@ abstract class _PlayerBase {
 
   late final Future<void> _ready;
   bool _bringUpCompleted = false;
+
+  /// The path of the last FILE_LOADED, to tell the same file loaded again
+  /// for the analyses (see `_onFileLoaded`).
+  String? _analysisPath;
 
   /// The level of the last [setLogLevel] call, applied at the end of
   /// bring-up when the call came before it.
@@ -919,6 +930,8 @@ abstract class _PlayerBase {
         _reactives.audioEffects.close(),
         _reactives.tlsCaFile.close(),
         _reactives.spectrum.close(),
+        // Set by the duration specs, outside their own cells.
+        _reactives.durationEstimated.close(),
       ]),
     );
     // Drop the lazy spectrum bridges before closing their controllers:

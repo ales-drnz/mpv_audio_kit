@@ -1,3 +1,49 @@
+# Migrating to 0.7.0
+
+## PlayerState in groups
+
+`PlayerState` holds its values in six groups. The flat fields of 0.6
+still read the same values, deprecated: the analyzer points at each one,
+and they go in 0.8.0.
+
+| Group | What it holds | Some of its fields |
+| --- | --- | --- |
+| `playback` (`PlaybackState`) | transport, position, the playlist | `playing`, `position`, `duration`, `playlist`, `loop` |
+| `network` (`NetworkState`) | buffering, cache, read health | `buffering`, `buffer`, `demuxerCacheState`, `readError` |
+| `file` (`FileState`) | what mpv read from the current file | `metadata`, `tracks`, `audioParams`, `coverArt`, `path` |
+| `output` (`OutputState`) | the audio output in use | `audioOutParams`, `audioDevice`, `audioOutputState`, `currentAo` |
+| `settings` (`PlayerSettings`) | what the app asked of the player | `volume`, `rate`, `audioEffects`, `cache`, `mediaSession` |
+| `versions` (`LibraryVersions`) | libmpv and FFmpeg | `mpvVersion`, `ffmpegVersion` |
+
+| 0.6 | 0.7.0 |
+| --- | --- |
+| `player.state.position` | `player.state.playback.position` |
+| `player.state.volume` | `player.state.settings.volume` |
+| `player.state.metadata` | `player.state.file.metadata` |
+| `PlayerState(volume: 50)` | `PlayerState(settings: PlayerSettings(volume: 50))` |
+| `state.copyWith(volume: 50)` | unchanged: `copyWith` takes the groups and every field |
+
+The streams of `player.stream` do not change: `player.stream.position`
+stays as it is. The deprecation message of each flat field names its
+group, so `dart fix` is not needed: the message says the new path.
+
+A field added in 0.7.0 is in its group only: `playback.durationEstimated`
+has no flat getter.
+
+## Behavior changes
+
+- `playback.duration` is the entry's `waveformDurationHint` when FFmpeg
+  estimated mpv's duration from the bitrate (an MP3 without a Xing header,
+  ADTS AAC, a length a server guessed): such an estimate can be far off.
+  An exact duration still wins over the hint, and `player.stream.duration`
+  follows. `playback.durationEstimated` tells an estimate with no hint.
+- The same file loaded again (a playlist of one entry with
+  `Loop.playlist`) keeps its waveform and loudness scan: mpv no longer
+  decodes it again, and `player.stream.waveform` and
+  `player.stream.loudnessScan` no longer emit `null` in between. Another
+  file under the same path, or a pass that had not finished, is decoded
+  again as before.
+
 # Migrating to 0.6.2
 
 0.6.2 runs on libmpv-r21, which the build hook bundles, and on no other

@@ -38,6 +38,9 @@ linter:
     - unawaited_futures
     - directives_ordering
     - sort_pub_dependencies
+    # The package itself reads no deprecated member, such as a flat field
+    # of PlayerState: what it deprecates can go without a change inside.
+    - deprecated_member_use_from_same_package
     - prefer_single_quotes
     - use_super_parameters
     - avoid_redundant_argument_values

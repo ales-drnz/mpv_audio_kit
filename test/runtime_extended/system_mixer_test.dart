@@ -54,7 +54,7 @@ void main() {
             () async => ((await aoVolume() ?? -1) - 50.0).abs() <= 0.5,
             reason: 'ao-volume round-trips through the real audio output',
           );
-          expect(player.state.systemVolume, closeTo(50.0, 0.5));
+          expect(player.state.output.systemVolume, closeTo(50.0, 0.5));
           await player.setSystemVolume(100.0);
           await waitUntil(
             () async => ((await aoVolume() ?? -1) - 100.0).abs() <= 0.5,
@@ -68,7 +68,7 @@ void main() {
               () async => await player.getRawProperty('ao-mute') == 'yes',
               reason: 'ao-mute round-trips through the real audio output',
             );
-            expect(player.state.systemMute, isTrue);
+            expect(player.state.output.systemMute, isTrue);
             await player.setSystemMute(false);
             await waitUntil(
               () async => await player.getRawProperty('ao-mute') == 'no',
@@ -88,8 +88,8 @@ void main() {
           addTearDown(player.dispose);
           await player.setSystemVolume(42.0);
           await player.setSystemMute(true);
-          expect(player.state.systemVolume, isNull);
-          expect(player.state.systemMute, isNull);
+          expect(player.state.output.systemVolume, isNull);
+          expect(player.state.output.systemMute, isNull);
         },
         timeout: const Timeout(Duration(seconds: 15)),
       );

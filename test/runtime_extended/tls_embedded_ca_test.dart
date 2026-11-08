@@ -77,7 +77,7 @@ void main() {
         // roots compiled into libmpv.
         await player.setTlsVerify(true);
         expect(
-          player.state.tlsCaFile,
+          player.state.settings.tlsCaFile,
           isEmpty,
           reason: 'no custom CA file — the embedded roots are the only trust',
         );
@@ -120,13 +120,16 @@ void main() {
         await player.setTlsVerify(true);
         // Pin to a non-existent CA file: trust can no longer be satisfied.
         await player.setTlsCaFile('/nonexistent/does-not-exist.pem');
-        expect(player.state.tlsCaFile, '/nonexistent/does-not-exist.pem');
+        expect(
+          player.state.settings.tlsCaFile,
+          '/nonexistent/does-not-exist.pem',
+        );
 
         // Clearing with '' must fall back to the embedded roots via the native
         // empty-ca_file guard — NOT load a file literally named '' (which would
         // empty the trust store and break every HTTPS handshake).
         await player.setTlsCaFile('');
-        expect(player.state.tlsCaFile, isEmpty);
+        expect(player.state.settings.tlsCaFile, isEmpty);
 
         final params = player.stream.audioParams
             .firstWhere((p) => p.sampleRate != null)

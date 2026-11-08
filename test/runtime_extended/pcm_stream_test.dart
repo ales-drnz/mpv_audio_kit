@@ -221,12 +221,12 @@ Future<Map<String, Object?>> _playThrough(
     ),
   );
   final lastAdd = DateTime.now();
-  final liveDuration = player.state.duration;
+  final liveDuration = player.state.playback.duration;
   await source.close();
   final end = await completed.future.timeout(
     Duration(milliseconds: totalMs + 10000),
   );
-  final finalDuration = player.state.duration;
+  final finalDuration = player.state.playback.duration;
   await Future<void>.delayed(const Duration(milliseconds: 100));
   await watch.stop();
   final started = watch.started;
@@ -420,7 +420,7 @@ void main() {
       final sw = Stopwatch()..start();
       a.abort();
       await waitUntil(
-        () => player.state.playlist.index == 1,
+        () => player.state.playback.playlist.index == 1,
         reason: 'the second entry is current',
       );
       final switchMs = sw.elapsedMilliseconds;
@@ -454,19 +454,25 @@ void main() {
           source.toMedia(),
           Media(last),
         ], play: true);
-        await waitUntil(() => player.state.playing, reason: 'the file plays');
-        expect(player.state.playlist.items, hasLength(4));
+        await waitUntil(
+          () => player.state.playback.playing,
+          reason: 'the file plays',
+        );
+        expect(player.state.playback.playlist.items, hasLength(4));
         debugBeforePcmCutRemove = () async {
           debugBeforePcmCutRemove = null;
           await player.sendRawCommand(['playlist-remove', '1']);
         };
         source.abort();
         await waitUntil(
-          () => player.state.playlist.items.length == 2,
+          () => player.state.playback.playlist.items.length == 2,
           timeout: const Duration(seconds: 2),
           reason: 'the aborted entry and the removed one are still queued',
         );
-        expect(player.state.playlist.items.map((m) => m.uri), [playing, last]);
+        expect(player.state.playback.playlist.items.map((m) => m.uri), [
+          playing,
+          last,
+        ]);
         await player.dispose();
       },
     );
@@ -483,19 +489,22 @@ void main() {
       final source = PcmSource.create(_speech);
       source.add(_tone(_speech, 0, 1000));
       await player.openAll([Media(file), source.toMedia()], play: true);
-      await waitUntil(() => player.state.playing, reason: 'the file plays');
-      expect(player.state.playlist.items, hasLength(2));
+      await waitUntil(
+        () => player.state.playback.playing,
+        reason: 'the file plays',
+      );
+      expect(player.state.playback.playlist.items, hasLength(2));
       source.abort();
       await waitUntil(
-        () => player.state.playlist.items.length == 1,
+        () => player.state.playback.playlist.items.length == 1,
         timeout: const Duration(seconds: 1),
         reason: 'the aborted entry is still queued',
       );
-      expect(player.state.playlist.items.single.uri, file);
+      expect(player.state.playback.playlist.items.single.uri, file);
       // The file plays to its end, with no load of the aborted entry
       // failing after it.
       await waitUntil(
-        () => player.state.completed,
+        () => player.state.playback.completed,
         reason: 'the file completes',
       );
       _log('abort queued', {
@@ -634,7 +643,7 @@ void main() {
       expect(weak.target, isNotNull, reason: 'its queued entry holds it');
       await player.play();
       await waitUntil(
-        () => ends.isNotEmpty && player.state.completed,
+        () => ends.isNotEmpty && player.state.playback.completed,
         timeout: const Duration(seconds: 10),
         reason: 'both entries play',
       );
@@ -642,7 +651,7 @@ void main() {
         'endFile': ends.map((e) => '${e.reason.name}:${e.error}').toList(),
       });
       expect(ends.single.reason, MpvEndFileReason.eof);
-      expect(player.state.playlist.index, 1);
+      expect(player.state.playback.playlist.index, 1);
       expect(
         double.parse(await player.getRawProperty('time-pos') ?? '0'),
         greaterThan(0.25),
@@ -666,7 +675,7 @@ void main() {
       final sw = Stopwatch()..start();
       await player.play();
       await waitUntil(
-        () => ends.length == 2 && player.state.completed,
+        () => ends.length == 2 && player.state.playback.completed,
         timeout: const Duration(seconds: 10),
         reason: 'the three entries play',
       );
@@ -680,7 +689,7 @@ void main() {
         MpvEndFileReason.eof,
         MpvEndFileReason.eof,
       ]);
-      expect(player.state.playlist.index, 2);
+      expect(player.state.playback.playlist.index, 2);
       expect(pos, greaterThan(0.45));
       expect(sw.elapsedMilliseconds, greaterThan(1400));
       await sub.cancel();
@@ -773,7 +782,9 @@ void main() {
         () async {
           final player = await buildPlayer();
           // With the cache forced on, mpv would seek back in what it cached.
-          await player.setCache(player.state.cache.copyWith(mode: cache));
+          await player.setCache(
+            player.state.settings.cache.copyWith(mode: cache),
+          );
           final source = await player.openPcmStream(_speech);
           final feeding = source.addStream(_feed(_speech, totalMs: 3000));
           await waitUntil(

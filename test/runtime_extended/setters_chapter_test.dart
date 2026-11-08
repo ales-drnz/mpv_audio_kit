@@ -29,7 +29,7 @@ void main() {
             .firstWhere((c) => c.length == 3)
             .timeout(const Duration(seconds: 5));
         await openAndWaitForLoad(player, chapterPath);
-        if (player.state.chapters.length != 3) await chaptersReady;
+        if (player.state.file.chapters.length != 3) await chaptersReady;
       });
 
       tearDownAll(() async {
@@ -38,11 +38,11 @@ void main() {
 
       test('jumps to chapter index 1 (Verse) — optimistic update + observer '
           'confirmation', () async {
-        expect(player.state.chapters.length, 3);
+        expect(player.state.file.chapters.length, 3);
 
         await player.setChapter(1);
         // Optimistic state update is synchronous.
-        expect(player.state.currentChapter, 1);
+        expect(player.state.playback.currentChapter, 1);
 
         // Allow the observer-driven roundtrip from mpv to land. The
         // ReactiveProperty dedups the second update if mpv echoes the
@@ -50,7 +50,7 @@ void main() {
         // verify the value remains stable after the roundtrip window.
         await Future<void>.delayed(const Duration(milliseconds: 200));
         expect(
-          player.state.currentChapter,
+          player.state.playback.currentChapter,
           1,
           reason: 'observer roundtrip must not destabilise the value',
         );
@@ -66,7 +66,7 @@ void main() {
             .firstWhere((c) => c.length == 3)
             .timeout(const Duration(seconds: 5));
         await openAndWaitForLoad(player, chapterPath);
-        if (player.state.chapters.length != 3) await chaptersReady;
+        if (player.state.file.chapters.length != 3) await chaptersReady;
       });
 
       tearDownAll(() async {
@@ -83,7 +83,7 @@ void main() {
           player.setChapter(-5),
           throwsA(isA<MpvCommandException>()),
         );
-        expect(player.state.currentChapter, isNot(3));
+        expect(player.state.playback.currentChapter, isNot(3));
       }, timeout: const Timeout(Duration(seconds: 30)));
     });
 
@@ -101,14 +101,14 @@ void main() {
 
       test('mpv takes the markers, setChapter navigates them, and an empty '
           'list clears them', () async {
-        expect(player.state.chapters, isEmpty);
+        expect(player.state.file.chapters, isEmpty);
         const chapters = [
           Chapter(time: Duration.zero, title: 'Intro'),
           Chapter(time: Duration(seconds: 3), title: 'Outro'),
         ];
 
         await player.setChapters(chapters);
-        expect(player.state.chapters, chapters);
+        expect(player.state.file.chapters, chapters);
         final node = await player.getRawPropertyNode('chapter-list');
         expect(node, isA<List<Object?>>());
         final list = (node as List<Object?>).cast<Map<Object?, Object?>>();
@@ -125,7 +125,7 @@ void main() {
         );
 
         await player.setChapters(const []);
-        expect(player.state.chapters, isEmpty);
+        expect(player.state.file.chapters, isEmpty);
         await waitUntil(
           () async => await player.getRawProperty('chapters') == '0',
           reason: 'an empty list must clear mpv\'s chapters',
@@ -149,7 +149,7 @@ void main() {
           Chapter(time: Duration(seconds: 20), title: 'Past the end'),
         ]);
         expect(await player.getRawProperty('chapters'), '1');
-        expect(player.state.chapters, const [intro]);
+        expect(player.state.file.chapters, const [intro]);
         await player.setChapters(const []);
       }, timeout: const Timeout(Duration(seconds: 30)));
     });

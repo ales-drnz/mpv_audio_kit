@@ -55,10 +55,10 @@ void main() {
 
         // Wait until the small file is fully cached.
         await waitUntil(() {
-          final st = p.state.demuxerCacheState;
+          final st = p.state.network.demuxerCacheState;
           return st.seekableRanges.isNotEmpty && st.eofCached;
         });
-        final st = p.state.demuxerCacheState;
+        final st = p.state.network.demuxerCacheState;
 
         expect(
           st.seekableRanges,

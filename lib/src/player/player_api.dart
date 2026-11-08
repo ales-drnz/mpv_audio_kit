@@ -104,7 +104,7 @@ abstract interface class PlayerApi {
 
   /// Starts or resumes playback (sets the play-pause intent to play).
   /// Idempotent while playing. Once the queue has ended
-  /// ([PlayerState.completed]) it starts the last track again from its
+  /// ([PlayerState.playback.completed]) it starts the last track again from its
   /// beginning; with nothing loaded, or at the end of a source that cannot
   /// seek back, the intent stays off.
   Future<void> play();
@@ -214,7 +214,7 @@ abstract interface class PlayerApi {
   Future<void> clearPlaylist({bool keepCurrent = false});
 
   /// Sets the loop policy (off, current file, or whole playlist). Turned on
-  /// once the queue has ended ([PlayerState.completed]), it rewinds:
+  /// once the queue has ended ([PlayerState.playback.completed]), it rewinds:
   /// [Loop.file] seeks the track to its start, [Loop.playlist] moves to the
   /// first entry, and both stay paused. Call [play] to start again.
   Future<void> setLoop(Loop loop);
@@ -359,11 +359,11 @@ abstract interface class PlayerApi {
   Future<void> setAudioDriver(String driver);
 
   /// Applies the spectrum and PCM pipeline configuration, synchronously:
-  /// it is in [PlayerState.spectrum] when the call returns.
+  /// it is in [PlayerState.settings.spectrum] when the call returns.
   void setSpectrum(SpectrumSettings settings);
 
   /// Mutates the spectrum configuration by applying [mapper] to
-  /// [PlayerState.spectrum].
+  /// [PlayerState.settings.spectrum].
   void updateSpectrum(SpectrumSettings Function(SpectrumSettings) mapper);
 
   // ── Cache and network ──────────────────────────────────────────────

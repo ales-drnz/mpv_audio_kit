@@ -109,7 +109,7 @@ The player lives on your main isolate and calls libmpv without blocking it. A ba
 
 ```dart
 await player.openAll([track1, track2, track3]);
-await player.insert(player.state.playlist.index + 1, track4); // play next
+await player.insert(player.state.playback.playlist.index + 1, track4); // play next
 await player.next();
 await player.setLoop(Loop.playlist);
 await player.setPrefetchPlaylist(true); // gapless over the network

@@ -88,7 +88,9 @@ void main() {
           play: true,
         );
         await waitUntil(
-          () => player.state.position > const Duration(milliseconds: 200),
+          () =>
+              player.state.playback.position >
+              const Duration(milliseconds: 200),
           timeout: const Duration(seconds: 10),
         );
         expect(
@@ -126,8 +128,8 @@ void main() {
         states = [];
         trace = [];
         void note(String what) => trace.add(
-          '$what at index ${player.state.playlist.index}, '
-          '${player.state.position.inMilliseconds} ms',
+          '$what at index ${player.state.playback.playlist.index}, '
+          '${player.state.playback.position.inMilliseconds} ms',
         );
         final sub = player.stream.prefetchState.listen((s) {
           states.add(s);
@@ -158,13 +160,14 @@ void main() {
         addTearDown(sub.cancel);
         await player.openAll([first, second], play: true);
         final deadline = DateTime.now().add(const Duration(seconds: 10));
-        while (!(player.state.playlist.index == 1 &&
-            player.state.position > const Duration(milliseconds: 200))) {
+        while (!(player.state.playback.playlist.index == 1 &&
+            player.state.playback.position >
+                const Duration(milliseconds: 200))) {
           if (DateTime.now().isAfter(deadline)) {
             final s = player.state;
             fail(
-              'the second entry never played: index ${s.playlist.index}, '
-              'position ${s.position}, completed ${s.completed}\n'
+              'the second entry never played: index ${s.playback.playlist.index}, '
+              'position ${s.playback.position}, completed ${s.playback.completed}\n'
               'ends $ends\nprefetch $states\n${server.describe()}',
             );
           }
@@ -224,8 +227,8 @@ void main() {
           // A moment for the lines that follow the end.
           await Future<void>.delayed(const Duration(milliseconds: 300));
           seen.add(
-            'parked ${player.state.completed} '
-            '${player.state.position.inMilliseconds}',
+            'parked ${player.state.playback.completed} '
+            '${player.state.playback.position.inMilliseconds}',
           );
           for (final s in subs) {
             await s.cancel();

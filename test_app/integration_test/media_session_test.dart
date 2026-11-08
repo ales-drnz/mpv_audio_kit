@@ -184,7 +184,10 @@ void main() {
       );
       await player.seek(const Duration(milliseconds: 1500));
       await landed;
-      expect(player.state.position.inMilliseconds, greaterThanOrEqualTo(1400));
+      expect(
+        player.state.playback.position.inMilliseconds,
+        greaterThanOrEqualTo(1400),
+      );
 
       // The settled OS state: elapsed moved to ~1.5s, and the play
       // state stayed playing — i.e. mpv's transient pause during the
@@ -359,7 +362,10 @@ void main() {
       );
       await player.seek(const Duration(milliseconds: 1500));
       await landed;
-      expect(player.state.position.inMilliseconds, greaterThanOrEqualTo(1400));
+      expect(
+        player.state.playback.position.inMilliseconds,
+        greaterThanOrEqualTo(1400),
+      );
 
       // The settled session: position moved to ~1.5s and the play state
       // stayed playing — mpv's transient seek-pause did NOT leak (intent axis).

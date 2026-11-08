@@ -30,11 +30,11 @@ void main() {
 
       test('next and previous report whether they moved', () async {
         await player.openAll([Media(fx), Media(fx)], play: false);
-        await waitUntil(() => player.state.playlist.index == 0);
+        await waitUntil(() => player.state.playback.playlist.index == 0);
 
         expect(await player.previous(), isFalse);
         expect(await player.next(), isTrue);
-        await waitUntil(() => player.state.playlist.index == 1);
+        await waitUntil(() => player.state.playback.playlist.index == 1);
         expect(await player.next(), isFalse);
         expect(await player.nextPlaylist(), isFalse);
       }, timeout: const Timeout(Duration(seconds: 15)));

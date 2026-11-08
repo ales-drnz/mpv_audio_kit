@@ -111,9 +111,9 @@ void main() {
       );
       addTearDown(player.dispose);
       final seed = DefaultPropertyReactives().audioDriver.value;
-      expect(player.state.audioDriver, seed);
+      expect(player.state.settings.audioDriver, seed);
       expect(await player.getRawProperty('ao'), seed);
-      expect(const PlayerState().audioDriver, seed);
+      expect(const PlayerState().settings.audioDriver, seed);
     }, timeout: const Timeout(Duration(seconds: 25)));
   });
 }

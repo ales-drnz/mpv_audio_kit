@@ -142,7 +142,7 @@ extension _Lifecycle on _PlayerBase {
     int? skippedSegments,
   }) {
     if (!_transport.hasLoadedFile) return;
-    final loop = _state.loop;
+    final loop = _state.playback.loop;
     final end =
         parked &&
         lastEntry &&

@@ -89,7 +89,7 @@ void main() {
           // mpv fell back to another output: the logged reason says why.
           fail(
             'audiotrack never took the stream '
-            '(current output ${player.state.currentAo}): $aoErrors',
+            '(current output ${player.state.output.currentAo}): $aoErrors',
           );
         }
         expect(

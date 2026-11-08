@@ -27,7 +27,8 @@ void main() {
             .firstWhere((t) => t.where((tr) => tr.type == 'audio').length == 2)
             .timeout(const Duration(seconds: 5));
         await openAndWaitForLoad(player, multitrackPath);
-        if (player.state.tracks.where((tr) => tr.type == 'audio').length != 2) {
+        if (player.state.file.tracks.where((tr) => tr.type == 'audio').length !=
+            2) {
           await tracksReady;
         }
       });

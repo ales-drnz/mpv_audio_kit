@@ -180,7 +180,7 @@ void main() {
       final playing = player.stream.playing.firstWhere((p) => p);
       await bus.call('Play');
       await playing.timeout(const Duration(seconds: 5));
-      expect(player.state.playWhenReady, isTrue);
+      expect(player.state.playback.playWhenReady, isTrue);
       await eventually(bus.playbackStatus, (s) => s == 'Playing');
 
       final paused = player.stream.playWhenReady.firstWhere((p) => !p);
@@ -209,7 +209,7 @@ void main() {
       await bus.call('SetPosition', ["objectpath '$track'", 'int64 1500000']);
       await landed.timeout(const Duration(seconds: 5));
       expect(
-        player.state.position.inMilliseconds,
+        player.state.playback.position.inMilliseconds,
         inInclusiveRange(1400, 1600),
       );
       // The landing goes back to the bus: paused, Position is exact.
@@ -222,7 +222,7 @@ void main() {
       landed = player.stream.seekCompleted.first;
       await bus.call('Seek', ['int64 -1000000']);
       await landed.timeout(const Duration(seconds: 5));
-      expect(player.state.position.inMilliseconds, lessThan(1000));
+      expect(player.state.playback.position.inMilliseconds, lessThan(1000));
     }, skip: !Platform.isLinux);
 
     testWidgets('disable takes the name off the bus', (_) async {

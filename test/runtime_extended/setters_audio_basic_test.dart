@@ -27,45 +27,48 @@ void main() {
 
       test('volume / rate / pitch / mute round-trip into state', () async {
         await player.setVolume(75.0);
-        expect(player.state.volume, 75.0);
+        expect(player.state.settings.volume, 75.0);
 
         await player.setRate(1.25);
-        expect(player.state.rate, 1.25);
+        expect(player.state.settings.rate, 1.25);
 
         await player.setPitch(0.8);
-        expect(player.state.pitch, 0.8);
+        expect(player.state.settings.pitch, 0.8);
 
         await player.setMute(true);
-        expect(player.state.mute, isTrue);
+        expect(player.state.settings.mute, isTrue);
         await player.setMute(false);
-        expect(player.state.mute, isFalse);
+        expect(player.state.settings.mute, isFalse);
       }, timeout: const Timeout(Duration(seconds: 15)));
 
       test('volumeGain / volumeMax / pitchCorrection round-trip', () async {
         await player.setVolumeGain(-3.5);
-        expect(player.state.volumeGain, -3.5);
+        expect(player.state.settings.volumeGain, -3.5);
 
         // Gain bounds (volume-gain-min / volume-gain-max) round-trip.
         await player.setVolumeGainMin(-60.0);
-        expect(player.state.volumeGainMin, -60.0);
+        expect(player.state.settings.volumeGainMin, -60.0);
         await player.setVolumeGainMax(24.0);
-        expect(player.state.volumeGainMax, 24.0);
+        expect(player.state.settings.volumeGainMax, 24.0);
 
         await player.setVolumeMax(200.0);
-        expect(player.state.volumeMax, 200.0);
+        expect(player.state.settings.volumeMax, 200.0);
 
         await player.setPitchCorrection(false);
-        expect(player.state.pitchCorrection, isFalse);
+        expect(player.state.settings.pitchCorrection, isFalse);
         await player.setPitchCorrection(true);
-        expect(player.state.pitchCorrection, isTrue);
+        expect(player.state.settings.pitchCorrection, isTrue);
       }, timeout: const Timeout(Duration(seconds: 15)));
 
       test('audioDelay (Duration) round-trips', () async {
         await player.setAudioDelay(const Duration(milliseconds: 50));
-        expect(player.state.audioDelay, const Duration(milliseconds: 50));
+        expect(
+          player.state.settings.audioDelay,
+          const Duration(milliseconds: 50),
+        );
 
         await player.setAudioDelay(Duration.zero);
-        expect(player.state.audioDelay, Duration.zero);
+        expect(player.state.settings.audioDelay, Duration.zero);
       }, timeout: const Timeout(Duration(seconds: 15)));
     });
   });

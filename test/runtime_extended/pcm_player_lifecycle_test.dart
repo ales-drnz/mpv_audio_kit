@@ -41,10 +41,10 @@ void main() {
       await player.add(queued.toMedia());
       final other = PcmSource.create(f);
       await waitUntil(
-        () => player.state.playlist.items.length == 2,
+        () => player.state.playback.playlist.items.length == 2,
         reason: 'the live entries reach the playlist',
       );
-      expect(player.state.playlist.items.first.isPcmStream, isTrue);
+      expect(player.state.playback.playlist.items.first.isPcmStream, isTrue);
       await player.dispose();
       for (final s in [a, queued]) {
         await s.done.timeout(const Duration(seconds: 1));
@@ -87,7 +87,7 @@ void main() {
             s.toMedia(),
           ], play: false);
           await waitUntil(
-            () => player.state.playlist.items.length == 2,
+            () => player.state.playback.playlist.items.length == 2,
             reason: 'both entries reach the playlist',
           );
           switch (how) {

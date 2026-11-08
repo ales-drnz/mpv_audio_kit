@@ -215,7 +215,7 @@ Future<_Analysis> _analyzeHttpReopen(String name, Uint8List bytes) async {
   final watch = _Watch(player);
   try {
     await player.setDemuxer(
-      player.state.demuxer.copyWith(maxBytes: bytes.length ~/ 2),
+      player.state.settings.demuxer.copyWith(maxBytes: bytes.length ~/ 2),
     );
     await player.open(Media(server.url(name)), play: true);
     final a = await watch.settle(server.describe);
@@ -704,7 +704,7 @@ void main() {
 
       test('a demuxer cache smaller than the file', () async {
         await player!.setDemuxer(
-          player!.state.demuxer.copyWith(maxBytes: 1024 * 1024),
+          player!.state.settings.demuxer.copyWith(maxBytes: 1024 * 1024),
         );
         await player!.open(Media(server.url(wavName)), play: true);
         final a = (await watch!.settle(log))!;
@@ -725,7 +725,10 @@ void main() {
         await player!.open(Media(server.url(mkaName)), play: true);
         await waitFor(
           () =>
-              player!.state.tracks.where((t) => t.type == 'audio').length >= 2,
+              player!.state.file.tracks
+                  .where((t) => t.type == 'audio')
+                  .length >=
+              2,
           'the fixture did not expose two audio tracks',
         );
         await Future<void>.delayed(const Duration(milliseconds: 500));

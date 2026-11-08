@@ -3,6 +3,7 @@
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
 import 'package:mpv_audio_kit/src/player/player_state.dart';
+import 'package:mpv_audio_kit/src/player/state/player_settings.dart';
 import 'package:mpv_audio_kit/src/reactive/mpv_property_spec.dart';
 import 'package:mpv_audio_kit/src/reactive/property_registry.dart';
 import 'package:mpv_audio_kit/src/reactive/reactive_property.dart';
@@ -27,7 +28,7 @@ void main() {
       final next = registry.dispatch('volume', 75.5, initial);
 
       expect(next, isNotNull);
-      expect(next!.volume, 75.5);
+      expect(next!.settings.volume, 75.5);
       expect(volume.value, 75.5);
     });
 
@@ -49,7 +50,7 @@ void main() {
           ),
         );
 
-      const initial = PlayerState(volume: 75.5);
+      const initial = PlayerState(settings: PlayerSettings(volume: 75.5));
       // First call seeds the reactive at 75.5.
       registry.dispatch('volume', 75.5, initial);
       // Second call with the same value must dedup.
@@ -77,7 +78,7 @@ void main() {
       // mpv reports `pause=false` (i.e. playing) → playing=true.
       final next = registry.dispatch('pause', false, initial);
       expect(next, isNotNull);
-      expect(next!.playing, isTrue);
+      expect(next!.playback.playing, isTrue);
       expect(playing.value, isTrue);
     });
 
@@ -98,7 +99,7 @@ void main() {
       // the registry doesn't choke on the int → bool path.
       final next = registry.dispatch('mute', 1, initial);
       expect(next, isNotNull);
-      expect(next!.mute, isTrue);
+      expect(next!.settings.mute, isTrue);
     });
 
     test('parse can transform raw values (empty string → Format.auto)', () {
@@ -116,7 +117,7 @@ void main() {
       const initial = PlayerState();
       final next = registry.dispatch('audio-format', '', initial);
       expect(next, isNotNull);
-      expect(next!.audioFormat, Format.auto);
+      expect(next!.settings.audioFormat, Format.auto);
     });
 
     test('onChange fires after reactive update + state reduce', () {
@@ -157,14 +158,14 @@ void main() {
             reactive: maxBytes,
             parse: (raw, _) => raw,
             reduce: (v, s) =>
-                s.copyWith(demuxer: s.demuxer.copyWith(maxBytes: v)),
+                s.copyWith(demuxer: s.settings.demuxer.copyWith(maxBytes: v)),
           ),
         );
 
       const initial = PlayerState();
       final next = registry.dispatch('demuxer-max-bytes', 5, initial);
       expect(next, isNotNull);
-      expect(next!.demuxer.maxBytes, 5);
+      expect(next!.settings.demuxer.maxBytes, 5);
       expect(
         maxBytes.value,
         5,
@@ -178,7 +179,7 @@ void main() {
       // Different value → emits again.
       final last = registry.dispatch('demuxer-max-bytes', 7, next);
       expect(last, isNotNull);
-      expect(last!.demuxer.maxBytes, 7);
+      expect(last!.settings.demuxer.maxBytes, 7);
       expect(maxBytes.value, 7);
     });
 
@@ -197,7 +198,7 @@ void main() {
       const initial = PlayerState();
       final next = registry.dispatch('time-pos', 1.5, initial);
       expect(next, isNotNull);
-      expect(next!.position, const Duration(milliseconds: 1500));
+      expect(next!.playback.position, const Duration(milliseconds: 1500));
       expect(position.value, const Duration(milliseconds: 1500));
     });
   });
@@ -269,11 +270,11 @@ void main() {
         'Song',
         const PlayerState(),
       );
-      expect(loaded!.mediaTitle, 'Song');
+      expect(loaded!.file.mediaTitle, 'Song');
 
       final unloaded = registry.dispatchUnavailable('media-title', loaded);
       expect(unloaded, isNotNull);
-      expect(unloaded!.mediaTitle, '');
+      expect(unloaded!.file.mediaTitle, '');
       expect(title.value, '');
       expect(changes, ['Song', '']);
     });

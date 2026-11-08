@@ -29,7 +29,10 @@ void main() {
       test('a state stream starts from the current value', () async {
         await player.setVolume(42);
         expect(await player.stream.volume.first, 42);
-        expect(await player.stream.playlist.first, player.state.playlist);
+        expect(
+          await player.stream.playlist.first,
+          player.state.playback.playlist,
+        );
       });
 
       test('skip(1) waits for the next change', () async {
@@ -42,7 +45,7 @@ void main() {
         'every subscriber of playbackState gets the current value',
         () async {
           // Paused needs the duration, which can land after the load.
-          await waitUntil(() => player.state.duration > Duration.zero);
+          await waitUntil(() => player.state.playback.duration > Duration.zero);
           final first = await player.stream.playbackState.first;
           final second = await player.stream.playbackState.first;
           expect(first, MpvPlaybackState.paused);
@@ -51,7 +54,7 @@ void main() {
       );
 
       test('coverArt replays the current cover', () async {
-        expect(await player.stream.coverArt.first, player.state.coverArt);
+        expect(await player.stream.coverArt.first, player.state.file.coverArt);
       });
 
       test('an event stream does not replay', () async {

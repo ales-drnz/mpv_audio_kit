@@ -114,13 +114,13 @@ Future<List<String>> runParityScenario(ParityFixtures f) async {
     // buffering goes true at START_FILE and false at FILE_LOADED, whose
     // handler has already put the new entry and its cover in the state.
     String loaded() {
-      final list = player.state.playlist;
+      final list = player.state.playback.playlist;
       final index = list.index;
       final uri = index >= 0 && index < list.items.length
           ? list.items[index].uri
           : null;
       return 'loaded ${f._label(uri)} $index/${list.items.length} '
-          'cover=${player.state.coverArt?.mimeType ?? 'none'}';
+          'cover=${player.state.file.coverArt?.mimeType ?? 'none'}';
     }
 
     subs
@@ -155,7 +155,9 @@ Future<List<String>> runParityScenario(ParityFixtures f) async {
         // `core-idle` is read again and forwarded ahead of each restart, so
         // the state has `playing` for the file that restarts.
         player.stream.seekCompleted.listen(
-          (_) => milestones.add('restart playing=${player.state.playing}'),
+          (_) => milestones.add(
+            'restart playing=${player.state.playback.playing}',
+          ),
         ),
       )
       ..add(player.stream.playing.listen((p) => playing.add('$p')))
@@ -177,21 +179,27 @@ Future<List<String>> runParityScenario(ParityFixtures f) async {
     await waitUntil(
       () =>
           milestones.any((m) => m.startsWith('restart')) &&
-          player.state.duration > Duration.zero,
+          player.state.playback.duration > Duration.zero,
       what: 'the long file loaded',
     );
     await _step('play', player.play());
-    await waitUntil(() => player.state.playing, what: 'playing');
+    await waitUntil(() => player.state.playback.playing, what: 'playing');
     final restarts = milestones.where((m) => m.startsWith('restart')).length;
     await _step('seek', player.seek(const Duration(seconds: 2)));
     await waitUntil(
       () => milestones.where((m) => m.startsWith('restart')).length > restarts,
       what: 'the seek landed',
     );
-    expect(player.state.position.inMilliseconds, inInclusiveRange(1900, 2600));
-    await waitUntil(() => player.state.playing, what: 'playing after the seek');
+    expect(
+      player.state.playback.position.inMilliseconds,
+      inInclusiveRange(1900, 2600),
+    );
+    await waitUntil(
+      () => player.state.playback.playing,
+      what: 'playing after the seek',
+    );
     await _step('pause', player.pause());
-    await waitUntil(() => !player.state.playing, what: 'paused');
+    await waitUntil(() => !player.state.playback.playing, what: 'paused');
 
     // An effect: the chain mpv reports back.
     await _step(
@@ -206,7 +214,10 @@ Future<List<String>> runParityScenario(ParityFixtures f) async {
       'openAll',
       player.openAll([Media(f.first), Media(f.second)], play: true),
     );
-    await waitUntil(() => player.state.completed, what: 'the playlist ended');
+    await waitUntil(
+      () => player.state.playback.completed,
+      what: 'the playlist ended',
+    );
 
     // A URI only the source resolver knows, through the on_load hook.
     final requests = <String>[];

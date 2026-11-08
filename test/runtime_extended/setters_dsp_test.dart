@@ -158,18 +158,18 @@ void main() {
           LoudnormEffect(i: -16),
         ];
         await player.setAudioEffects(chain);
-        expect(player.state.audioEffects, chain);
+        expect(player.state.settings.audioEffects, chain);
         expect(effectOf<AcompressorEffect>(player).threshold, 0.1);
         expect(effectOf<LoudnormEffect>(player).i, -16);
         // Effects not in the list are not in the chain.
         expect(
-          player.state.audioEffects.whereType<SuperequalizerEffect>(),
+          player.state.settings.audioEffects.whereType<SuperequalizerEffect>(),
           isEmpty,
         );
 
         // Reset the chain.
         await player.setAudioEffects(const []);
-        expect(player.state.audioEffects, isEmpty);
+        expect(player.state.settings.audioEffects, isEmpty);
       }, timeout: const Timeout(Duration(seconds: 15)));
 
       test(
@@ -178,7 +178,7 @@ void main() {
           await player.setAudioEffects(const [
             RawAudioEffect('lavfi-aresample=44100'),
           ]);
-          expect(player.state.audioEffects, const [
+          expect(player.state.settings.audioEffects, const [
             RawAudioEffect('lavfi-aresample=44100'),
           ]);
 
@@ -192,19 +192,19 @@ void main() {
 
           // Clear.
           await player.setAudioEffects(const []);
-          expect(player.state.audioEffects, isEmpty);
+          expect(player.state.settings.audioEffects, isEmpty);
         },
         timeout: const Timeout(Duration(seconds: 15)),
       );
 
       test('gapless / coverArtAuto enum round-trip', () async {
         await player.setGapless(Gapless.yes);
-        expect(player.state.gapless, Gapless.yes);
+        expect(player.state.settings.gapless, Gapless.yes);
         await player.setGapless(Gapless.no);
-        expect(player.state.gapless, Gapless.no);
+        expect(player.state.settings.gapless, Gapless.no);
 
         await player.setCoverArtAuto(Cover.exact);
-        expect(player.state.coverArtAuto, Cover.exact);
+        expect(player.state.settings.coverArtAuto, Cover.exact);
       }, timeout: const Timeout(Duration(seconds: 15)));
     });
   });

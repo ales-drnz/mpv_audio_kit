@@ -35,8 +35,8 @@ void main() {
 
     String describe() =>
         '${server.describe()}\nlog:\n  ${log.join('\n  ')}\n'
-        'state: position ${player.state.position}, '
-        'duration ${player.state.duration}';
+        'state: position ${player.state.playback.position}, '
+        'duration ${player.state.playback.duration}';
 
     setUpAll(() => flac = File(flacPath).readAsBytesSync());
 
@@ -70,8 +70,8 @@ void main() {
     /// position at the park against the duration.
     Matcher playedToEnd() => predicate<Player>(
       (p) =>
-          p.state.position >=
-          p.state.duration - const Duration(milliseconds: 200),
+          p.state.playback.position >=
+          p.state.playback.duration - const Duration(milliseconds: 200),
       'parked at the end of the file',
     );
 
@@ -183,7 +183,7 @@ void main() {
         await playToEnd(Media(server.url('a.flac')));
         expect(server.gets('/a.flac'), hasLength(1), reason: describe());
         expect(
-          player.state.position,
+          player.state.playback.position,
           lessThan(const Duration(seconds: 3)),
           reason: describe(),
         );
@@ -228,7 +228,7 @@ void main() {
         // The cut came 2.09 s into the audio. The second body starts its
         // timestamps over and plays the file to its end, at 5 s.
         expect(
-          player.state.position,
+          player.state.playback.position,
           greaterThan(const Duration(milliseconds: 4500)),
           reason: describe(),
         );

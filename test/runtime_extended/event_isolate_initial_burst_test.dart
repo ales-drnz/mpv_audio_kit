@@ -61,7 +61,7 @@ void main() {
                 'the main-side listen.',
           );
           expect(
-            player.state.volume,
+            player.state.settings.volume,
             42.5,
             reason:
                 'state.volume must mirror the observed volume '

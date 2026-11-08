@@ -1186,7 +1186,16 @@ T _random<T>(Random r, T start, List<_Field<T>> fields, int count) {
   return s;
 }
 
+/// The name of the data class in the library [source].
+String _className(String source) => RegExp(
+  r'final class (\w+) with',
+).firstMatch(File(source).readAsStringSync())![1]!;
+
 /// The parameters of the unnamed constructor of [name] in the library
+/// The fields of the groups added after 0.6.1, which the code written by
+/// hand never had: the generated code has nothing to match them against.
+const _since070 = {'durationEstimated'};
+
 /// [source], in their order: each `this.x`.
 List<String> _constructorFields(String source, String name) {
   final text = File(source).readAsStringSync();
@@ -1207,13 +1216,20 @@ void _check<T extends Object>({
   required List<_Field<T>> fields,
   required bool Function(T, Object) legacyEquals,
   required int Function(T) legacyHash,
+  List<String>? groupSources,
 }) {
   group(name, () {
     test('every field of the constructor is in the table', () {
-      expect(
-        fields.map((f) => f.$1).toList(),
-        _constructorFields(source, name),
-      );
+      // A class made of groups: its fields are the ones of the groups.
+      final expected = groupSources == null
+          ? _constructorFields(source, name)
+          : [
+              for (final g in groupSources)
+                for (final f in _constructorFields(g, _className(g)))
+                  if (!_since070.contains(f)) f,
+            ];
+      expect(fields.map((f) => f.$1).toSet(), expected.toSet());
+      expect(fields.length, expected.length);
     });
 
     test('== and hashCode match the legacy ones on random pairs', () {
@@ -1226,7 +1242,12 @@ void _check<T extends Object>({
             : _random(r, start, fields, r.nextInt(6));
         expect(a == b, legacyEquals(a, b), reason: '$i: $a vs $b');
         expect(b == a, legacyEquals(b, a), reason: '$i');
-        expect(a.hashCode, legacyHash(a), reason: '$i');
+        // A composite hashes its groups: the legacy hash of the flat
+        // fields is another number, and only equal states, equal hashes
+        // holds.
+        if (groupSources == null) {
+          expect(a.hashCode, legacyHash(a), reason: '$i');
+        }
         if (a == b) expect(a.hashCode, b.hashCode, reason: '$i');
       }
     });
@@ -1259,6 +1280,14 @@ void main() {
     fields: _playerState,
     legacyEquals: (a, b) => a.legacyEquals(b),
     legacyHash: (s) => s.legacyHashCode,
+    groupSources: [
+      'lib/src/player/state/playback_state.dart',
+      'lib/src/player/state/network_state.dart',
+      'lib/src/player/state/file_state.dart',
+      'lib/src/player/state/output_state.dart',
+      'lib/src/player/state/player_settings.dart',
+      'lib/src/player/state/library_versions.dart',
+    ],
   );
   _check(
     name: 'MpvTrack',

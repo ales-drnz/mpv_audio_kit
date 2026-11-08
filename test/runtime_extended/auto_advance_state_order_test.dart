@@ -48,8 +48,8 @@ void main() {
       // mpv reports a Windows path with backslashes: compare with slashes.
       void record(String what) => seen.add((
         what,
-        player.state.playlist.index,
-        player.state.path.replaceAll(r'\', '/'),
+        player.state.playback.playlist.index,
+        player.state.file.path.replaceAll(r'\', '/'),
       ));
       final subs = <StreamSubscription<Object?>>[
         player.stream.coverArt.listen((_) => record('cover')),

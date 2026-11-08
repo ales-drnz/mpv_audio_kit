@@ -161,14 +161,14 @@ void main() {
 
       // Pins H1: rejected add() must not append to the playlist.
       test('rejected add() leaves player state untouched', () async {
-        final before = player.state.playlist.items.length;
+        final before = player.state.playback.playlist.items.length;
         await expectLater(
           player.add(
             Media(fixturePath, httpHeaders: const {'Bad-Key,With-Comma': 'v'}),
           ),
           throwsA(isA<ArgumentError>()),
         );
-        expect(player.state.playlist.items.length, before);
+        expect(player.state.playback.playlist.items.length, before);
         await player.add(Media(fixturePath));
       });
 

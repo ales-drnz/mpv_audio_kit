@@ -118,7 +118,7 @@ mixin _DispatchModule on _PlayerBase {
     // `completed` again for that park, with how the entry ended this
     // time, and spends the play intent of the generation.
     _transport.onRestart();
-    if (_state.completed) _updateLifecycle(completed: false);
+    if (_state.playback.completed) _updateLifecycle(completed: false);
     _applyPolledPosition(timePos);
     _seekCompletedCtrl.add(null);
   }
@@ -206,6 +206,12 @@ mixin _DispatchModule on _PlayerBase {
     // with `state.playlist` or `state.path` sees the new track. The
     // `playlist` and `path` streams still emit with the observed
     // changes that follow this event, as before.
+    // The same file loaded again (a playlist of one entry with
+    // loop-playlist) keeps its analysis. Against the path of the last
+    // FILE_LOADED, not the state's: the event isolate sends the new
+    // `path` ahead of this event.
+    final samePath = path != null && path == _analysisPath;
+    _analysisPath = path;
     _applyLoadedEntry(path, playlist);
     _releaseSettled();
     // Emit unconditionally: `null` signals "no cover on the new
@@ -219,15 +225,16 @@ mixin _DispatchModule on _PlayerBase {
     _state = _state.copyWith(coverArt: cover);
     _coverArtCtrl.add(cover);
     // Re-arm the waveform and the loudness scan on every load, the
-    // same file loaded again included: mpv emits FILE_LOADED once per
-    // load and starts a new analysis on each one, so a result kept
-    // across it may belong to other content, or to a pass that
-    // failed. The path is no key for it: with the prefetch it can name
-    // the next entry.
+    // same file loaded again included: a result kept across it may
+    // belong to other content, or to a pass that failed. The path is no
+    // key for it: with the prefetch it can name the next entry. With the
+    // same path the finished result stays on screen until the first poll
+    // says whether it stands: mpv keeps a complete analysis of the
+    // same file, and otherwise starts a new one.
     if (_bringUpCompleted) {
-      _waveformPipeline.reset();
+      _waveformPipeline.reset(sameFile: samePath);
       // The offline loudness scan rides the same native decode pass.
-      _loudnessScanPipeline.reset();
+      _loudnessScanPipeline.reset(sameFile: samePath);
     }
   }
 
@@ -273,7 +280,7 @@ mixin _DispatchModule on _PlayerBase {
       // this discrete event instead, gated on the failed entry being
       // the last one so a mid-playlist failure that auto-advances
       // doesn't flicker the button.
-      if (lastEntry && _state.loop == Loop.off) {
+      if (lastEntry && _state.playback.loop == Loop.off) {
         _transport.writeIntent(false);
       }
     }
@@ -290,7 +297,7 @@ mixin _DispatchModule on _PlayerBase {
     _updateLifecycle(
       playing: false,
       buffering: false,
-      completed: isEof && lastEntry && _state.loop == Loop.off,
+      completed: isEof && lastEntry && _state.playback.loop == Loop.off,
       readError: readError,
       skippedSegments: skippedSegments,
     );
@@ -349,6 +356,11 @@ mixin _DispatchModule on _PlayerBase {
   @visibleForTesting
   void debugDispatchProperty(String name, dynamic raw) =>
       _dispatchProperty(name, raw);
+
+  /// Test-only: dispatches [event] as if the event isolate sent it, to
+  /// replay an order of events a test cannot get from the core on time.
+  @visibleForTesting
+  void debugDispatchEvent(MpvIsolateEvent event) => _dispatchEvent(event);
 
   /// Routes a property-change to the registry first, then falls back to the
   /// custom handlers for properties whose update logic doesn't fit a simple
@@ -431,7 +443,7 @@ mixin _DispatchModule on _PlayerBase {
           raw: playlistNode,
           mediaCache: _mediaCache,
           mediaByEntry: _entries.media,
-          previous: _state.playlist,
+          previous: _state.playback.playlist,
           skip: hidden,
         );
         _entries.hiddenAt = hidden;
@@ -441,10 +453,13 @@ mixin _DispatchModule on _PlayerBase {
     }
     if (path == null && playlist == null) return;
     _state = _state.copyWith(path: path, playlist: playlist);
+    // The duration and its flag arrive before this event: the hint of the
+    // new entry applies now.
+    _state = _durationHint.apply(_state);
   }
 
   void _updateLoopFromMpv(String name, String value) {
-    final next = deriveLoop(name, value, _state.loop);
+    final next = deriveLoop(name, value, _state.playback.loop);
     if (next == null) return;
     _updateField((s) => s.copyWith(loop: next), _loop, next);
   }
@@ -463,11 +478,13 @@ mixin _DispatchModule on _PlayerBase {
         raw: raw,
         mediaCache: _mediaCache,
         mediaByEntry: _entries.media,
-        previous: _state.playlist,
+        previous: _state.playback.playlist,
         skip: hidden,
       );
       _entries.hiddenAt = hidden;
       _updateField((s) => s.copyWith(playlist: playlist), _playlist, playlist);
+      // A new index, or a hint of the playing entry, changes the duration.
+      _state = _durationHint.apply(_state);
     } catch (e) {
       _internalLog('Failed to parse playlist: $e', level: LogLevel.warn);
     }
@@ -479,7 +496,7 @@ mixin _DispatchModule on _PlayerBase {
     // the proper description by looking it up in the parsed
     // `audio-device-list` (state.audioDevices). Falls back to the name
     // on cache miss: typical at boot, before the list arrives.
-    final list = _state.audioDevices;
+    final list = _state.output.audioDevices;
     String description = name;
     for (final d in list) {
       if (d.name == name) {
@@ -520,7 +537,7 @@ mixin _DispatchModule on _PlayerBase {
 
   void _updateBufferingPercentageFromNode(dynamic raw) {
     try {
-      final pct = parseDemuxerCacheStateNode(raw, _state.cache.secs);
+      final pct = parseDemuxerCacheStateNode(raw, _state.settings.cache.secs);
       _updateField(
         (s) => s.copyWith(bufferingPercentage: pct),
         _bufferingPercentage,

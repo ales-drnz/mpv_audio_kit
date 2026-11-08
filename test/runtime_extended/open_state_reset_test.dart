@@ -52,7 +52,7 @@ void main() {
           await player.open(Media(chaptersPath), play: false);
           await chaptersReady;
           expect(
-            player.state.chapters,
+            player.state.file.chapters,
             isNotEmpty,
             reason:
                 'pre-condition: chapters fixture must populate state.chapters',
@@ -70,29 +70,29 @@ void main() {
           // 3. Synchronous read — the new file's events have not arrived
           //    yet (the await above only resolves the FFI hand-off).
           expect(
-            player.state.chapters,
+            player.state.file.chapters,
             isEmpty,
             reason: 'chapters must be cleared by open()',
           );
           expect(
-            player.state.currentChapter,
+            player.state.playback.currentChapter,
             isNull,
             reason: 'currentChapter must be cleared by open()',
           );
           expect(
-            player.state.coverArt,
+            player.state.file.coverArt,
             isNull,
             reason: 'coverArt must be cleared by open()',
           );
           expect(
-            player.state.position,
+            player.state.playback.position,
             Duration.zero,
             reason: 'position must be cleared by open()',
           );
 
           // 4. Eventually the cover-art for the new file arrives.
           await coverLoaded;
-          expect(player.state.coverArt, isNotNull);
+          expect(player.state.file.coverArt, isNotNull);
         },
         timeout: const Timeout(Duration(seconds: 30)),
       );
@@ -113,7 +113,7 @@ void main() {
           // synchronously; without an explicit poll on FILE_LOADED, the
           // cell would stay empty forever. This test pins the poll path.
           await openAndWaitForLoad(player, chaptersPath);
-          final firstSnapshot = List<Chapter>.from(player.state.chapters);
+          final firstSnapshot = List<Chapter>.from(player.state.file.chapters);
           expect(
             firstSnapshot,
             isNotEmpty,
@@ -125,7 +125,7 @@ void main() {
           // _pollChapterState in FILE_LOADED bypasses that dedup.
           await openAndWaitForLoad(player, chaptersPath);
           expect(
-            player.state.chapters,
+            player.state.file.chapters,
             equals(firstSnapshot),
             reason:
                 'chapters must be re-populated by the FILE_LOADED poll '

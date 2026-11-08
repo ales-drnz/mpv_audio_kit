@@ -49,7 +49,7 @@ void main() {
             );
             // The park's events cross the isolate after the reads above.
             await waitUntil(
-              () => player.state.completed,
+              () => player.state.playback.completed,
               timeout: const Duration(seconds: 2),
               reason: 'completed missed the end of the playlist (run $run)',
             );
@@ -58,9 +58,9 @@ void main() {
             expect(completed.skipWhile((c) => !c).toList(), [
               true,
             ], reason: 'completed must rise once, at the end (run $run)');
-            expect(player.state.completed, isTrue);
-            expect(player.state.eofReached, isTrue);
-            expect(player.state.playWhenReady, isFalse);
+            expect(player.state.playback.completed, isTrue);
+            expect(player.state.playback.eofReached, isTrue);
+            expect(player.state.playback.playWhenReady, isFalse);
             expect(states.last, MpvPlaybackState.completed);
             expect(
               states.skipWhile((s) => s != MpvPlaybackState.completed).toSet(),
@@ -90,7 +90,7 @@ void main() {
         try {
           await player.openAll([Media(shortFixture)], play: true);
           await waitUntil(
-            () => player.state.completed,
+            () => player.state.playback.completed,
             timeout: const Duration(seconds: 15),
             reason: 'mpv never parked at the end',
           );
@@ -101,20 +101,20 @@ void main() {
           // sits paused at its start, not at its end, until it plays out.
           await player.setLoop(Loop.file);
           await waitUntil(
-            () => !player.state.completed,
+            () => !player.state.playback.completed,
             timeout: const Duration(seconds: 2),
             reason: 'completed stayed up with a loop on',
           );
           await player.setLoop(Loop.off);
           await Future<void>.delayed(const Duration(milliseconds: 300));
           expect(
-            player.state.completed,
+            player.state.playback.completed,
             isFalse,
             reason: 'the rewound entry is paused at its start',
           );
           await player.play();
           await waitUntil(
-            () => player.state.completed,
+            () => player.state.playback.completed,
             reason: 'completed missed the end once the loop went off',
           );
         } finally {

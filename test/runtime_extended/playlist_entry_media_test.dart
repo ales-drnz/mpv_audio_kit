@@ -22,8 +22,9 @@ void main() {
       final player = await buildPlayer();
       addTearDown(player.dispose);
 
-      List<Object?> extras() =>
-          player.state.playlist.items.map((m) => m.extras?['n']).toList();
+      List<Object?> extras() => player.state.playback.playlist.items
+          .map((m) => m.extras?['n'])
+          .toList();
 
       await player.openAll([
         Media(fx, extras: {'n': 1}),

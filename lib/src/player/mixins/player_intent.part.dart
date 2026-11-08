@@ -54,7 +54,7 @@ final class _Transport {
     try {
       await load();
     } finally {
-      final completed = !_player._disposed && _player._state.completed;
+      final completed = !_player._disposed && _player._state.playback.completed;
       if (_apply(_machine.endLoad(completed: completed))) await _readIdle();
     }
   }
@@ -81,10 +81,10 @@ final class _Transport {
   bool intendedPlay(int intent, bool shouldPlay) => _machine.intendedPlay(
     intent,
     shouldPlay,
-    current: _player._state.playWhenReady,
+    current: _player._state.playback.playWhenReady,
   );
 
-  /// Writes the play-pause intent ([PlayerState.playWhenReady]).
+  /// Writes the play-pause intent ([PlayerState.playback.playWhenReady]).
   void writeIntent(bool value) => _player._updateField(
     (s) => s.copyWith(playWhenReady: value),
     _player._reactives.playWhenReady,

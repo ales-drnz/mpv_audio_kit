@@ -78,13 +78,13 @@ void main() {
       await player.stream.playing
           .firstWhere((p) => p)
           .timeout(const Duration(seconds: 5));
-      expect(player.state.playing, isTrue);
+      expect(player.state.playback.playing, isTrue);
 
       await player.pause();
       await player.stream.playing
           .firstWhere((p) => !p)
           .timeout(const Duration(seconds: 5));
-      expect(player.state.playing, isFalse);
+      expect(player.state.playback.playing, isFalse);
     });
 
     testWidgets('seek absolute moves position', (_) async {
@@ -101,7 +101,7 @@ void main() {
           .timeout(const Duration(seconds: 5));
       await player.seek(const Duration(milliseconds: 500));
       await waitFor400;
-      expect(player.state.position.inMilliseconds, greaterThan(400));
+      expect(player.state.playback.position.inMilliseconds, greaterThan(400));
     });
 
     testWidgets('audio-params observer reports the fixture sample rate', (
@@ -162,14 +162,14 @@ void main() {
           .timeout(const Duration(seconds: 5));
       await player.setVolume(73.0);
       expect(
-        player.state.volume,
+        player.state.settings.volume,
         73.0,
         reason:
             'optimistic state update should reflect the requested '
             'value synchronously, regardless of platform binary',
       );
       await waitFor;
-      expect(player.state.volume, 73.0);
+      expect(player.state.settings.volume, 73.0);
     });
   });
 }

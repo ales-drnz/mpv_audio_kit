@@ -28,17 +28,17 @@ void main() {
       test('audioExclusive / audioSpdif / audioFormat / audioChannels / '
           'audioSampleRate round-trip', () async {
         await player.setAudioExclusive(true);
-        expect(player.state.audioExclusive, isTrue);
+        expect(player.state.settings.audioExclusive, isTrue);
         await player.setAudioExclusive(false);
-        expect(player.state.audioExclusive, isFalse);
+        expect(player.state.settings.audioExclusive, isFalse);
 
         await player.setAudioMediaRole(true);
-        expect(player.state.audioMediaRole, isTrue);
+        expect(player.state.settings.audioMediaRole, isTrue);
         await player.setAudioMediaRole(false);
-        expect(player.state.audioMediaRole, isFalse);
+        expect(player.state.settings.audioMediaRole, isFalse);
 
         await player.setAudioSpdif({Spdif.ac3});
-        expect(player.state.audioSpdif, {Spdif.ac3});
+        expect(player.state.settings.audioSpdif, {Spdif.ac3});
         // The full set of codecs mpv accepts round-trips through real libmpv.
         // The enum deliberately omits aac/mp3 — mpv's audio-spdif rejects them,
         // so a setter call with them would throw (see test/models/spdif_test.dart).
@@ -48,21 +48,21 @@ void main() {
           Spdif.eac3,
           Spdif.trueHd,
         });
-        expect(player.state.audioSpdif, {
+        expect(player.state.settings.audioSpdif, {
           Spdif.ac3,
           Spdif.dts,
           Spdif.eac3,
           Spdif.trueHd,
         });
         await player.setAudioSpdif(<Spdif>{});
-        expect(player.state.audioSpdif, isEmpty);
+        expect(player.state.settings.audioSpdif, isEmpty);
 
         await player.setAudioFormat(Format.s16);
-        expect(player.state.audioFormat, Format.s16);
+        expect(player.state.settings.audioFormat, Format.s16);
 
         // 64-bit PCM formats mpv accepts on audio-format.
         await player.setAudioFormat(Format.s64);
-        expect(player.state.audioFormat, Format.s64);
+        expect(player.state.settings.audioFormat, Format.s64);
 
         // The documented reset path: Format.auto writes the wire token `no`.
         // This build's libmpv accepts `""`/`"no"` on `audio-format` as a
@@ -71,34 +71,34 @@ void main() {
         // behavior across libmpv updates — if it ever regresses to the
         // vanilla parser, this throws instead of resetting.
         await player.setAudioFormat(Format.auto);
-        expect(player.state.audioFormat, Format.auto);
+        expect(player.state.settings.audioFormat, Format.auto);
         expect(await player.getRawProperty('audio-format'), 'no');
 
         await player.setAudioChannels(Channels.stereo);
-        expect(player.state.audioChannels, Channels.stereo);
+        expect(player.state.settings.audioChannels, Channels.stereo);
 
         await player.setAudioChannels(Channels.fiveOneSide);
-        expect(player.state.audioChannels, Channels.fiveOneSide);
+        expect(player.state.settings.audioChannels, Channels.fiveOneSide);
 
         // Custom escape — anything outside the named-layout set.
         await player.setAudioChannels(
           const Channels.custom('fl-fr-fc-bl-br-sl-sr-lfe'),
         );
         expect(
-          player.state.audioChannels,
+          player.state.settings.audioChannels,
           const Channels.custom('fl-fr-fc-bl-br-sl-sr-lfe'),
         );
 
         await player.setAudioSampleRate(48000);
-        expect(player.state.audioSampleRate, 48000);
+        expect(player.state.settings.audioSampleRate, 48000);
       }, timeout: const Timeout(Duration(seconds: 15)));
 
       test('audioClientName / audioDriver round-trip', () async {
         await player.setAudioClientName('test-client');
-        expect(player.state.audioClientName, 'test-client');
+        expect(player.state.settings.audioClientName, 'test-client');
 
         await player.setAudioDriver('null');
-        expect(player.state.audioDriver, 'null');
+        expect(player.state.settings.audioDriver, 'null');
       }, timeout: const Timeout(Duration(seconds: 15)));
 
       test("audioDriver 'auto' normalizes to mpv's empty auto-probe", () async {
@@ -106,10 +106,10 @@ void main() {
         // would fail to initialize any output. 'auto' and '' both map to
         // the empty `ao` auto-probe value.
         await player.setAudioDriver('auto');
-        expect(player.state.audioDriver, '');
+        expect(player.state.settings.audioDriver, '');
 
         await player.setAudioDriver('');
-        expect(player.state.audioDriver, '');
+        expect(player.state.settings.audioDriver, '');
       }, timeout: const Timeout(Duration(seconds: 15)));
 
       test(
@@ -117,7 +117,7 @@ void main() {
         () async {
           const dev = Device(name: 'null', description: 'Null Driver');
           await player.setAudioDevice(dev);
-          expect(player.state.audioDevice.name, 'null');
+          expect(player.state.output.audioDevice.name, 'null');
         },
         timeout: const Timeout(Duration(seconds: 15)),
       );
@@ -138,17 +138,17 @@ void main() {
         );
         await waitUntil(
           () =>
-              player.state.audioDevice.name == 'auto' &&
-              player.state.audioDevices.isNotEmpty,
+              player.state.output.audioDevice.name == 'auto' &&
+              player.state.output.audioDevices.isNotEmpty,
         );
 
-        final autoEntry = player.state.audioDevices.firstWhere(
+        final autoEntry = player.state.output.audioDevices.firstWhere(
           (d) => d.name == 'auto',
           orElse: () => const Device(name: 'auto', description: 'auto'),
         );
-        expect(player.state.audioDevice.name, 'auto');
+        expect(player.state.output.audioDevice.name, 'auto');
         expect(
-          player.state.audioDevice.description,
+          player.state.output.audioDevice.description,
           autoEntry.description,
           reason:
               'active device description must match the audioDevices '
@@ -166,7 +166,7 @@ void main() {
           await player.rescanExternalFiles();
           await player.rescanExternalFiles(keepSelection: true);
           await player.setVolume(80.0);
-          expect(player.state.volume, 80.0);
+          expect(player.state.settings.volume, 80.0);
         },
         timeout: const Timeout(Duration(seconds: 15)),
       );

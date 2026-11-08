@@ -1,10 +1,10 @@
 {
-  "loc": 15673,
-  "test_per_lib_permille": 2402,
+  "loc": 15880,
+  "test_per_lib_permille": 2426,
   "complexity_over_15": 4,
   "complexity_over_10": 40,
-  "player_base_fields": 52,
-  "player_base_non_final": 13,
+  "player_base_fields": 54,
+  "player_base_non_final": 14,
   "player_base_abstract": 12,
   "functions_over_10": {
     "lib/src/backend/web/web_session.dart|WebSession.start": 14,

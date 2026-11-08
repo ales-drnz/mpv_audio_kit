@@ -117,16 +117,16 @@ Future<CodecResult> verifyCodec(
   final deadline = DateTime.now().add(const Duration(seconds: 10));
   // mpv reports a Windows path with backslashes.
   bool settled() =>
-      p.state.path.replaceAll(r'\', '/') == path.replaceAll(r'\', '/') &&
-      p.state.duration > Duration.zero &&
-      _matches(p.state.audioParams, expected);
+      p.state.file.path.replaceAll(r'\', '/') == path.replaceAll(r'\', '/') &&
+      p.state.playback.duration > Duration.zero &&
+      _matches(p.state.file.audioParams, expected);
   while (!settled() && DateTime.now().isBefore(deadline)) {
     await Future<void>.delayed(const Duration(milliseconds: 20));
   }
   return CodecResult(
-    path: p.state.path,
-    params: p.state.audioParams,
-    duration: p.state.duration,
+    path: p.state.file.path,
+    params: p.state.file.audioParams,
+    duration: p.state.playback.duration,
   );
 }
 

@@ -235,7 +235,7 @@ mixin _FfiModule on _PlayerBase {
   ///   [RawAudioEffect] stages); a raw write would silently desync
   ///   `state.audioEffects`. Use [setAudioEffects] or [updateAudioEffects].
   /// - `pause`: owned by the transport intent axis. It is deliberately not
-  ///   observed (see [PlayerState.playWhenReady]), so a raw write would
+  ///   observed (see [PlayerState.playback.playWhenReady]), so a raw write would
   ///   change actual playback while leaving `state.playWhenReady` (and the
   ///   OS play-pause button bound to it) reporting the old intent. Use
   ///   [play] or [pause].

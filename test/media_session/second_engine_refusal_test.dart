@@ -114,7 +114,7 @@ void main() {
           player.setMediaSession(const MediaSession(title: 'Second engine')),
           throwsStateError,
         );
-        expect(player.state.mediaSession, isNull);
+        expect(player.state.settings.mediaSession, isNull);
         expect(calls, contains('enable'));
       },
     );
@@ -130,7 +130,7 @@ void main() {
       final calls = <String>[];
       _mockNative(calls, (call) async => null);
       await player.setMediaSession(const MediaSession(title: 'Now mine'));
-      expect(player.state.mediaSession?.title, 'Now mine');
+      expect(player.state.settings.mediaSession?.title, 'Now mine');
       expect(calls, contains('enable'));
       await player.setMediaSession(null);
     });

@@ -84,7 +84,7 @@ void main() {
         await Future<void>.delayed(const Duration(milliseconds: 300));
 
         expect(
-          player.state.playWhenReady,
+          player.state.playback.playWhenReady,
           isFalse,
           reason:
               'stop() settled the intent to not-playing; a replace that '

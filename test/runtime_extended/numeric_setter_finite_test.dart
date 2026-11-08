@@ -27,7 +27,7 @@ void main() {
     });
 
     test('setVolume rejects NaN / Infinity / -Infinity', () {
-      final priorVolume = player.state.volume;
+      final priorVolume = player.state.settings.volume;
       for (final bad in [
         double.nan,
         double.infinity,
@@ -40,7 +40,7 @@ void main() {
         );
       }
       expect(
-        player.state.volume,
+        player.state.settings.volume,
         priorVolume,
         reason: 'state must not advance past a rejected non-finite write',
       );
@@ -66,7 +66,7 @@ void main() {
     test('setSystemVolume rejects values outside 0 to 100', () async {
       // mpv refuses them, and the refusal used to be dropped as if the
       // audio output had no system volume.
-      final prior = player.state.systemVolume;
+      final prior = player.state.output.systemVolume;
       for (final bad in [-5.0, -0.01, 100.01, 150.0]) {
         await expectLater(
           player.setSystemVolume(bad),
@@ -78,7 +78,7 @@ void main() {
         player.setSystemVolume(double.nan),
         throwsArgumentError,
       );
-      expect(player.state.systemVolume, prior);
+      expect(player.state.output.systemVolume, prior);
       // The bounds themselves pass; the null output ignores them.
       await player.setSystemVolume(0);
       await player.setSystemVolume(100);
@@ -86,9 +86,9 @@ void main() {
 
     test('finite values still pass (regression sanity)', () async {
       await player.setVolume(50);
-      expect(player.state.volume, 50);
+      expect(player.state.settings.volume, 50);
       await player.setRate(1.5);
-      expect(player.state.rate, 1.5);
+      expect(player.state.settings.rate, 1.5);
     });
   });
 }

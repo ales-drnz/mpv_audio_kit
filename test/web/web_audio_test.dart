@@ -89,15 +89,18 @@ void main() {
       await player.play();
       expect(trace, contains('resume'));
       await waitUntil(
-        () => player.state.audioOutputState == AudioOutputState.active,
+        () => player.state.output.audioOutputState == AudioOutputState.active,
         what: 'the output open',
       );
-      await waitUntil(() => player.state.currentAo.isNotEmpty, what: 'ao');
-      expect(player.state.currentAo, 'webaudio');
+      await waitUntil(
+        () => player.state.output.currentAo.isNotEmpty,
+        what: 'ao',
+      );
+      expect(player.state.output.currentAo, 'webaudio');
       await Future<void>.delayed(const Duration(milliseconds: 1500));
-      expect(player.state.completed, isFalse);
+      expect(player.state.playback.completed, isFalse);
       expect(
-        player.state.position,
+        player.state.playback.position,
         lessThan(const Duration(milliseconds: 300)),
       );
       expect(errors, isEmpty);
@@ -120,9 +123,9 @@ void main() {
         Media(testUrl('fixtures/sine_stereo_1s.flac')),
         play: true,
       );
-      await waitUntil(() => player.state.completed, what: 'the end');
+      await waitUntil(() => player.state.playback.completed, what: 'the end');
       final seconds = clock.elapsedMilliseconds / 1000;
-      expect(player.state.currentAo, 'webaudio');
+      expect(player.state.output.currentAo, 'webaudio');
       expect(seconds, inInclusiveRange(0.9, 3.0));
       final rate = ((await _context())['sampleRate'] as JSNumber).toDartInt;
       expect(await _consumed() - before, greaterThan(rate * 0.8));
@@ -142,7 +145,7 @@ void main() {
         Media(testUrl('fixtures/sine_stereo_1s.flac')),
         play: true,
       );
-      await waitUntil(() => player.state.completed, what: 'the end');
+      await waitUntil(() => player.state.playback.completed, what: 'the end');
       expect(await _consumed() - before, greaterThan(30000));
       expect((element['paused'] as JSBoolean).toDart, isFalse);
     });
@@ -185,8 +188,8 @@ void main() {
     await player.ready;
     await player.setSystemVolume(50);
     await player.setSystemMute(true);
-    expect(player.state.systemVolume, 50);
-    expect(player.state.systemMute, isTrue);
+    expect(player.state.output.systemVolume, 50);
+    expect(player.state.output.systemMute, isTrue);
     expect(double.parse((await player.getRawProperty('webaudio-volume'))!), 50);
     expect(await player.getRawProperty('webaudio-mute'), 'yes');
   });
@@ -204,7 +207,7 @@ void main() {
     await expectLater(player.setAudioSampleRate(1000), throwsStateError);
     expect(trace, ['init 1000', 'init 0']);
     expect(((await _context())['sampleRate'] as JSNumber).toDartInt, rate);
-    expect(player.state.audioSampleRate, 0);
+    expect(player.state.settings.audioSampleRate, 0);
     expect(await player.getRawProperty('audio-samplerate'), samplerate);
     // The same rate again tries again.
     trace.clear();
@@ -225,7 +228,7 @@ void main() {
       await expectLater(refused, throwsStateError);
       await accepted;
       addTearDown(() => player.setAudioSampleRate(0));
-      expect(player.state.audioSampleRate, 32000);
+      expect(player.state.settings.audioSampleRate, 32000);
       expect(await player.getRawProperty('audio-samplerate'), '32000');
     },
   );

@@ -49,7 +49,7 @@ mixin _InitModule on _PlayerBase {
     // public controllers' onListen (and reconciled below for subscribers
     // that landed before bring-up). The settings live in the state, where
     // setSpectrum may have put them before bring-up.
-    _spectrumPipeline.setSettings(_state.spectrum);
+    _spectrumPipeline.setSettings(_state.settings.spectrum);
     _waveformPipeline = WaveformPipeline(
       asyncGet: _calls.get,
       asyncSet: _calls.propRc,
@@ -61,7 +61,7 @@ mixin _InitModule on _PlayerBase {
     );
     _loudnessMeterPipeline = LoudnessMeterPipeline(
       asyncGet: _calls.get,
-      label: () => _meterLabel(_state.audioEffects),
+      label: () => _meterLabel(_state.settings.audioEffects),
     );
     _loudnessScanPipeline = LoudnessScanPipeline(
       asyncGet: _calls.get,
@@ -85,7 +85,7 @@ mixin _InitModule on _PlayerBase {
       _filterTapPipeline.setIdle(!playing);
     }
 
-    idle(_state.playing);
+    idle(_state.playback.playing);
     _reactives.playing.changes.listen(idle);
     _loudnessScanPipeline.stream.listen((s) {
       _lastLoudnessScan = s;

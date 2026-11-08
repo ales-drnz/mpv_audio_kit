@@ -57,7 +57,9 @@ void main() {
       Future<void> Function()? change,
     ]) async {
       await waitUntil(
-        () => player.state.playing && player.state.playlist.index == 0,
+        () =>
+            player.state.playback.playing &&
+            player.state.playback.playlist.index == 0,
         reason: 'the first entry never played',
       );
       shim().holdReply('mpv-version', hold);
@@ -74,17 +76,19 @@ void main() {
     /// isolate caught up, and checks that the player says it plays.
     Future<void> expectPlayingAt(Duration at) async {
       await waitUntil(
-        () => player.state.playlist.index == 1 && player.state.position >= at,
+        () =>
+            player.state.playback.playlist.index == 1 &&
+            player.state.playback.position >= at,
         timeout: const Duration(seconds: 8),
         reason: 'playback never got into the second entry',
       );
       expect(
-        player.state.playing,
+        player.state.playback.playing,
         isTrue,
         reason:
-            'the second entry plays at ${player.state.position}, '
-            'completed ${player.state.completed}, '
-            'buffering ${player.state.buffering}',
+            'the second entry plays at ${player.state.playback.position}, '
+            'completed ${player.state.playback.completed}, '
+            'buffering ${player.state.network.buffering}',
       );
       expect(states.last, MpvPlaybackState.playing, reason: '$states');
     }

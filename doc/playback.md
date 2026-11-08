@@ -56,7 +56,7 @@ final media = Media(
   extras: {'title': 'Track Title', 'artist': 'Artist Name', 'isPodcast': true},
 );
 
-final extras = player.state.playlist.items[index].extras;
+final extras = player.state.playback.playlist.items[index].extras;
 ```
 
 Playback ignores `extras`. The OS media session reads `title`, `artist`, `album` and `art` from it when the file has no tags.
@@ -97,7 +97,7 @@ Change the queue while it plays:
 
 ```dart
 await player.add(track);                                     // append
-await player.insert(player.state.playlist.index + 1, track); // play next
+await player.insert(player.state.playback.playlist.index + 1, track); // play next
 await player.move(5, 0);
 await player.replace(2, track);
 await player.remove(0);
@@ -160,7 +160,7 @@ await player.pause();
 await player.stop();
 
 // A play and pause button
-player.state.playWhenReady ? await player.pause() : await player.play();
+player.state.playback.playWhenReady ? await player.pause() : await player.play();
 ```
 
 `playWhenReady` holds what the user asked for. See the [State and streams](https://pub.dev/documentation/mpv_audio_kit/latest/topics/State%20and%20streams-topic.html) topic for the other flags.

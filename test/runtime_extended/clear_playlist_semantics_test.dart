@@ -41,7 +41,7 @@ void main() {
             const Duration(seconds: 5),
           );
           expect(
-            player.state.playlist.items,
+            player.state.playback.playlist.items,
             isNotEmpty,
             reason: 'precondition: playlist must be populated',
           );
@@ -50,17 +50,17 @@ void main() {
 
           // The `playlist-remove current` command makes mpv emit a
           // file-ended event; wait for the observers to land.
-          await waitUntil(() => player.state.playlist.items.isEmpty);
+          await waitUntil(() => player.state.playback.playlist.items.isEmpty);
 
           expect(
-            player.state.playlist.items,
+            player.state.playback.playlist.items,
             isEmpty,
             reason:
                 'clearPlaylist() must empty the playlist completely '
                 '(both queued and currently-playing entries)',
           );
           expect(
-            player.state.playing,
+            player.state.playback.playing,
             isFalse,
             reason:
                 'clearPlaylist() also removes the currently-playing '
@@ -98,26 +98,26 @@ void main() {
           play: true,
         );
         await restarted;
-        await waitUntil(() => player.state.playlist.items.length == 3);
+        await waitUntil(() => player.state.playback.playlist.items.length == 3);
         final ends = <MpvFileEndedEvent>[];
         final sub = player.stream.endFile.listen(ends.add);
         addTearDown(sub.cancel);
 
         await player.clearPlaylist(keepCurrent: true);
-        await waitUntil(() => player.state.playlist.items.length == 1);
-        expect(player.state.playlist.items.single.uri, b);
-        expect(player.state.playlist.index, 0);
-        final from = player.state.position;
+        await waitUntil(() => player.state.playback.playlist.items.length == 1);
+        expect(player.state.playback.playlist.items.single.uri, b);
+        expect(player.state.playback.playlist.index, 0);
+        final from = player.state.playback.position;
         await Future<void>.delayed(const Duration(milliseconds: 400));
-        expect(player.state.playing, isTrue);
-        expect(player.state.position, greaterThan(from));
+        expect(player.state.playback.playing, isTrue);
+        expect(player.state.playback.position, greaterThan(from));
         expect(ends, isEmpty, reason: 'the current entry was not reloaded');
         expect(await player.next(), isFalse);
       }, timeout: const Timeout(Duration(seconds: 30)));
 
       test('with nothing loaded it empties the playlist', () async {
         await player.clearPlaylist(keepCurrent: true);
-        expect(player.state.playlist.items, isEmpty);
+        expect(player.state.playback.playlist.items, isEmpty);
         expect(await player.getRawProperty('playlist-count'), '0');
       }, timeout: const Timeout(Duration(seconds: 30)));
 
@@ -140,7 +140,7 @@ void main() {
         );
         await restarted;
         await player.clearPlaylist(keepCurrent: true);
-        await waitUntil(() => player.state.playlist.items.length == 1);
+        await waitUntil(() => player.state.playback.playlist.items.length == 1);
         requests.clear();
         // The 1 s entry loops alone: each round loads it again.
         await player.setLoop(Loop.playlist);

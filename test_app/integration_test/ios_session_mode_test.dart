@@ -53,7 +53,7 @@ void main() {
       } on Exception {
         fail(
           'audiounit never took the stream (current output '
-          '${player.state.currentAo}): the session was not configured',
+          '${player.state.output.currentAo}): the session was not configured',
         );
       }
       final raw = await _probe.invokeMethod<Map<Object?, Object?>>(

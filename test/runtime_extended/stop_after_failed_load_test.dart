@@ -47,11 +47,11 @@ void main() {
 
       test('empties the playlist in the state', () async {
         await failLoad();
-        expect(player.state.playlist.items, hasLength(1));
+        expect(player.state.playback.playlist.items, hasLength(1));
 
         await player.stop();
         await waitUntil(
-          () => player.state.playlist.items.isEmpty,
+          () => player.state.playback.playlist.items.isEmpty,
           timeout: const Duration(seconds: 2),
           reason: 'stop did not empty the playlist in the state',
         );

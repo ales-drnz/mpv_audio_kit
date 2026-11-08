@@ -47,17 +47,22 @@ void main() {
       await openAndWaitForLoad(player, fixturePath);
       await player.play();
       await waitUntil(
-        () => player.state.position > const Duration(milliseconds: 300),
+        () =>
+            player.state.playback.position > const Duration(milliseconds: 300),
         reason: 'the first player never advanced',
       );
 
-      final before = player.state.position;
+      final before = player.state.playback.position;
       await Isolate.run(_secondVm);
       await Future<void>.delayed(const Duration(milliseconds: 600));
 
-      expect(player.state.playing, isTrue, reason: 'the core got a quit');
       expect(
-        player.state.position - before,
+        player.state.playback.playing,
+        isTrue,
+        reason: 'the core got a quit',
+      );
+      expect(
+        player.state.playback.position - before,
         greaterThan(const Duration(milliseconds: 800)),
         reason: 'the first player stopped after the second VM init',
       );

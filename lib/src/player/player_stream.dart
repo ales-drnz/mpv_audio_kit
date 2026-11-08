@@ -105,6 +105,7 @@ class PlayerStream {
        playWhenReady = reactives.playWhenReady.stream,
        position = reactives.position.stream,
        duration = reactives.duration.stream,
+       durationEstimated = reactives.durationEstimated.stream,
        buffer = reactives.buffer.stream,
        volume = reactives.volume.stream,
        rate = reactives.rate.stream,
@@ -256,8 +257,14 @@ class PlayerStream {
   final Stream<void> seekCompleted;
 
   /// Emits the duration of the current track. Zero when unknown: a live
-  /// stream, nothing loaded, or a track still loading.
+  /// stream, nothing loaded, or a track still loading. The entry's
+  /// [Media.waveformDurationHint] over a duration estimated from the
+  /// bitrate, as [PlaybackState.duration].
   final Stream<Duration> duration;
+
+  /// Emits whether the duration is an estimate from the bitrate, with no
+  /// hint to replace it ([PlaybackState.durationEstimated]).
+  final Stream<bool> durationEstimated;
 
   /// Emits the current soft volume in percent (0 to 1000, 100 is unity).
   final Stream<double> volume;
@@ -743,8 +750,9 @@ class PlayerStream {
   /// across the full track duration. Use for a static full-track
   /// overview strip with click-to-seek.
   ///
-  /// Emits `null` each time a file loads, the same file loaded again
-  /// included (so renderers can clear stale data), then the envelope. A local file is decoded in the
+  /// Emits `null` each time a file loads (so renderers can clear stale
+  /// data), then the envelope. The same file loaded again keeps a final
+  /// envelope, with no `null`: mpv keeps its analysis. A local file is decoded in the
   /// background: partial envelopes with [WaveformData.decoding] set, then
   /// the final one. An HTTP file that plays from its start is decoded the
   /// same way from mpv's cache as it downloads. Adaptive, non-seekable or
@@ -835,8 +843,9 @@ class PlayerStream {
   /// [LoudnessScan.progress]. Then one terminal [LoudnessScan] per track
   /// (`ready`, `failed`, or `unavailable` for sources that can only be
   /// measured during playback, such as adaptive or live streams; use
-  /// [loudnessMeter] there), and `null` each time a file loads, the same
-  /// file loaded again included, so stale results clear.
+  /// [loudnessMeter] there), and `null` each time a file loads, so stale
+  /// results clear. The same file loaded again keeps a terminal result,
+  /// with no `null`.
   ///
   /// **Lazy**: the native scan runs only while a listener is
   /// attached; with no listener on any player it costs nothing. Like the

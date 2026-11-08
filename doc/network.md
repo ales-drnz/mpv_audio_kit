@@ -13,7 +13,7 @@ await player.setCache(const CacheSettings(
 ));
 
 // Change one field
-await player.setCache(player.state.cache.copyWith(secs: const Duration(seconds: 60)));
+await player.setCache(player.state.settings.cache.copyWith(secs: const Duration(seconds: 60)));
 ```
 
 `pauseInitial` gives network sources a smoother start, and it needs `pause` on.
@@ -43,7 +43,7 @@ For live radio, turn off the cache, the cache pause and the back buffer:
 ```dart
 await player.open(Media('https://stream.radio.example.com/live.mp3'));
 await player.setCache(const CacheSettings(mode: Cache.no, pause: false));
-await player.setDemuxer(player.state.demuxer.copyWith(maxBackBytes: 0));
+await player.setDemuxer(player.state.settings.demuxer.copyWith(maxBackBytes: 0));
 ```
 
 Set seeking and the HLS variant in the configuration:

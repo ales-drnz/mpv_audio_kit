@@ -93,7 +93,7 @@ void main() {
           greaterThanOrEqualTo(1.2),
           reason: 'the playing entry went from $before s to $after s',
         );
-        expect(player.state.playlist.index, 0);
+        expect(player.state.playback.playlist.index, 0);
       }, timeout: const Timeout(Duration(seconds: 30)));
 
       test(
@@ -138,7 +138,8 @@ void main() {
         DateTime? nextAt;
         await player.setSourceResolver((request) async {
           final uri = _slashes(request.uri);
-          if (uri == _slashes(other) && player.state.playlist.index == 1) {
+          if (uri == _slashes(other) &&
+              player.state.playback.playlist.index == 1) {
             nextAt ??= DateTime.now();
           }
           if (uri != _slashes(long) || ++calls > 1) return null;
@@ -163,7 +164,7 @@ void main() {
           reason: 'a new prefetch ran before the dropped one continued',
         );
         expect(droppedLate(), isTrue, reason: 'no warning: $warnings');
-        expect(player.state.playlist.index, 1);
+        expect(player.state.playback.playlist.index, 1);
         expect(
           _slashes(await player.getRawProperty('path') ?? ''),
           _slashes(long),
@@ -241,7 +242,7 @@ void main() {
           reason: 'the prefetch did not open the URL written in the hook',
         );
         expect(server.gets('/b.wav'), isEmpty);
-        expect(player.state.playlist.index, 0);
+        expect(player.state.playback.playlist.index, 0);
       }, timeout: const Timeout(Duration(seconds: 30)));
 
       test('the prefetch gives the resolver the Media of its '
@@ -249,7 +250,7 @@ void main() {
         final extras = <Object?>[];
         await player.setSourceResolver((request) {
           if (_slashes(request.uri) == _slashes(short) &&
-              player.state.playlist.index == 0) {
+              player.state.playback.playlist.index == 0) {
             extras.add(request.media.extras?['n']);
           }
           return null;

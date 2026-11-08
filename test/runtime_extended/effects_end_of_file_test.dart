@@ -37,12 +37,13 @@ void main() {
           timeout: const Duration(seconds: 10),
           reason: 'playback reaches the last second',
         );
-        final entry = player.state.playlist.index;
+        final entry = player.state.playback.playlist.index;
         await player.setAudioEffects(const []);
 
         await waitUntil(
           () async =>
-              await timePos(player) < 3 || player.state.playlist.index != entry,
+              await timePos(player) < 3 ||
+              player.state.playback.playlist.index != entry,
           timeout: const Duration(seconds: 3),
           reason: 'playback went past the end of the file',
         );

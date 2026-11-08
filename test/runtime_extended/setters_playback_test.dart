@@ -49,7 +49,7 @@ void main() {
             .timeout(const Duration(seconds: 3));
         await player.seek(const Duration(seconds: 1));
         await waitFor800;
-        expect(player.state.position.inMilliseconds, greaterThan(800));
+        expect(player.state.playback.position.inMilliseconds, greaterThan(800));
       }, timeout: const Timeout(Duration(seconds: 15)));
 
       test('seek relative offsets from the current position', () async {
@@ -77,7 +77,10 @@ void main() {
             .timeout(const Duration(seconds: 3));
         await player.seek(const Duration(seconds: 1), relative: true);
         await waitFor1700;
-        expect(player.state.position.inMilliseconds, greaterThan(1700));
+        expect(
+          player.state.playback.position.inMilliseconds,
+          greaterThan(1700),
+        );
       }, timeout: const Timeout(Duration(seconds: 15)));
 
       test(
@@ -87,13 +90,13 @@ void main() {
           await player.stream.playing
               .firstWhere((p) => p)
               .timeout(const Duration(seconds: 3));
-          expect(player.state.playing, isTrue);
+          expect(player.state.playback.playing, isTrue);
 
           await player.pause();
           await player.stream.playing
               .firstWhere((p) => !p)
               .timeout(const Duration(seconds: 3));
-          expect(player.state.playing, isFalse);
+          expect(player.state.playback.playing, isFalse);
         },
         timeout: const Timeout(Duration(seconds: 15)),
       );
@@ -107,8 +110,8 @@ void main() {
         await waitUntil(
           () async => await player.getRawProperty('idle-active') == 'yes',
         );
-        expect(player.state.playing, isFalse);
-        expect(player.state.playWhenReady, isFalse);
+        expect(player.state.playback.playing, isFalse);
+        expect(player.state.playback.playWhenReady, isFalse);
       }, timeout: const Timeout(Duration(seconds: 15)));
 
       test('setAbLoopA / setAbLoopB round-trip Duration ↔ state', () async {
@@ -138,24 +141,30 @@ void main() {
         final waitASet = nextA((d) => d?.inMilliseconds == 500);
         await player.setAbLoopA(const Duration(milliseconds: 500));
         await waitASet;
-        expect(player.state.abLoopA, const Duration(milliseconds: 500));
+        expect(
+          player.state.playback.abLoopA,
+          const Duration(milliseconds: 500),
+        );
 
         final waitBSet = nextB((d) => d?.inMilliseconds == 1500);
         await player.setAbLoopB(const Duration(milliseconds: 1500));
         await waitBSet;
-        expect(player.state.abLoopB, const Duration(milliseconds: 1500));
+        expect(
+          player.state.playback.abLoopB,
+          const Duration(milliseconds: 1500),
+        );
 
         // Clearing with `null` writes mpv's "no" sentinel; the stream
         // emits `null` and state catches up.
         final waitAClear = nextA((d) => d == null);
         await player.setAbLoopA(null);
         await waitAClear;
-        expect(player.state.abLoopA, isNull);
+        expect(player.state.playback.abLoopA, isNull);
 
         final waitBClear = nextB((d) => d == null);
         await player.setAbLoopB(null);
         await waitBClear;
-        expect(player.state.abLoopB, isNull);
+        expect(player.state.playback.abLoopB, isNull);
       }, timeout: const Timeout(Duration(seconds: 30)));
 
       test('A-B points apply to the current file only', () async {
@@ -179,7 +188,9 @@ void main() {
         expect(await player.next(), isTrue);
         await loaded;
         await waitUntil(
-          () => player.state.abLoopA == null && player.state.abLoopB == null,
+          () =>
+              player.state.playback.abLoopA == null &&
+              player.state.playback.abLoopB == null,
           reason: 'the state follows mpv back to no points',
         );
         expect(await player.getRawProperty('ab-loop-a'), 'no');
@@ -207,7 +218,10 @@ void main() {
         expect(await player.next(), isTrue);
         await loaded;
         expect(await player.getRawProperty('ab-loop-a'), startsWith('0.2'));
-        expect(player.state.abLoopA, const Duration(milliseconds: 200));
+        expect(
+          player.state.playback.abLoopA,
+          const Duration(milliseconds: 200),
+        );
         await player.setAbLoopA(null);
         await player.setAbLoopB(null);
       }, timeout: const Timeout(Duration(seconds: 30)));

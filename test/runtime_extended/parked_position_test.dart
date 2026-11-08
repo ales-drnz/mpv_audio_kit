@@ -53,7 +53,7 @@ void main() {
           // moved the position left.
           final sub = player.stream.position.listen((p) {
             if (parked &&
-                player.state.completed &&
+                player.state.playback.completed &&
                 (p - end).abs() > _tolerance) {
               wrong.add('round $round: position $p while parked');
             }

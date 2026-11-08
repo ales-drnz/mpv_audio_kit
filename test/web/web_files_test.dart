@@ -75,13 +75,19 @@ void main() {
     expect(media.extras, {'title': 'sine 5s.flac'});
     await player.open(media, play: true);
     await waitUntil(
-      () => player.state.duration > Duration.zero,
+      () => player.state.playback.duration > Duration.zero,
       what: 'the duration',
     );
-    expect(player.state.duration.inMilliseconds, closeTo(5000, 50));
-    expect(player.state.playlist.items.single.extras?['title'], 'sine 5s.flac');
+    expect(player.state.playback.duration.inMilliseconds, closeTo(5000, 50));
+    expect(
+      player.state.playback.playlist.items.single.extras?['title'],
+      'sine 5s.flac',
+    );
     await player.seek(const Duration(milliseconds: 4500));
-    await waitUntil(() => player.state.completed, what: 'the end after a seek');
+    await waitUntil(
+      () => player.state.playback.completed,
+      what: 'the end after a seek',
+    );
   });
 
   test('a blob: URL the app holds plays as Media(url)', () async {
@@ -90,8 +96,8 @@ void main() {
       await _pickedFile('fixtures/sine_stereo_1s.flac', 'a.flac'),
     );
     await player.open(Media(url), play: true);
-    await waitUntil(() => player.state.completed, what: 'the end');
-    expect(player.state.playlist.items.single.uri, url);
+    await waitUntil(() => player.state.playback.completed, what: 'the end');
+    expect(player.state.playback.playlist.items.single.uri, url);
   });
 
   test('Media.fromBlob keeps the title of the extras and refuses what is '

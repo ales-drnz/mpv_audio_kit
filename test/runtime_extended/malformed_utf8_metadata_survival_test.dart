@@ -135,7 +135,7 @@ void main() {
 
         // (b) The pipeline is still alive AFTER the malformed string was
         // processed: position updates must keep flowing.
-        final mark = player.state.position;
+        final mark = player.state.playback.position;
         await player.stream.position
             .firstWhere((p) => p > mark + const Duration(milliseconds: 300))
             .timeout(
