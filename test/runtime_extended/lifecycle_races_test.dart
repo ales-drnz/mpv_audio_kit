@@ -23,7 +23,7 @@ void main() {
   //
   // Single-Player, no explicit `dispose()` mid-test: respects the per-
   // file SIGSEGV guard (a third libmpv core in one flutter_test process
-  // can SIGSEGV) and lets all five tests
+  // can SIGSEGV) and lets all its tests
   // share one fixture-loaded player without rebuilding it.
   final fixturePath =
       '${Directory.current.path}/test/fixtures/with_chapters.mka';
@@ -48,6 +48,15 @@ void main() {
         // emitting any property change because there's nothing playing.
         await player.pause();
         expect(player.state.playing, isFalse);
+      }, timeout: const Timeout(Duration(seconds: 5)));
+
+      test('a raw seek before any open() is rejected by mpv', () async {
+        // The premise of the typed seek below: mpv itself returns rc < 0
+        // for a seek while idle, which sendRawCommand surfaces.
+        await expectLater(
+          player.sendRawCommand(['seek', '5', 'absolute']),
+          throwsA(isA<MpvCommandException>()),
+        );
       }, timeout: const Timeout(Duration(seconds: 5)));
 
       test(

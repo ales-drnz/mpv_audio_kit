@@ -15,9 +15,8 @@
 // fast host and shows no partial at all. With both analyses on, the shared
 // pass over the long file lasts several intervals, so partials are always
 // there to check: any SEALED bin observed mid-decode already matches the
-// final value (the live partial is never wrong). The FINAL integrated
-// loudness is still compared with the live ebur128 meter on the 5 s fixture,
-// which has to play to its end.
+// final value (the live partial is never wrong). loudness_scan_test compares
+// the final integrated loudness with the live ebur128 meter.
 
 @TestOn('mac-os || linux || windows')
 library;
@@ -41,7 +40,6 @@ Float32List _floats(Object? bytes) =>
     Uint8List.fromList(bytes! as Uint8List).buffer.asFloat32List();
 
 void main() {
-  final fixture = '${Directory.current.path}/test/fixtures/sine_5s.flac';
   late Directory tmp;
   late String longFile;
 
@@ -248,42 +246,5 @@ void main() {
         );
       }
     }, timeout: const Timeout(Duration(seconds: 90)));
-
-    test('the final integrated matches the live ebur128 meter', () async {
-      final player = await buildPlayer();
-      addTearDown(player.dispose);
-
-      final readyF = player.stream.loudnessScan
-          .firstWhere((s) => s?.state == LoudnessScanState.ready)
-          .timeout(const Duration(seconds: 15));
-      await openAndWaitForLoad(player, fixture);
-      final offline = (await readyF)!;
-      expect(offline.integrated, isNotNull);
-
-      // Regression guard: the FINAL integrated still matches the
-      // independent live ebur128 meter on a full pass (the streaming change
-      // must not perturb the merge math).
-      await player.setAudioEffects(const [Ebur128Effect(metadata: true)]);
-      Loudness? live;
-      final meter = player.stream.loudnessMeter.listen((l) => live = l);
-      final eof = player.stream.eofReached
-          .firstWhere((v) => v)
-          .timeout(const Duration(seconds: 30));
-      await player.seek(Duration.zero);
-      await player.play();
-      await eof;
-      await meter.cancel();
-      await player.setAudioEffects(const []);
-
-      expect(live?.integrated, isNotNull);
-      expect(
-        offline.integrated!,
-        closeTo(live!.integrated!, 0.5),
-        reason:
-            'offline scan and live ebur128 implement the same BS.1770 '
-            'definition — drift beyond tolerance means the live-streaming '
-            'change perturbed the final merge',
-      );
-    }, timeout: const Timeout(Duration(seconds: 60)));
-  }, fixturePath: fixture);
+  });
 }

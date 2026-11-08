@@ -7,7 +7,9 @@ import 'package:meta/meta.dart';
 import '../backend/backend.dart' as backend;
 import '../events/player_exception.dart' show PlayerInitException;
 import '../player/player.dart' show Player;
+import '../types/enums/spdif.dart';
 import 'libmpv_license_registry.dart';
+import 'passthrough_codecs.dart';
 
 /// One-time initialization for `mpv_audio_kit`. Owns the choice of the
 /// libmpv the players use and the cleanup of the cores that leaked across
@@ -48,6 +50,23 @@ abstract final class MpvAudioKit {
   /// An app can read it before it creates a player, to show its own
   /// message instead.
   static String? get unsupportedReason => backend.unsupportedReason;
+
+  /// The passthrough codecs the audio output takes, for
+  /// [Player.setAudioSpdif]: those of AC3, E-AC3 and DTS that the HDMI
+  /// sink of an Android TV box or stick accepts. On API 29 and later
+  /// Android tells whether the output plays each one directly; before, the
+  /// sink's list comes with the HDMI plug.
+  ///
+  /// Empty on the other platforms, where passthrough depends on the
+  /// device mpv opens, and when the output takes none. TrueHD and DTS-HD
+  /// are never in it: the Android output sends passthrough as IEC61937
+  /// stereo, which cannot carry them. The sink can change (another HDMI
+  /// port, a soundbar turned on): read it again before a new session.
+  ///
+  /// ```dart
+  /// await player.setAudioSpdif(await MpvAudioKit.passthroughCodecs());
+  /// ```
+  static Future<Set<Spdif>> passthroughCodecs() => readPassthroughCodecs();
 
   /// [needsUserGesture] at each change, from the moment the web module has
   /// loaded. Never emits outside the web.

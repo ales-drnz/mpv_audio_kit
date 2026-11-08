@@ -1,3 +1,30 @@
+## [0.6.4] - 8-11-2026
+
+### libmpv-r23
+**All platforms**
+- A pause in an `on_unload` or `on_after_end_file` hook with `keep-open=no` plays the rest of the file before the output closes.
+- A pull output paused in its last few milliseconds keeps them: the position no longer creeps while paused, and the resume plays the rest.
+
+**Android**
+- E-AC3 passthrough opens the output at the rate of its IEC61937 stream, 192 kHz, instead of the output's own.
+
+### All platforms
+**Fixed**
+- `openAll` at an index past the first gives the list it was asked for at once: the entry that played until the jump no longer shows in the playlist, and a call by index in that moment addresses the list the app sees.
+- The build hook reads the iOS deployment version of code_assets 2.2 as well as the target version of the older ones.
+
+### Android
+**Added**
+- Android TV, Fire TV and Google TV as a platform: the Android build, the remote's media keys through the media session, checked on the TV emulator of API 36. See the Android TV topic for the manifest.
+- `MpvAudioKit.passthroughCodecs()`, which of AC3, E-AC3 and DTS the HDMI sink takes.
+
+**Fixed**
+- The media keys of a remote or headset reach the player on Android 7 and 8 while the app is in front.
+
+### Web
+**Fixed**
+- Disposing a player no longer holds the page for about a frame: it waits for mpv to shut down before destroying it.
+
 ## [0.6.3] - 5-11-2026
 
 ### Contributions

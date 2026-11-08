@@ -55,6 +55,13 @@ const _kPropertyCommands = {
 @visibleForTesting
 Future<void> Function()? debugBeforePcmCutRemove;
 
+/// Test only: awaited by [Player.openAll] between its jump to the new
+/// entry and the removal of the old one it kept playing meanwhile, so a
+/// test can hold that window open. Not exported, as
+/// [debugBeforePcmCutRemove].
+@visibleForTesting
+Future<void> Function()? debugBeforeRetainedRemove;
+
 /// The `loadfile` of a [Media] with its entry bookkeeping (the entry in
 /// [_PlayerBase._entries], the cut of an aborted live source), and the
 /// public raw escape hatches (property reads and writes, commands, log

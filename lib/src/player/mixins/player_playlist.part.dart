@@ -49,10 +49,10 @@ mixin _PlaylistModule on _PlayerBase {
     RangeError.checkValueInInterval(
       index,
       0,
-      rc < 0 ? 0 : count as int,
+      _entries.fromCoreCount(rc < 0 ? 0 : count as int),
       'index',
     );
-    await _addEntry(media, load, at: index);
+    await _addEntry(media, load, at: _entries.toCore(index));
   }
 
   /// The load of [add] and [insert]: resolves [media] and appends it, or
@@ -97,7 +97,8 @@ mixin _PlaylistModule on _PlayerBase {
       MpvFormat.mpvFormatInt64,
     );
     if (_disposed) return null;
-    final count = rc < 0 ? 0 : value as int;
+    // The entry openAll holds in mpv after its jump is not in the state.
+    final count = _entries.fromCoreCount(rc < 0 ? 0 : value as int);
     RangeError.checkValidIndex(index, null, name, count);
     return count;
   }
@@ -109,7 +110,10 @@ mixin _PlaylistModule on _PlayerBase {
     RangeError.checkNotNegative(index, 'index');
     await _gate();
     if (await _checkPlaylistIndex(index, 'index') == null) return;
-    await _calls.commandChecked(['playlist-remove', index.toString()]);
+    await _calls.commandChecked([
+      'playlist-remove',
+      _entries.toCore(index).toString(),
+    ]);
   }
 
   /// Skips to the next track and returns `true`, or `false` when there is
@@ -194,7 +198,10 @@ mixin _PlaylistModule on _PlayerBase {
       'pause',
       _transport.intendedPlay(intent, true) ? 'no' : 'yes',
     );
-    await _calls.commandChecked(['playlist-play-index', index.toString()]);
+    await _calls.commandChecked([
+      'playlist-play-index',
+      _entries.toCore(index).toString(),
+    ]);
     // The jump leaves the park, as the seek of [play] does: its START_FILE
     // is queued behind this reply. A read of the park that spent the
     // intent since the call began is undone; an entry that parks at once
@@ -219,8 +226,8 @@ mixin _PlaylistModule on _PlayerBase {
     RangeError.checkValueInInterval(to, 0, count, 'to');
     await _calls.commandChecked([
       'playlist-move',
-      from.toString(),
-      to.toString(),
+      _entries.toCore(from).toString(),
+      _entries.toCore(to).toString(),
     ]);
   }
 
@@ -263,6 +270,8 @@ mixin _PlaylistModule on _PlayerBase {
       final currentPos = posErr < 0
           ? -1
           : (int.tryParse(posValue as String? ?? '') ?? -1);
+      // mpv's index, against mpv's position: see [EntryTable.toCore].
+      final at = _entries.toCore(index);
       final opts = _buildLoadfileOptions(media);
       Future<void> insertAt(int at) {
         if (opts.isEmpty) {
@@ -288,21 +297,21 @@ mixin _PlaylistModule on _PlayerBase {
       // stop() meant to halt, and `playlist-remove` would delete a now-stale
       // index. Bail and let the later call own the surgery, matching the
       // open() family's per-await discipline.
-      if (currentPos == index) {
+      if (currentPos == at) {
         // Currently-playing entry: insert the replacement right after
         // the active position, then advance: with prefetch on (see
         // [setPrefetchPlaylist]) mpv has the next entry open ahead, so the
         // switch is gapless for typical music files. Finally drop the
         // original.
-        await insertAt(index + 1);
+        await insertAt(at + 1);
         if (load.superseded) return;
         await _calls.commandChecked(['playlist-next', 'force']);
         if (load.superseded) return;
-        await _calls.commandChecked(['playlist-remove', index.toString()]);
+        await _calls.commandChecked(['playlist-remove', at.toString()]);
       } else {
-        await _calls.commandChecked(['playlist-remove', index.toString()]);
+        await _calls.commandChecked(['playlist-remove', at.toString()]);
         if (load.superseded) return;
-        await insertAt(index);
+        await insertAt(at);
       }
     } finally {
       await source.release();

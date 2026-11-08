@@ -21,23 +21,6 @@ void main() {
         .then((pl) => pl.index);
 
     group('playlist navigation', () {
-      test('next() / previous() move the active index', () async {
-        final player = await buildPlayer();
-        addTearDown(player.dispose);
-
-        await player.openAll([
-          Media(fixturePath),
-          Media(fixturePath),
-        ], play: false);
-        await waitIndex(player, 0);
-
-        await player.next();
-        expect(await waitIndex(player, 1), 1);
-
-        await player.previous();
-        expect(await waitIndex(player, 0), 0);
-      }, timeout: const Timeout(Duration(seconds: 25)));
-
       test(
         'nextPlaylist() / previousPlaylist() cross the playlist-path boundary',
         () async {

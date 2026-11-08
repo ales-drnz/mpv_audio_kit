@@ -54,122 +54,124 @@ class WaveformPipeline extends AnalysisPollPipeline<WaveformData> {
 
   @override
   void onData(Map<Object?, Object?> value) {
-    final stateValue = value['state'];
-    final state = stateValue is String ? stateValue : null;
-    final durationUs = value['duration_us'] is int
-        ? value['duration_us'] as int
-        : 0;
-    final rangeStartUs = value['range_start_us'] is int
-        ? value['range_start_us'] as int
-        : 0;
-    final rangeEndUs = value['range_end_us'] is int
-        ? value['range_end_us'] as int
-        : 0;
-    final min = float32FromByteValue(value['min']);
-    final max = float32FromByteValue(value['max']);
-    // Null on a length mismatch.
-    final rmsValue = float32FromByteValue(value['rms']);
-    final filled = value['filled'] is Uint8List
-        ? value['filled'] as Uint8List
-        : null;
-
-    final ready = state == 'ready';
-    final progressive = state == 'progressive';
-    final rolling = state == 'rolling';
-    final decoding = state == 'decoding';
-    final coverageBins = value['coverage_bins'] is int
-        ? value['coverage_bins'] as int
-        : null;
-    final totalBins = value['total_bins'] is int
-        ? value['total_bins'] as int
-        : null;
-
-    final haveBins =
-        min != null &&
-        max != null &&
-        min.isNotEmpty &&
-        min.length == max.length;
-    final rms =
-        (rmsValue != null && min != null && rmsValue.length == min.length)
-        ? rmsValue
-        : null;
-
-    // Fall back to all-covered if the native side omitted or mismatched the
-    // flags, so the renderer never misreads it.
-    Uint8List safeFilled(Float32List m) =>
-        (filled != null && filled.length == m.length)
-        ? filled
-        : (Uint8List(m.length)..fillRange(0, m.length, 1));
-
-    // ROLLING (true live, unknown total): a sliding window keyed to the
-    // demuxer cache. The native side reports the absolute range it holds;
-    // the envelope grows and slides, so never cache it: keep polling.
-    if (rolling && haveBins && rangeEndUs > rangeStartUs) {
-      final data = WaveformData(
-        start: Duration(microseconds: rangeStartUs),
-        duration: Duration(microseconds: rangeEndUs - rangeStartUs),
-        min: min,
-        max: max,
-        rms: rms,
-        filled: safeFilled(min),
-        live: true,
-      );
-      _emitGrowing(data);
-      return;
-    }
-
-    // DECODING (a decode apart from playback in flight: a local file, or a
-    // remote one read from mpv's cache or opened again): a partial envelope
-    // that grows on every poll. The full axis is emitted with [filled]
-    // marking the regions decoded so far. Never cache it and never stop the
-    // timer: the final `ready` emission below supersedes it. De-dup on
-    // coverage so an unchanged snapshot does not churn the UI.
-    if (decoding && durationUs > 0 && haveBins) {
-      if (coverageBins == null || coverageBins != _lastDecodeCoverage) {
-        _lastDecodeCoverage = coverageBins;
-        _lastGrowing = null;
-        final data = WaveformData(
-          duration: Duration(microseconds: durationUs),
-          min: min,
-          max: max,
-          rms: rms,
-          filled: safeFilled(min),
-          decoding: true,
-          coverageBins: coverageBins,
-          totalBins: totalBins,
-        );
-        emit(data);
-      }
-      return;
-    }
-
-    if ((ready || progressive) && durationUs > 0 && haveBins) {
-      final data = WaveformData(
-        duration: Duration(microseconds: durationUs),
-        min: min,
-        max: max,
-        rms: rms,
-        filled: safeFilled(min),
-      );
-      if (ready) {
-        // Bulk envelope is final: keep it and stop polling.
-        finish(_padded(data, totalBins));
-        return;
-      }
-      // Progressive envelope (grown from playback) grows: keep the timer
-      // running so each poll drives the native fold and emits the grown
-      // envelope.
-      _emitGrowing(data);
-      return;
-    }
+    final state = value['state'];
     if (state == 'failed') {
       // No envelope is coming (true live or unsupported). Stop polling
       // and clear: there is nothing further to wait for.
       stopPolling();
       _lastGrowing = null;
       emit(null);
+      return;
+    }
+    final bins = _readBins(value);
+    if (bins == null) return;
+    final durationUs = _int(value['duration_us']);
+    switch (state) {
+      case 'rolling':
+        _onRolling(value, bins);
+      case 'decoding' when durationUs > 0:
+        _onDecoding(value, bins, durationUs);
+      case 'ready' || 'progressive' when durationUs > 0:
+        final data = WaveformData(
+          duration: Duration(microseconds: durationUs),
+          min: bins.min,
+          max: bins.max,
+          rms: bins.rms,
+          filled: bins.filled,
+        );
+        if (state == 'ready') {
+          // Bulk envelope is final: keep it and stop polling.
+          finish(_padded(data, _intOrNull(value['total_bins'])));
+          return;
+        }
+        // Progressive envelope (grown from playback) grows: keep the timer
+        // running so each poll drives the native fold and emits the grown
+        // envelope.
+        _emitGrowing(data);
     }
   }
+
+  /// ROLLING (true live, unknown total): a sliding window keyed to the
+  /// demuxer cache. The native side reports the absolute range it holds;
+  /// the envelope grows and slides, so never cache it: keep polling.
+  void _onRolling(Map<Object?, Object?> value, _Bins bins) {
+    final rangeStartUs = _int(value['range_start_us']);
+    final rangeEndUs = _int(value['range_end_us']);
+    if (rangeEndUs <= rangeStartUs) return;
+    _emitGrowing(
+      WaveformData(
+        start: Duration(microseconds: rangeStartUs),
+        duration: Duration(microseconds: rangeEndUs - rangeStartUs),
+        min: bins.min,
+        max: bins.max,
+        rms: bins.rms,
+        filled: bins.filled,
+        live: true,
+      ),
+    );
+  }
+
+  /// DECODING (a decode apart from playback in flight: a local file, or a
+  /// remote one read from mpv's cache or opened again): a partial envelope
+  /// that grows on every poll. The full axis is emitted with `filled`
+  /// marking the regions decoded so far. Never cache it and never stop the
+  /// timer: the final `ready` emission supersedes it. De-dup on coverage
+  /// so an unchanged snapshot does not churn the UI.
+  void _onDecoding(Map<Object?, Object?> value, _Bins bins, int durationUs) {
+    final coverageBins = _intOrNull(value['coverage_bins']);
+    if (coverageBins != null && coverageBins == _lastDecodeCoverage) return;
+    _lastDecodeCoverage = coverageBins;
+    _lastGrowing = null;
+    emit(
+      WaveformData(
+        duration: Duration(microseconds: durationUs),
+        min: bins.min,
+        max: bins.max,
+        rms: bins.rms,
+        filled: bins.filled,
+        decoding: true,
+        coverageBins: coverageBins,
+        totalBins: _intOrNull(value['total_bins']),
+      ),
+    );
+  }
+}
+
+/// The bins of a `waveform-data` reply.
+typedef _Bins = ({
+  Float32List min,
+  Float32List max,
+  Float32List? rms,
+  Uint8List filled,
+});
+
+/// [value] when it is an int, 0 otherwise.
+int _int(Object? value) => value is int ? value : 0;
+
+/// [value] when it is an int, `null` otherwise.
+int? _intOrNull(Object? value) => value is int ? value : null;
+
+/// The bins of [value], `null` when `min` and `max` are missing, empty or
+/// of different lengths. `rms` is dropped on a length mismatch, and
+/// `filled` falls back to all-covered when the native side omitted or
+/// mismatched the flags, so the renderer never misreads it.
+_Bins? _readBins(Map<Object?, Object?> value) {
+  final min = float32FromByteValue(value['min']);
+  final max = float32FromByteValue(value['max']);
+  if (min == null || max == null || min.isEmpty || min.length != max.length) {
+    return null;
+  }
+  // Null on a length mismatch.
+  final rms = float32FromByteValue(value['rms']);
+  final filled = value['filled'];
+  return (
+    min: min,
+    max: max,
+    rms: rms != null && rms.length == min.length ? rms : null,
+    filled: filled is Uint8List && filled.length == min.length
+        ? filled
+        : (Uint8List(min.length)..fillRange(0, min.length, 1)),
+  );
 }
 
 /// The most bins an axis holds (a live window's), a bound on a malformed
