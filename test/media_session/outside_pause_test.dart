@@ -76,4 +76,16 @@ void main() {
       InterruptionPolicy.pauseAndResume,
     );
   });
+
+  test(
+    'an outside pause while the player is paused forgets an earlier one',
+    () {
+      // The element replayed at a gesture, the player left paused, then the
+      // browser pauses and plays the element again: nothing to resume.
+      final f = OutsidePauseFollower();
+      expect(f.onOutside(elementPlaying: false, playing: true), 'pause');
+      expect(f.onOutside(elementPlaying: false, playing: false), isNull);
+      expect(f.onOutside(elementPlaying: true, playing: false), isNull);
+    },
+  );
 }

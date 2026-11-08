@@ -114,14 +114,7 @@ final class MpvAudioKitWeb {
         _config(session, args['config'] as Map<Object?, Object?>);
         _metadata(session, args['metadata'] as Map<Object?, Object?>);
         _setPlayback(session, args['playback'] as Map<Object?, Object?>);
-        // Chrome and Firefox show the controls of a media element only:
-        // the page's output plays through one while the session is on.
-        final output = await webAudioOutput();
-        output.routeToElement(true);
-        // An outside pause of that element follows the interruption
-        // policy, as an interruption on iOS and Android.
-        await _outsideSub?.cancel();
-        _outsideSub = output.outsidePlayback.listen(_onOutside);
+        await _routeToElement();
       case 'updateConfig':
         if (_enabled) _config(session, call.arguments as Map<Object?, Object?>);
       case 'updateMetadata':
@@ -142,6 +135,22 @@ final class MpvAudioKitWeb {
         throw MissingPluginException('${call.method} on the web');
     }
     return null;
+  }
+
+  /// Plays the page's output through the session's `<audio>` element:
+  /// Chrome and Firefox show the controls of a media element only. An
+  /// outside pause of that element follows the interruption policy, as an
+  /// interruption on iOS and Android.
+  Future<void> _routeToElement() async {
+    final previous = _outsideSub;
+    _outsideSub = null;
+    await previous?.cancel();
+    final output = await webAudioOutput();
+    // A disable while the output loaded: nothing to route or follow.
+    if (!_enabled) return;
+    output.routeToElement(true);
+    await _outsideSub?.cancel();
+    _outsideSub = output.outsidePlayback.listen(_onOutside);
   }
 
   void _config(_MediaSession session, Map<Object?, Object?> config) {

@@ -287,6 +287,7 @@ final class WebAudioOutput {
       if (!_toElement) return;
       debugWebAudioTrace?.call('element paused');
       _setDirect(true);
+      _asked = false;
       // The output pauses the element only after taking its listeners off:
       // a pause seen here comes from outside.
       if (_elementPlaying) {
@@ -341,7 +342,10 @@ final class WebAudioOutput {
     if (element == null) return;
     // Refused until a user gesture: the next gesture or running state
     // plays it, and the destination keeps the sound meanwhile.
-    _asked = true;
+    // Only a paused element plays: play() on a playing one fires no
+    // `playing`, and a flag left set would take the browser's next play,
+    // after an outside pause, for the output's own.
+    if ((element['paused'] as JSBoolean?)?.toDart ?? true) _asked = true;
     element
         .callMethod<JSPromise?>('play'.toJS)
         ?.toDart

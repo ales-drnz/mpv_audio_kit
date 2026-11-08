@@ -26,7 +26,12 @@ final class OutsidePauseFollower {
       return null;
     }
     if (!elementPlaying) {
-      if (!playing) return null;
+      if (!playing) {
+        // Paused by the user since: an earlier outside pause has
+        // nothing to resume.
+        _paused = false;
+        return null;
+      }
       _paused = policy == InterruptionPolicy.pauseAndResume;
       return 'pause';
     }
