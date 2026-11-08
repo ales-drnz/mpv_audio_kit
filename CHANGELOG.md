@@ -11,6 +11,7 @@
 ### All platforms
 **Fixed**
 - `openAll` at an index past the first gives the list it was asked for at once: the entry that played until the jump no longer shows in the playlist, and a call by index in that moment addresses the list the app sees.
+- The build hook reads the iOS deployment version of code_assets 2.2 as well as the target version of the older ones.
 
 ### Android
 **Added**
