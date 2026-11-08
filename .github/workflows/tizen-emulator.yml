@@ -154,6 +154,12 @@ jobs:
       - name: Build the TPK
         run: |
           cd "$RUNNER_TEMP/app"
+          # The engine artifacts come from GitHub releases, which sometimes
+          # answer 504: what was downloaded stays cached between tries.
+          for i in 1 2 3; do
+            flutter-tizen precache --tizen && break
+            echo "precache failed, try $i"; sleep 30
+          done
           dbus-run-session -- bash -c "
           echo tizen | gnome-keyring-daemon --unlock &&
           flutter-tizen build tpk --device-profile common --target-arch x64 --debug
