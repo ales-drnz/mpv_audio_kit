@@ -103,7 +103,7 @@ GNOME shows only previous, play-pause and next.
 
 ## Interruptions
 
-`interruptionPolicy` decides what a phone call or another app's audio does on iOS and Android:
+`interruptionPolicy` decides what a phone call or another app's audio does on iOS, Android and the web:
 
 ```dart
 const MediaSession(interruptionPolicy: InterruptionPolicy.pauseAndResume); // default
@@ -112,6 +112,7 @@ const MediaSession(interruptionPolicy: InterruptionPolicy.keepPlaying);
 ```
 
 - With `keepPlaying`, an accepted call or a voice assistant still takes the audio on iOS. Android 12 and later may fade the app out.
+- On the web the interruption is a pause of the session's `<audio>` element from outside the page (the browser, a call, another app). It ends when the browser plays the element again, which not every browser does.
 - Unplugging headphones always pauses.
 - On iOS the audio does not mix with other apps. Loading a file stops another app's audio, even with `play: false`.
 

@@ -27,6 +27,15 @@ The streams of `player.stream` do not change: `player.stream.position`
 stays as it is. The deprecation message of each flat field names its
 group, so `dart fix` is not needed: the message says the new path.
 
+## Behavior changes
+
+- On the web, a pause of the media session's `<audio>` element from
+  outside the page (the browser, a call, another app) follows
+  `MediaSession.interruptionPolicy`, as on iOS and Android. With the
+  default `pauseAndResume` the player pauses, and plays again when the
+  browser plays the element again; with `pauseOnly` it stays paused. 0.6
+  played on, as `keepPlaying` still does.
+
 # Migrating to 0.6.2
 
 0.6.2 runs on libmpv-r21, which the build hook bundles, and on no other
