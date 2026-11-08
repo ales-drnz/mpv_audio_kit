@@ -58,7 +58,9 @@ check_release() {
   fi
   while read -r asset; do
     grep -qxF -- "$asset" <<<"$names" || missing+=("$asset")
-  done < <(sed -n '/^const _sha256 = /,/^};/p' "$hook" | sed -n "s/^ *'\([^']*\)':.*/\1/p")
+  # A row with no SHA yet is a platform the next release adds: not pinned.
+  done < <(sed -n '/^const _sha256 = /,/^};/p' "$hook" | grep -v "': '',\$" |
+    sed -n "s/^ *'\([^']*\)':.*/\1/p")
   if (( ${#missing[@]} )); then
     echo "::error::The pinned libmpv release $tag has no ${missing[*]}: its upload may not be finished."
     exit 1
