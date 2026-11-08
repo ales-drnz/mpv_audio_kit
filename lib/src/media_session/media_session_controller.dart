@@ -8,6 +8,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 import '../models/cover_art.dart';
+import '../models/media.dart';
 import '../models/media_session.dart';
 import '../player/player_state.dart';
 import '../types/enums/loop.dart';
@@ -333,10 +334,7 @@ class MediaSessionController {
     // importantly transcoded streams (HLS or DASH), where mpv sees no tags and
     // reports the stream URL as `media-title`. extras sit below mpv's real
     // tags but above the filename-derived `media-title`.
-    final playlist = state.playlist;
-    final item = (playlist.index >= 0 && playlist.index < playlist.items.length)
-        ? playlist.items[playlist.index]
-        : null;
+    final item = _currentItem(state);
     final extras = item?.extras;
 
     // Title falls through: explicit override → mpv's `metadata.title` tag
@@ -349,11 +347,7 @@ class MediaSessionController {
         override?.title ??
         _firstTagValue(mpvMeta, const ['title']) ??
         _extra(extras, 'title') ??
-        (state.mediaTitle.isEmpty
-            ? null
-            : remote
-            ? _redactUrlTitle(state.mediaTitle)
-            : state.mediaTitle);
+        _mediaTitle(state.mediaTitle, remote: remote);
 
     final artist =
         override?.artist ??
@@ -390,19 +384,9 @@ class MediaSessionController {
     // (Subsonic `u`, `t` and `s`, Jellyfin `api_key`).
     final url = remote || item == null ? null : _fileUri(item.uri);
 
-    // A URL reaches the native side as the image it names, or not at all.
-    final artwork = _resolveArtwork(override, state.coverArt, extras);
-    final uri = artwork.uri;
-    final cover = uri == null
-        ? artwork.bytes
-        : _artworkFetcher != null && _fetches(uri)
-        ? _downloadedArtwork(uri)
-        : null;
-    // In the browser a URL the fetch cannot read (no CORS) still shows: the
-    // browser loads it as an image and hands the OS the picture.
-    final artworkUrl = passesArtworkUrl && cover == null && _isHttp(uri)
-        ? uri
-        : null;
+    final (:cover, :artworkUrl) = _artworkFor(
+      _resolveArtwork(override, state.coverArt, extras),
+    );
 
     return MediaSessionMetadataSnapshot(
       title: title,
@@ -417,6 +401,39 @@ class MediaSessionController {
       url: url,
       artworkUrl: artworkUrl,
     );
+  }
+
+  /// The item of [state]'s playlist that is current, `null` when none is.
+  static Media? _currentItem(PlayerState state) {
+    final playlist = state.playlist;
+    final index = playlist.index;
+    if (index < 0 || index >= playlist.items.length) return null;
+    return playlist.items[index];
+  }
+
+  /// mpv's `media-title`, the last fallback of the title: `null` when
+  /// empty, its query string stripped for a [remote] item, whose title is
+  /// derived from the URL.
+  static String? _mediaTitle(String mediaTitle, {required bool remote}) {
+    if (mediaTitle.isEmpty) return null;
+    return remote ? _redactUrlTitle(mediaTitle) : mediaTitle;
+  }
+
+  /// The picture of [artwork] for the native side, and the URL the browser
+  /// shows instead. A URL reaches the native side as the image it names,
+  /// or not at all. In the browser a URL the fetch cannot read (no CORS)
+  /// still shows: the browser loads it as an image and hands the OS the
+  /// picture.
+  ({CoverArt? cover, String? artworkUrl}) _artworkFor(
+    ({CoverArt? bytes, String? uri}) artwork,
+  ) {
+    final uri = artwork.uri;
+    if (uri == null) return (cover: artwork.bytes, artworkUrl: null);
+    final cover = _artworkFetcher != null && _fetches(uri)
+        ? _downloadedArtwork(uri)
+        : null;
+    final showUrl = passesArtworkUrl && cover == null && _isHttp(uri);
+    return (cover: cover, artworkUrl: showUrl ? uri : null);
   }
 
   /// Reads a non-empty string [key] from a queue item's [Media.extras];

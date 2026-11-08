@@ -748,4 +748,37 @@ void main() {
       );
     });
   });
+
+  group('the entry openAll keeps after its jump', () {
+    final raw = [
+      {'filename': 'old.mp3', 'id': 7},
+      {'filename': 'a.mp3', 'id': 8, 'current': true},
+      {'filename': 'b.mp3', 'id': 9},
+    ];
+
+    test('retainedEntryAt finds it once it is not current', () {
+      expect(retainedEntryAt(raw, 7), 0);
+      expect(retainedEntryAt(raw, null), isNull);
+      expect(retainedEntryAt(raw, 42), isNull, reason: 'gone from mpv');
+      expect(
+        retainedEntryAt([
+          {'filename': 'old.mp3', 'id': 7, 'current': true},
+          {'filename': 'a.mp3', 'id': 8},
+        ], 7),
+        isNull,
+        reason: 'still current: shown',
+      );
+    });
+
+    test('skip leaves it out and the index follows', () {
+      final p = parsePlaylistNode(
+        raw: raw,
+        mediaCache: const {},
+        previous: Playlist.empty,
+        skip: 0,
+      );
+      expect(p.items.map((m) => m.uri), ['a.mp3', 'b.mp3']);
+      expect(p.index, 0);
+    });
+  });
 }

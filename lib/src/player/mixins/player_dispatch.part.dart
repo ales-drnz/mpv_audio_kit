@@ -22,16 +22,7 @@ mixin _DispatchModule on _PlayerBase {
     // arrives while dispose is unwinding must still complete its pending
     // future (completers are dispose-agnostic; the fence below only
     // protects controller add()s).
-    switch (event) {
-      case MpvEventReply(:final userdata, :final error, :final result):
-        _session.onReply(userdata, error, result);
-        return;
-      case MpvEventGetReply(:final userdata, :final error, :final value):
-        _session.onGetReply(userdata, error, value);
-        return;
-      default:
-        break;
-    }
+    if (_completeReply(event)) return;
     // Single fence for every controller add() in this method: dispose()
     // flips `_disposed` before the event isolate's `stop()` closes the event
     // stream, so any event still delivered between the flip and that close
@@ -46,87 +37,114 @@ mixin _DispatchModule on _PlayerBase {
     // unhandled async error (and under a guarded zone can escalate). Contain
     // and log it; one bad event is dropped, the stream keeps delivering.
     try {
-      switch (event) {
-        case MpvEventStartFile(:final entryId):
-          _onStartFile(entryId);
-        case final MpvEventFileLoaded loaded:
-          _onFileLoaded(loaded);
-        case MpvEventPlaybackRestart(:final timePos):
-          // A restart is a seek that landed: it left the park, even when
-          // it lands on the end again (a seek past a cut whose read fails
-          // again) or the play after it parks before any read of the
-          // event isolate saw it move. It opens a new park generation:
-          // the end-of-content read that follows the restart raises
-          // `completed` again for that park, with how the entry ended this
-          // time, and spends the play intent of the generation.
-          _transport.onRestart();
-          if (_state.completed) _updateLifecycle(completed: false);
-          _applyPolledPosition(timePos);
-          _seekCompletedCtrl.add(null);
-        case MpvEventEndOfContent(
-          :final eof,
-          :final parked,
-          :final lastEntry,
-          :final live,
-          :final timePos,
-          :final readError,
-          :final skippedSegments,
-        ):
-          // Parked: the position where the file ended, before completed.
-          if (parked) _applyPolledPosition(timePos);
-          // The core's value at the read, ahead of a skipped or late
-          // `eof-reached` notification.
-          _dispatchProperty('eof-reached', eof);
-          _settleEndOfContent(
-            parked: parked,
-            lastEntry: lastEntry,
-            live: live,
-            readError: readError,
-            skippedSegments: skippedSegments,
-          );
-        case final MpvEventEndFile ended:
-          _onEndFile(ended);
-        case MpvEventReply():
-        case MpvEventGetReply():
-          // Completed before the dispose fence above; never reaches here.
-          break;
-        case MpvEventShutdown():
-          _updateLifecycle(playing: false, buffering: false);
-        case MpvEventPropertyDouble(:final name, :final value):
-          _dispatchProperty(name, value);
-        case MpvEventPropertyInt(:final name, :final value):
-          _dispatchProperty(name, value);
-        case MpvEventPropertyString(:final name, :final value):
-          _dispatchProperty(name, value);
-        case MpvEventPropertyNode(:final name, :final value):
-          _dispatchProperty(name, value);
-        case MpvEventPropertyUnavailable(:final name):
-          _dispatchUnavailable(name);
-        case MpvEventPropertyGroup(:final events):
-          _dispatchGroup(events);
-        case MpvEventLog(:final prefix, :final level, :final text):
-          final typedLevel = LogLevel.fromMpv(level);
-          final entry = MpvLogEntry(
-            prefix: prefix,
-            level: typedLevel,
-            text: text,
-          );
-          _logCtrl.add(entry);
-          if (typedLevel == LogLevel.error || typedLevel == LogLevel.fatal) {
-            _errorCtrl.add(
-              LogError(prefix: prefix, level: typedLevel, text: text),
-            );
-          }
-        case MpvEventInternalLog(:final level, :final text):
-          _internalLog('event isolate: $text', level: LogLevel.fromMpv(level));
-        case MpvEventHookFired(:final id, :final name):
-          _onHookFired(id, name);
-      }
+      _dispatchEvent(event);
     } catch (e, st) {
       _internalLog(
         'Unhandled error while handling $event: $e\n$st',
         level: LogLevel.warn,
       );
+    }
+  }
+
+  /// Completes the pending call of a reply [event]. Returns whether
+  /// [event] was one.
+  bool _completeReply(MpvIsolateEvent event) {
+    switch (event) {
+      case MpvEventReply(:final userdata, :final error, :final result):
+        _session.onReply(userdata, error, result);
+        return true;
+      case MpvEventGetReply(:final userdata, :final error, :final value):
+        _session.onGetReply(userdata, error, value);
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  /// [_handleEvent] past the replies and the dispose fence.
+  void _dispatchEvent(MpvIsolateEvent event) {
+    switch (event) {
+      case MpvEventStartFile(:final entryId):
+        _onStartFile(entryId);
+      case final MpvEventFileLoaded loaded:
+        _onFileLoaded(loaded);
+      case MpvEventPlaybackRestart(:final timePos):
+        _onPlaybackRestart(timePos);
+      case final MpvEventEndOfContent ended:
+        _onEndOfContent(ended);
+      case final MpvEventEndFile ended:
+        _onEndFile(ended);
+      case MpvEventShutdown():
+        _updateLifecycle(playing: false, buffering: false);
+      case MpvEventLog(:final prefix, :final level, :final text):
+        _onLog(prefix, LogLevel.fromMpv(level), text);
+      case MpvEventInternalLog(:final level, :final text):
+        _internalLog('event isolate: $text', level: LogLevel.fromMpv(level));
+      case MpvEventHookFired(:final id, :final name):
+        _onHookFired(id, name);
+      case final MpvPropertyEvent property:
+        _dispatchPropertyEvent(property);
+      case MpvReplyEvent():
+        break;
+    }
+  }
+
+  /// The property events of [_dispatchEvent]. The replies were completed
+  /// before the dispose fence and never reach here.
+  void _dispatchPropertyEvent(MpvPropertyEvent event) {
+    switch (event) {
+      case MpvEventPropertyDouble(:final name, :final value):
+        _dispatchProperty(name, value);
+      case MpvEventPropertyInt(:final name, :final value):
+        _dispatchProperty(name, value);
+      case MpvEventPropertyString(:final name, :final value):
+        _dispatchProperty(name, value);
+      case MpvEventPropertyNode(:final name, :final value):
+        _dispatchProperty(name, value);
+      case MpvEventPropertyUnavailable(:final name):
+        _dispatchUnavailable(name);
+      case MpvEventPropertyGroup(:final events):
+        _dispatchGroup(events);
+    }
+  }
+
+  /// MPV_EVENT_PLAYBACK_RESTART at [timePos].
+  void _onPlaybackRestart(double? timePos) {
+    // A restart is a seek that landed: it left the park, even when
+    // it lands on the end again (a seek past a cut whose read fails
+    // again) or the play after it parks before any read of the
+    // event isolate saw it move. It opens a new park generation:
+    // the end-of-content read that follows the restart raises
+    // `completed` again for that park, with how the entry ended this
+    // time, and spends the play intent of the generation.
+    _transport.onRestart();
+    if (_state.completed) _updateLifecycle(completed: false);
+    _applyPolledPosition(timePos);
+    _seekCompletedCtrl.add(null);
+  }
+
+  /// The end-of-content read of the event isolate.
+  void _onEndOfContent(MpvEventEndOfContent ended) {
+    // Parked: the position where the file ended, before completed.
+    if (ended.parked) _applyPolledPosition(ended.timePos);
+    // The core's value at the read, ahead of a skipped or late
+    // `eof-reached` notification.
+    _dispatchProperty('eof-reached', ended.eof);
+    _settleEndOfContent(
+      parked: ended.parked,
+      lastEntry: ended.lastEntry,
+      live: ended.live,
+      readError: ended.readError,
+      skippedSegments: ended.skippedSegments,
+    );
+  }
+
+  /// An mpv log line: on [PlayerStream.log], and on [PlayerStream.error]
+  /// too at error and fatal.
+  void _onLog(String prefix, LogLevel level, String text) {
+    _logCtrl.add(MpvLogEntry(prefix: prefix, level: level, text: text));
+    if (level == LogLevel.error || level == LogLevel.fatal) {
+      _errorCtrl.add(LogError(prefix: prefix, level: level, text: text));
     }
   }
 
@@ -408,12 +426,15 @@ mixin _DispatchModule on _PlayerBase {
     Playlist? playlist;
     if (playlistNode != null) {
       try {
+        final hidden = retainedEntryAt(playlistNode, _entries.retained);
         playlist = parsePlaylistNode(
           raw: playlistNode,
           mediaCache: _mediaCache,
           mediaByEntry: _entries.media,
           previous: _state.playlist,
+          skip: hidden,
         );
+        _entries.hiddenAt = hidden;
       } catch (e) {
         _internalLog('Failed to parse playlist: $e', level: LogLevel.warn);
       }
@@ -436,12 +457,16 @@ mixin _DispatchModule on _PlayerBase {
       // appended after this node was taken (a batch of appends replies
       // ahead of the playlist notifications): it stays.
       _entries.onPlaylist(raw);
+      // The entry openAll still holds in mpv after its jump is left out.
+      final hidden = retainedEntryAt(raw, _entries.retained);
       final playlist = parsePlaylistNode(
         raw: raw,
         mediaCache: _mediaCache,
         mediaByEntry: _entries.media,
         previous: _state.playlist,
+        skip: hidden,
       );
+      _entries.hiddenAt = hidden;
       _updateField((s) => s.copyWith(playlist: playlist), _playlist, playlist);
     } catch (e) {
       _internalLog('Failed to parse playlist: $e', level: LogLevel.warn);

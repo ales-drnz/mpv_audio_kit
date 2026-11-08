@@ -162,11 +162,9 @@ class SpectrumPipeline {
 
     // Scalars first: a stale frame (same pts as the previous poll, e.g.
     // while paused) is discarded BEFORE the sample buffer is reinterpreted.
-    final sampleRate = value['sample_rate'] is int
-        ? value['sample_rate'] as int
-        : 0;
-    final channels = value['channels'] is int ? value['channels'] as int : 0;
-    final ptsNs = value['pts_ns'] is int ? value['pts_ns'] as int : 0;
+    final sampleRate = _intOrZero(value['sample_rate']);
+    final channels = _intOrZero(value['channels']);
+    final ptsNs = _intOrZero(value['pts_ns']);
 
     if (sampleRate <= 0 || channels <= 0 || ptsNs == 0) return;
     final fftNew = _fftActive && ptsNs != _lastFftPtsNs;
@@ -176,23 +174,35 @@ class SpectrumPipeline {
     final samples = float32FromByteValue(value['samples']);
     if (samples == null) return;
 
-    final timestamp = Duration(microseconds: ptsNs ~/ 1000);
-    final pcm = PcmFrame(
-      samples: samples,
-      timestamp: timestamp,
-      sampleRate: sampleRate,
-      channels: channels,
+    _emit(
+      PcmFrame(
+        samples: samples,
+        timestamp: Duration(microseconds: ptsNs ~/ 1000),
+        sampleRate: sampleRate,
+        channels: channels,
+      ),
+      ptsNs,
+      fft: fftNew,
+      pcm: pcmNew,
     );
+  }
 
-    if (pcmNew && !_pcmCtrl.isClosed) {
+  /// Adds [frame], read at [ptsNs], to the streams that do not have it:
+  /// [pcm] for the PCM stream, [fft] for the spectrum.
+  void _emit(
+    PcmFrame frame,
+    int ptsNs, {
+    required bool fft,
+    required bool pcm,
+  }) {
+    if (pcm && !_pcmCtrl.isClosed) {
       _lastPcmPtsNs = ptsNs;
-      _pcmCtrl.add(pcm);
+      _pcmCtrl.add(frame);
     }
-
-    if (fftNew && !_fftCtrl.isClosed) {
+    if (fft && !_fftCtrl.isClosed) {
       _lastFftPtsNs = ptsNs;
-      final frame = _processor.process(pcm);
-      if (frame != null) _fftCtrl.add(frame);
+      final spectrum = _processor.process(frame);
+      if (spectrum != null) _fftCtrl.add(spectrum);
     }
   }
 
@@ -205,3 +215,6 @@ class SpectrumPipeline {
     if (!_pcmCtrl.isClosed) await _pcmCtrl.close();
   }
 }
+
+/// [value] when it is an int, 0 otherwise.
+int _intOrZero(Object? value) => value is int ? value : 0;

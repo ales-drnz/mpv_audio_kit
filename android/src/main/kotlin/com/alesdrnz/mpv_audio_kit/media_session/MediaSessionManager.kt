@@ -5,6 +5,7 @@
  */
 package com.alesdrnz.mpv_audio_kit.media_session
 
+import android.app.Activity
 import android.app.PendingIntent
 import android.content.ComponentName
 import android.content.Context
@@ -140,6 +141,10 @@ internal object MediaSessionManager {
     private var player: MpvControllerPlayer? = null
     private var session: MediaSession? = null
     private var audioFocus: AudioFocusController? = null
+
+    // The media controller of each activity in front points at the session,
+    // so the window hands it the media keys on every Android version.
+    private val activityKeys = ActivityMediaKeys<android.media.session.MediaSession.Token>()
 
     // Which engine owns the session, and the command sink of each engine:
     // every engine of the process reaches this object through its own plugin.
@@ -383,6 +388,7 @@ internal object MediaSessionManager {
         // a dead session and log "already released" spam.
         player?.release()
         player = null
+        activityKeys.onSession(null)
         session?.release()
         session = null
     }
@@ -405,9 +411,22 @@ internal object MediaSessionManager {
             val builder = MediaSession.Builder(ctx, player!!)
                 .setCallback(sessionCallback)
             if (pending != null) builder.setSessionActivity(pending)
-            session = builder.build()
+            session = builder.build().also { activityKeys.onSession(it.platformToken) }
         }
     }
+
+    /** The activity of the engine [engine], in front: see [ActivityMediaKeys]. */
+    fun attachActivity(engine: Any, activity: Activity) {
+        activityKeys.attach(engine, object : ActivityMediaKeys.Window<android.media.session.MediaSession.Token> {
+            override fun current() = activity.mediaController?.sessionToken
+            override fun set(token: android.media.session.MediaSession.Token?) {
+                activity.mediaController = token?.let { android.media.session.MediaController(activity, it) }
+            }
+        })
+    }
+
+    /** The activity of the engine [engine] went. */
+    fun detachActivity(engine: Any) = activityKeys.detach(engine)
 
     /** Resolved by [MpvMediaSessionService.onGetSession]. */
     fun currentSession(): MediaSession? = session

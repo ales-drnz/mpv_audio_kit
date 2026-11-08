@@ -94,6 +94,25 @@ final class EntryTable {
   /// while the current file plays, runs `on_prefetch` instead.
   int? get loading => _loading;
 
+  /// The entry [Player.openAll] keeps playing while it puts the new ones
+  /// in, until it removes it; `null` outside that call.
+  int? retained;
+
+  /// Where the playlist the state shows left [retained] out of mpv's, or
+  /// `null`: the indices of the state from there on are one less than
+  /// mpv's.
+  int? hiddenAt;
+
+  /// mpv's index for the [index] of the state.
+  int toCore(int index) {
+    final at = hiddenAt;
+    return at != null && index >= at ? index + 1 : index;
+  }
+
+  /// The count of the state for mpv's [count].
+  int fromCoreCount(int count) =>
+      hiddenAt != null && count > 0 ? count - 1 : count;
+
   /// The [Media] the entry [id] was loaded with, `null` when the player
   /// did not load it (a `loadlist`, a raw command) or let it go.
   Media? mediaOf(int? id) => _byId[id]?.media;

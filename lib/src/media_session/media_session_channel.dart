@@ -340,29 +340,31 @@ class MediaSessionChannel {
     if (raw is! Map) return null;
     final type = raw['type'];
     if (type is! String) return null;
+    return _plainCommands[type] ?? _decodeArgCommand(type, raw);
+  }
+
+  /// The commands that carry no argument, by their `type`.
+  static const _plainCommands = <String, MediaSessionCommand>{
+    'play': MediaSessionCommand.play,
+    'pause': MediaSessionCommand.pause,
+    'playPause': MediaSessionCommand.playPause,
+    'stop': MediaSessionCommand.stop,
+    'next': MediaSessionCommand.next,
+    'previous': MediaSessionCommand.previous,
+    'like': MediaSessionCommand.like,
+  };
+
+  /// The commands of [_decodeCommand] that carry an argument in [raw]:
+  /// `null` for an unknown [type] or an argument of the wrong type.
+  static MediaSessionCommand? _decodeArgCommand(
+    String type,
+    Map<dynamic, dynamic> raw,
+  ) {
     switch (type) {
-      case 'play':
-        return MediaSessionCommand.play;
-      case 'pause':
-        return MediaSessionCommand.pause;
-      case 'playPause':
-        return MediaSessionCommand.playPause;
-      case 'stop':
-        return MediaSessionCommand.stop;
-      case 'next':
-        return MediaSessionCommand.next;
-      case 'previous':
-        return MediaSessionCommand.previous;
-      case 'like':
-        return MediaSessionCommand.like;
       case 'seekTo':
-        final pos = raw['positionMs'];
-        if (pos is! int) return null;
-        return MediaSessionCommand.seekTo(Duration(milliseconds: pos));
+        return _millis(raw['positionMs'], MediaSessionCommand.seekTo);
       case 'seekBy':
-        final off = raw['offsetMs'];
-        if (off is! int) return null;
-        return MediaSessionCommand.seekBy(Duration(milliseconds: off));
+        return _millis(raw['offsetMs'], MediaSessionCommand.seekBy);
       case 'setRepeatMode':
         final name = raw['loop'];
         if (name is! String) return null;
@@ -382,4 +384,10 @@ class MediaSessionChannel {
     }
     return null;
   }
+
+  /// [make] of [ms] milliseconds, `null` when [ms] is no int.
+  static MediaSessionCommand? _millis(
+    Object? ms,
+    MediaSessionCommand Function(Duration) make,
+  ) => ms is int ? make(Duration(milliseconds: ms)) : null;
 }

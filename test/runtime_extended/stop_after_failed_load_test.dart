@@ -50,12 +50,11 @@ void main() {
         expect(player.state.playlist.items, hasLength(1));
 
         await player.stop();
-        final deadline = DateTime.now().add(const Duration(seconds: 2));
-        while (player.state.playlist.items.isNotEmpty &&
-            DateTime.now().isBefore(deadline)) {
-          await Future<void>.delayed(const Duration(milliseconds: 20));
-        }
-        expect(player.state.playlist.items, isEmpty);
+        await waitUntil(
+          () => player.state.playlist.items.isEmpty,
+          timeout: const Duration(seconds: 2),
+          reason: 'stop did not empty the playlist in the state',
+        );
       }, timeout: const Timeout(Duration(seconds: 30)));
 
       test('ends a live source added to the failed entry', () async {
