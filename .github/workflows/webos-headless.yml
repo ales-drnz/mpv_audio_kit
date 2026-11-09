@@ -24,7 +24,7 @@ permissions:
 
 env:
   # The libmpv-scripts Build whose webos-armv7l artifact the app bundles.
-  LIBMPV_SCRIPTS_RUN: '42594670631'
+  LIBMPV_SCRIPTS_RUN: '42605444445'
   FLUTTER_WEBOS_REF: 950398131830e9bd5dc91e588c3db8f5c42322be
   WEBOS_NDK_VERSION: '11.2.0'
   WEBOS_NDK_SHA256: 3c93af87505a8771d5662cc4a15b596d46791e3c7d8a0cb9113fa8e846e15a42
