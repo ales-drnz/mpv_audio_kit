@@ -7,6 +7,7 @@
 // WebAssembly over js_interop (web_backend.dart). Each one provides:
 //
 //   MpvSession createMpvSession({int? wakeupCounterAddress})
+//   String? defaultLibmpv()
 //   void startBackend({String? libmpv, required bool hotRestartCleanup})
 //   void backendInitialized()
 //   PcmNative openPcmNative(String? path)

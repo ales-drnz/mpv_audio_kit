@@ -654,6 +654,17 @@ class MpvLibrary {
     mpvHookContinue = _mpvHookContinue;
   }
 
+  /// Whether the libmpv the build hook bundles resolves: no hook ran where
+  /// a plugin bundles it (flutter-webos).
+  static bool hookResolves() {
+    try {
+      Native.addressOf<NativeFunction<_MpvCreateNative>>(_mpvCreate);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Opens libmpv: the one the build hook bundles with the app, or the
   /// library at [path] when given (a custom libmpv build).
   /// Throws [MpvLibraryException] if the library cannot be found.
