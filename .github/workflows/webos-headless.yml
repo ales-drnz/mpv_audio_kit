@@ -22,7 +22,7 @@ name: webOS headless
 # branch.
 on:
   push:
-    branches: ['release/**', 'wip/**-tv']
+    branches: ['release/**', 'wip/*-tv']
     paths:
       - 'webos/**'
       - 'lib/**'

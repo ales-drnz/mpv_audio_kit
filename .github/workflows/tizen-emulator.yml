@@ -15,7 +15,7 @@ name: Tizen emulator
 # branch.
 on:
   push:
-    branches: ['release/**', 'wip/**-tv']
+    branches: ['release/**', 'wip/*-tv']
     paths:
       - 'hook/**'
       - 'lib/**'
