@@ -61,6 +61,64 @@ void main() {
     expect(ignored, isEmpty);
   });
 
+  // flutter-webos builds for arm, the TVs, and for arm64 with
+  // --target-arch arm64. Only arm has a libmpv: an arm64 build bundled the
+  // 32-bit library, and failed when the app loaded it.
+  group('webos/CMakeLists.txt configured as flutter-webos does', () {
+    late Directory tmp;
+
+    setUp(() => tmp = Directory.systemTemp.createTempSync('mak_webos_cmake'));
+    tearDown(() => tmp.deleteSync(recursive: true));
+
+    /// Configures an app that adds the plugin, for [platform], with a
+    /// libmpv of its own in the environment.
+    ProcessResult? configure(String platform) {
+      final root = Directory.current.path.replaceAll(r'\', '/');
+      final lib = File('${tmp.path}/libmpv_webos-armv7l.so')
+        ..writeAsStringSync('libmpv');
+      File('${tmp.path}/CMakeLists.txt').writeAsStringSync('''
+cmake_minimum_required(VERSION 3.10)
+project(app LANGUAGES NONE)
+add_subdirectory("$root/webos" plugin)
+message(STATUS "BUNDLED=\${mpv_audio_kit_bundled_libraries}")
+''');
+      try {
+        return Process.runSync(
+          'cmake',
+          [
+            '-S',
+            tmp.path,
+            '-B',
+            '${tmp.path}/build',
+            '-DFLUTTER_TARGET_PLATFORM=$platform',
+          ],
+          environment: {'MPV_AUDIO_KIT_LIBMPV': lib.path},
+        );
+      } on ProcessException {
+        if (Platform.environment['CI'] == 'true') rethrow;
+        markTestSkipped('no cmake on this machine');
+        return null;
+      }
+    }
+
+    test('arm bundles libmpv_audio_kit_webos.so', () {
+      final run = configure('webos-arm');
+      if (run == null) return;
+      expect(run.exitCode, 0, reason: '${run.stdout}${run.stderr}');
+      expect(
+        '${run.stdout}',
+        matches(RegExp(r'BUNDLED=.*libmpv_audio_kit_webos\.so')),
+      );
+    });
+
+    test('arm64 fails the build, naming the arch', () {
+      final run = configure('webos-arm64');
+      if (run == null) return;
+      expect(run.exitCode, isNot(0), reason: '${run.stdout}${run.stderr}');
+      expect('${run.stderr}', contains('no libmpv for webos-arm64'));
+    });
+  });
+
   group('update_libmpv.sh pins the webOS libmpv in webos/CMakeLists.txt', () {
     final root = Directory.current.path;
     late Directory package;

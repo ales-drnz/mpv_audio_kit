@@ -16,6 +16,9 @@ import 'passthrough_codecs.dart';
 /// Flutter Hot-Restarts, both of which the backend carries out.
 ///
 /// {@category Web}
+/// {@category Android TV}
+/// {@category Tizen}
+/// {@category webOS}
 abstract final class MpvAudioKit {
   MpvAudioKit._();
 

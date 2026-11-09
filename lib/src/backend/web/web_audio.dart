@@ -8,6 +8,7 @@ import 'dart:js_interop_unsafe';
 
 import 'package:meta/meta.dart';
 
+import '../../media_session/outside_pause.dart';
 import 'mpv_module.dart';
 
 /// Test-only: gets a line for each step of the page's output (init,
@@ -77,9 +78,7 @@ final class WebAudioOutput {
   // The element's play and pause from outside the output (the browser, a
   // call, another app): [outsidePlayback].
   final StreamController<bool> _outside = StreamController<bool>.broadcast();
-  bool _elementPlaying = false;
-  bool _asked = false;
-  bool _outsidePaused = false;
+  final OutsideElementWatch _watch = OutsideElementWatch();
 
   JSFunction? _onPlaying;
   JSFunction? _onPause;
@@ -144,7 +143,7 @@ final class WebAudioOutput {
   void _onState(String state) {
     final before = needsGesture;
     _state = state;
-    if (state == 'running') _playElement();
+    if (_watch.onContextState(state)) _playElement();
     if (needsGesture != before) _gesture.add(needsGesture);
   }
 
@@ -208,7 +207,7 @@ final class WebAudioOutput {
     final node = _audio.output(0);
     node.callMethod('disconnect'.toJS);
     _direct = false;
-    _elementPlaying = _outsidePaused = _asked = false;
+    _watch.reset();
     debugWebAudioTrace?.call('route ${_toElement ? 'element' : 'destination'}');
     if (!_toElement) {
       // The listeners go first: the element's pause event comes later.
@@ -274,27 +273,15 @@ final class WebAudioOutput {
       debugWebAudioTrace?.call('element playing');
       if (!_toElement) return;
       _setDirect(false);
-      final asked = _asked;
-      _asked = false;
-      _elementPlaying = true;
-      if (_outsidePaused) {
-        _outsidePaused = false;
-        // Played again by the browser, not by the output.
-        if (!asked) _outside.add(true);
-      }
+      if (_watch.onPlaying()) _outside.add(true);
     }).toJS;
     _onPause = ((JSAny? _) {
       if (!_toElement) return;
       debugWebAudioTrace?.call('element paused');
       _setDirect(true);
-      _asked = false;
       // The output pauses the element only after taking its listeners off:
       // a pause seen here comes from outside.
-      if (_elementPlaying) {
-        _elementPlaying = false;
-        _outsidePaused = true;
-        _outside.add(false);
-      }
+      if (_watch.onPause()) _outside.add(false);
     }).toJS;
     _onGesture = ((JSAny? _) {
       if (_toElement && _direct) _playElement();
@@ -333,8 +320,10 @@ final class WebAudioOutput {
 
   /// `false` when the element, playing, is paused from outside the output
   /// (the browser, a call, another app), and `true` when the browser plays
-  /// it again after one. A play of the output itself, at a gesture, sends
-  /// nothing. The media session follows its interruption policy on these.
+  /// it again after one, or the output does when an interruption ends (the
+  /// context runs again after `interrupted`). A play of the output itself
+  /// at a gesture sends nothing. The media session follows its interruption
+  /// policy on these.
   Stream<bool> get outsidePlayback => _outside.stream;
 
   void _playElement() {
@@ -342,14 +331,13 @@ final class WebAudioOutput {
     if (element == null) return;
     // Refused until a user gesture: the next gesture or running state
     // plays it, and the destination keeps the sound meanwhile.
-    // Only a paused element plays: play() on a playing one fires no
-    // `playing`, and a flag left set would take the browser's next play,
-    // after an outside pause, for the output's own.
-    if ((element['paused'] as JSBoolean?)?.toDart ?? true) _asked = true;
+    _watch.onOutputPlay(
+      elementPaused: (element['paused'] as JSBoolean?)?.toDart ?? true,
+    );
     element
         .callMethod<JSPromise?>('play'.toJS)
         ?.toDart
-        .then<void>((_) {}, onError: (Object _) => _asked = false)
+        .then<void>((_) {}, onError: (Object _) => _watch.onPlayRefused())
         .ignore();
   }
 }

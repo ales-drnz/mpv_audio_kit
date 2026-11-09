@@ -14,17 +14,37 @@ name: webOS headless
 #
 # The NDK's licence allows it on our machines only, the runner included:
 # it is installed from LG's release at its checksum and never stored.
+#
+# Runs on the release branches when what a webOS app bundles changes, and by
+# hand, on any branch, with the libmpv-scripts Build to try. A branch named
+# wip/<something>-tv runs it too, at a push that changes one of the paths
+# below: GitHub starts a workflow by hand only once it is on the default
+# branch.
 on:
   push:
-    branches: ['wip/0.7.0-webos']
+    branches: ['release/**', 'wip/*-tv']
+    paths:
+      - 'webos/**'
+      - 'lib/**'
+      - 'pubspec.yaml'
+      - 'scripts/ci/resolve_libmpv_run.sh'
+      - 'test/fixtures/sine_5s.flac'
+      - '.github/webos/**'
+      - '.github/workflows/webos-headless.yml'
   workflow_dispatch:
+    inputs:
+      libmpv_scripts_run:
+        description: 'libmpv-scripts Build run id to take libmpv from, instead of the pinned release'
+        type: string
 
 permissions:
   contents: read
 
 env:
-  # The libmpv-scripts Build whose webos-armv7l artifact the app bundles.
-  LIBMPV_SCRIPTS_RUN: '42605444445'
+  # A libmpv-scripts Build to take libmpv from, by hand. Empty: the pinned
+  # release when it is published, else the latest Build of its release
+  # branch, as ci.yml does (scripts/ci/resolve_libmpv_run.sh).
+  LIBMPV_SCRIPTS_RUN: ${{ inputs.libmpv_scripts_run || vars.LIBMPV_SCRIPTS_RUN }}
   FLUTTER_WEBOS_REF: 950398131830e9bd5dc91e588c3db8f5c42322be
   WEBOS_NDK_VERSION: '11.2.0'
   WEBOS_NDK_SHA256: 3c93af87505a8771d5662cc4a15b596d46791e3c7d8a0cb9113fa8e846e15a42
@@ -78,12 +98,22 @@ jobs:
             echo "precache failed, try $i"; sleep 30
           done
           "$RUNNER_TEMP/flutter-webos/bin/flutter-webos" --version
-      - name: libmpv of the libmpv-scripts Build
+      # From a Build, MPV_AUDIO_KIT_LIBMPV bundles its library; from the
+      # pinned release, webos/CMakeLists.txt downloads it at its SHA-256, as
+      # an app's build does.
+      - name: libmpv
         env:
           GH_TOKEN: ${{ secrets.LIBMPV_SCRIPTS_TOKEN }}
+          RELEASE_TOKEN: ${{ github.token }}
         run: |
-          gh run download "$LIBMPV_SCRIPTS_RUN" -R ales-drnz/libmpv-scripts -n webos-armv7l -D "$RUNNER_TEMP/libmpv"
-          ls -la "$RUNNER_TEMP/libmpv"
+          run="$(kit/scripts/ci/resolve_libmpv_run.sh)"
+          if [[ -n "$run" ]]; then
+            gh run download "$run" -R ales-drnz/libmpv-scripts -n webos-armv7l -D "$RUNNER_TEMP/libmpv"
+            ls -la "$RUNNER_TEMP/libmpv"
+            echo "MPV_AUDIO_KIT_LIBMPV=$RUNNER_TEMP/libmpv/libmpv_webos-armv7l.so" >> "$GITHUB_ENV"
+          else
+            echo "The pinned release: webos/CMakeLists.txt downloads its libmpv."
+          fi
       - name: The app
         run: |
           cd "$RUNNER_TEMP"
@@ -117,10 +147,10 @@ jobs:
               final at = await player.stream.position
                   .firstWhere((p) => p > const Duration(seconds: 2))
                   .timeout(const Duration(seconds: 90));
-              final driver = player.state.currentAo;
-              final ok = driver == 'alsa' && player.state.playing;
+              final driver = player.state.output.currentAo;
+              final ok = driver == 'alsa' && player.state.playback.playing;
               print('MAK_WEBOS_RESULT ${ok ? 'PASS' : 'FAIL'} ao=$driver '
-                  'position=$at params=${player.state.audioOutParams}');
+                  'position=$at params=${player.state.output.audioOutParams}');
               await player.dispose();
             } catch (e, s) {
               print('MAK_WEBOS_RESULT FAIL $e\n$s');
@@ -132,7 +162,7 @@ jobs:
         run: |
           cd "$RUNNER_TEMP/app"
           . "$WEBOS_FLUTTER_NDK_ENV"
-          MPV_AUDIO_KIT_LIBMPV="$RUNNER_TEMP/libmpv/libmpv_webos-armv7l.so" flutter-webos build webos --release
+          flutter-webos build webos --release
           ipk="$(find build -name '*.ipk' | head -1)"
           echo "IPK: $ipk"
           mkdir -p "$RUNNER_TEMP/ipk" && cd "$RUNNER_TEMP/ipk"

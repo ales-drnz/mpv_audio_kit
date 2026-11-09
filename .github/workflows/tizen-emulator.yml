@@ -1,22 +1,43 @@
 name: Tizen emulator
 
 # The kit on the Tizen 10.0 emulator of the Tizen SDK (x86_64), started
-# headless with KVM, with the libmpv_tizen-x86_64.so of a libmpv-scripts
-# Build: a small client plays a FLAC file through ao_tizen (sdb shell), and
+# headless with KVM, with the libmpv_tizen-x86_64.so of the pinned release or
+# of a libmpv-scripts Build: a small client plays a FLAC file through ao_tizen (sdb shell), and
 # an app built with flutter-tizen plays it as an asset and writes
 # MAK_TIZEN_RESULT to the log. The Samsung TV image would need a Samsung
 # certificate for the app and has sdb shell disabled; its audio APIs are
 # Tizen's, the ones this image has.
+#
+# Runs on the release branches when what a Tizen app bundles changes, and by
+# hand, on any branch, with the libmpv-scripts Build to try. A branch named
+# wip/<something>-tv runs it too, at a push that changes one of the paths
+# below: GitHub starts a workflow by hand only once it is on the default
+# branch.
 on:
   push:
-    branches: ['wip/0.7.0-tizen-emu']
+    branches: ['release/**', 'wip/*-tv']
+    paths:
+      - 'hook/**'
+      - 'lib/**'
+      - 'pubspec.yaml'
+      - 'scripts/ci/resolve_libmpv_run.sh'
+      - 'test/fixtures/sine_5s.flac'
+      - '.github/tizen/**'
+      - '.github/workflows/tizen-emulator.yml'
+  workflow_dispatch:
+    inputs:
+      libmpv_scripts_run:
+        description: 'libmpv-scripts Build run id to take libmpv from, instead of the pinned release'
+        type: string
 
 permissions:
   contents: read
 
 env:
-  # The libmpv-scripts Build whose tizen-x86_64 artifact the app bundles.
-  LIBMPV_SCRIPTS_RUN: '42523305533'
+  # A libmpv-scripts Build to take libmpv from, by hand. Empty: the pinned
+  # release when it is published, else the latest Build of its release
+  # branch, as ci.yml does (scripts/ci/resolve_libmpv_run.sh).
+  LIBMPV_SCRIPTS_RUN: ${{ inputs.libmpv_scripts_run || vars.LIBMPV_SCRIPTS_RUN }}
   FLUTTER_TIZEN_REF: 22bcec9058fbe1e0943e6c6fda21792f24868e91
 
 jobs:
@@ -88,11 +109,27 @@ jobs:
           git -C "$RUNNER_TEMP/flutter-tizen" checkout -q "$FLUTTER_TIZEN_REF"
           echo "$RUNNER_TEMP/flutter-tizen/bin" >> "$GITHUB_PATH"
           "$RUNNER_TEMP/flutter-tizen/bin/flutter-tizen" doctor -v
-      - name: libmpv of the libmpv-scripts Build
+      # From a Build, the libmpv user define bundles its library; from the
+      # pinned release, the hook downloads it at its SHA-256, as an app's
+      # build does, and the client of the native check takes the same file.
+      - name: libmpv
         env:
           GH_TOKEN: ${{ secrets.LIBMPV_SCRIPTS_TOKEN }}
+          RELEASE_TOKEN: ${{ github.token }}
         run: |
-          gh run download "$LIBMPV_SCRIPTS_RUN" -R ales-drnz/libmpv-scripts -n tizen-x86_64 -D "$RUNNER_TEMP/libmpv"
+          asset=libmpv_tizen-x86_64.so
+          mkdir -p "$RUNNER_TEMP/libmpv"
+          run="$(kit/scripts/ci/resolve_libmpv_run.sh)"
+          if [[ -n "$run" ]]; then
+            gh run download "$run" -R ales-drnz/libmpv-scripts -n tizen-x86_64 -D "$RUNNER_TEMP/libmpv"
+            echo "MAK_LIBMPV_DEFINE=$RUNNER_TEMP/libmpv" >> "$GITHUB_ENV"
+          else
+            release="libmpv-$(sed -n "s/^const String libmpvRelease = '\([^']*\)';/\1/p" kit/lib/src/internals/libmpv_release.dart)"
+            sha="$(grep -A1 "^  '$asset':" kit/hook/build.dart | grep -oE '[0-9a-f]{64}')"
+            curl -fsSL --retry 3 -o "$RUNNER_TEMP/libmpv/$asset" \
+              "https://github.com/ales-drnz/mpv_audio_kit/releases/download/$release/$asset"
+            echo "$sha  $RUNNER_TEMP/libmpv/$asset" | sha256sum -c -
+          fi
           ls -la "$RUNNER_TEMP/libmpv"
       - name: The app
         run: |
@@ -104,14 +141,10 @@ jobs:
           grep -n "api-version" tizen/tizen-manifest.xml
           mkdir -p assets
           cp "$GITHUB_WORKSPACE/kit/test/fixtures/sine_5s.flac" assets/
-          cat >> pubspec.yaml <<YAML
-
-          hooks:
-            user_defines:
-              mpv_audio_kit:
-                libmpv: $RUNNER_TEMP/libmpv
-                tizen: true
-          YAML
+          printf '\nhooks:\n  user_defines:\n    mpv_audio_kit:\n      tizen: true\n' >> pubspec.yaml
+          if [[ -n "${MAK_LIBMPV_DEFINE:-}" ]]; then
+            printf '      libmpv: %s\n' "$MAK_LIBMPV_DEFINE" >> pubspec.yaml
+          fi
           python3 - <<'PY'
           import re
           p = 'pubspec.yaml'
@@ -138,10 +171,10 @@ jobs:
                   .timeout(const Duration(seconds: 40));
               // currentAo is the output mpv resolved (audioDriver is the
               // requested one, empty for the automatic choice).
-              final driver = player.state.currentAo;
-              final ok = driver == 'tizen' && player.state.playing;
+              final driver = player.state.output.currentAo;
+              final ok = driver == 'tizen' && player.state.playback.playing;
               print('MAK_TIZEN_RESULT ${ok ? 'PASS' : 'FAIL'} ao=$driver '
-                  'position=$at params=${player.state.audioOutParams}');
+                  'position=$at params=${player.state.output.audioOutParams}');
               await player.dispose();
             } catch (e, s) {
               print('MAK_TIZEN_RESULT FAIL $e\n$s');

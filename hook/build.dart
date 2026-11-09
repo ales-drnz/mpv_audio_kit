@@ -53,21 +53,21 @@ const _sha256 = <String, String>{
   'libmpv_android-x86_64.so':
       '5ef33c4449d47f5de7dec684ab9c1c1a4299780dbbf3f9420054b7fcb4a2e0c0',
   'libmpv_ios.xcframework.zip':
-      '501459baaf941815c3460e113f2f7bb07c50c06b5ac302c4874e6bf74008ea0d',
+      '0569c18f6f294fb5fed14a6e54f1ee499dfea1809c511f4c29e267bd8a6e5ff8',
   'libmpv_linux-aarch64.so':
       '174c57a3501fba6a8f276ce1c0a13beec1a16cc16fe9b2ac3788a867980911c9',
   'libmpv_linux-x86_64.so':
       'f357ec2a1fffc4b8b43b287a3d1e3010f928d10f2904dcc53b999faafbcca717',
   'libmpv_macos.xcframework.zip':
-      'be9d99fca041b2a1cb8310c3ebc430c01123d65465a614487dd902a79eaff062',
+      'dcfcf54eecc7e58b53ec744e2e2cedaf10302f6b49416325234613092551d8aa',
   'libmpv_tizen-armv7l.so':
-      '2129c2c32663ff49f0810f81b0f6d4ed45a74481bc64063b86aa5cf1844a6422',
+      '3a2148bdeb5f94ffd79e317f549f5d567647c7f8f94af8b19b925a318e1f9c29',
   'libmpv_tizen-x86_64.so':
-      '72207acb9d74927279c52c3e8313facdcb4a244bb250d8ddeaab0f16312f758e',
+      '67f133a5a8a05d23ff6cc7206a7f9627ba94ce62bf72c07790147925fc467257',
   'libmpv_windows-arm64.dll':
-      '995240a77a8d7a739554d2aebdd08289357b520b8ced1ef1c3a4fc4a142dd853',
+      'b4514a673239483bd08969aefd146af643a82c27de15a753494f9f7be595ed34',
   'libmpv_windows-x86_64.dll':
-      'ca4a3827c2314ce5230f406abf23b1d1591633d8a0f1027fd61faf01b90abee7',
+      '0e126fa92c92d903c2b9bce5562cf0ed4a1581dee2a123cf749313db44c63421',
 };
 
 /// The tizen user define, true or false. Anything else fails the build: an

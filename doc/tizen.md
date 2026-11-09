@@ -18,6 +18,8 @@ hooks:
 
 Without it an x64 build takes the Linux desktop library. The define is `true` or `false`: any other value fails the build. A TV build, on arm, needs none.
 
+The define holds for every build of the app: with it `flutter build linux` on x64 bundles the Tizen library too, which a desktop cannot load. Take it off for a desktop build of the same app.
+
 ## Audio
 
 The library plays through `ao_tizen`, an output on Tizen's `audio_out` with the media stream type. The playback focus is the app's to take with Tizen's sound manager. The media session has no Tizen side: turning it on does nothing there.
