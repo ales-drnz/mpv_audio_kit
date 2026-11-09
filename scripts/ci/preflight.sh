@@ -14,8 +14,10 @@
 # 401) and able to read the run, and the run must be green. A pull request
 # from a fork gets no secrets and falls back to the pinned release, like
 # the action does. Otherwise the release pinned in libmpv_release.dart must
-# be published with every asset the hook's checksum table names. A lookup
-# that fails for want of GitHub only warns: the jobs will try again.
+# be published with every asset the hook's checksum table names, and the
+# two pinned outside it: the webOS libmpv of webos/CMakeLists.txt and the
+# tvOS one of tvos/Package.swift. A lookup that fails for want of GitHub
+# only warns: the jobs will try again.
 #
 # Reads from the environment:
 #   LIBMPV_SCRIPTS_RUN    the run the jobs bundle (resolve_libmpv_run.sh),
@@ -26,6 +28,8 @@
 #   HOOK                  the build hook, hook/build.dart by default
 #   RELEASE_FILE          the pin, lib/src/internals/libmpv_release.dart by
 #                         default
+#   WEBOS_CMAKE           webos/CMakeLists.txt by default
+#   TVOS_PACKAGE          tvos/Package.swift by default
 #
 #   scripts/ci/preflight.sh
 set -euo pipefail
@@ -33,6 +37,8 @@ set -euo pipefail
 scripts_repo=ales-drnz/libmpv-scripts
 hook="${HOOK:-hook/build.dart}"
 release_file="${RELEASE_FILE:-lib/src/internals/libmpv_release.dart}"
+webos_cmake="${WEBOS_CMAKE:-webos/CMakeLists.txt}"
+tvos_package="${TVOS_PACKAGE:-tvos/Package.swift}"
 err="$(mktemp)"
 trap 'rm -f "$err"' EXIT
 
@@ -59,13 +65,22 @@ check_release() {
   while read -r asset; do
     grep -qxF -- "$asset" <<<"$names" || missing+=("$asset")
   # A row with no SHA yet is a platform the next release adds: not pinned.
-  done < <(sed -n '/^const _sha256 = /,/^};/p' "$hook" | grep -v "': '',\$" |
-    sed -n "s/^ *'\([^']*\)':.*/\1/p")
+  # webOS and tvOS run no hook: their files pin the asset they download.
+  done < <(
+    sed -n '/^const _sha256 = /,/^};/p' "$hook" | grep -v "': '',\$" |
+      sed -n "s/^ *'\([^']*\)':.*/\1/p"
+    if grep -qE '^set\(MAK_LIBMPV_SHA256 "[0-9a-f]+"\)$' "$webos_cmake" 2>/dev/null; then
+      echo libmpv_webos-armv7l.so
+    fi
+    if grep -qE '^let checksum = "[0-9a-f]+"$' "$tvos_package" 2>/dev/null; then
+      echo libmpv_tvos.xcframework.zip
+    fi
+  )
   if (( ${#missing[@]} )); then
     echo "::error::The pinned libmpv release $tag has no ${missing[*]}: its upload may not be finished."
     exit 1
   fi
-  echo "The pinned libmpv release $tag is published with every asset the hook pins."
+  echo "The pinned libmpv release $tag is published with every asset the package pins."
 }
 
 check_run() {

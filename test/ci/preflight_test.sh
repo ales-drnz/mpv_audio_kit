@@ -12,15 +12,19 @@ set -euo pipefail
 source "$(dirname "$0")/harness.sh"
 preflight="$repo_root/scripts/ci/preflight.sh"
 
-mkdir -p "$scratch/kit/hook" "$scratch/kit/lib/src/internals"
+mkdir -p "$scratch/kit/hook" "$scratch/kit/lib/src/internals" "$scratch/kit/webos" "$scratch/kit/tvos"
 cd "$scratch/kit"
 cp "$repo_root/hook/build.dart" hook/build.dart
+cp "$repo_root/webos/CMakeLists.txt" webos/CMakeLists.txt
+cp "$repo_root/tvos/Package.swift" tvos/Package.swift
 sed "s/^const String libmpvRelease = '[^']*';/const String libmpvRelease = 'r99';/" \
   "$repo_root/lib/src/internals/libmpv_release.dart" \
   > lib/src/internals/libmpv_release.dart
 grep -q "^const String libmpvRelease = 'r99';" lib/src/internals/libmpv_release.dart
 mapfile -t assets < <(grep -oE "^  'libmpv_[^']+':" hook/build.dart | tr -d "':" | tr -d ' ')
 (( ${#assets[@]} >= 9 ))
+# And the two pinned outside the hook, by the files that bundle them.
+assets+=(libmpv_webos-armv7l.so libmpv_tvos.xcframework.zip)
 
 # The release libmpv-r99 with these assets.
 release() {
@@ -61,6 +65,29 @@ new_gh
 release "${assets[@]}"
 expect_eq "a row not pinned yet is not asked of the release" 0 "$(preflight "" "" "")"
 cp "$scratch/build.dart.pinned" hook/build.dart
+
+# webOS and tvOS take their libmpv from the same release, pinned in
+# webos/CMakeLists.txt and tvos/Package.swift: a release without one fails
+# every build of that platform.
+for outside in libmpv_webos-armv7l.so libmpv_tvos.xcframework.zip; do
+  new_gh
+  kept=()
+  for a in "${assets[@]}"; do [[ "$a" == "$outside" ]] || kept+=("$a"); done
+  release "${kept[@]}"
+  expect_eq "a release without $outside stops the run" 1 "$(preflight "" "" "")"
+  expect_log "and names it" "::error::.*has no $outside"
+done
+
+# A webOS SHA-256 not pinned yet is not asked of the release.
+cp webos/CMakeLists.txt "$scratch/CMakeLists.txt.pinned"
+sed -i 's/^set(MAK_LIBMPV_SHA256 "[0-9a-f]*")$/set(MAK_LIBMPV_SHA256 "")/' webos/CMakeLists.txt
+grep -q '^set(MAK_LIBMPV_SHA256 "")$' webos/CMakeLists.txt
+new_gh
+kept=()
+for a in "${assets[@]}"; do [[ "$a" == libmpv_webos-armv7l.so ]] || kept+=("$a"); done
+release "${kept[@]}"
+expect_eq "a webOS libmpv not pinned yet is not asked of the release" 0 "$(preflight "" "" "")"
+cp "$scratch/CMakeLists.txt.pinned" webos/CMakeLists.txt
 
 new_gh
 touch "$FAKE_GH/down"

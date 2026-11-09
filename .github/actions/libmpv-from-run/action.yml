@@ -93,8 +93,13 @@ runs:
           while read -r asset sha; do
             # jq.exe on Windows ends its lines with CRLF.
             sha="${sha%$'\r'}"
-            pinned=hook/build.dart
-            [[ "$asset" == "$web" ]] && pinned=tool/codegen/libmpv_manifest.json
+            # webOS and tvOS run no hook: their own files pin the asset.
+            case "$asset" in
+              "$web") pinned=tool/codegen/libmpv_manifest.json ;;
+              libmpv_webos-*) pinned=webos/CMakeLists.txt ;;
+              libmpv_tvos.*) pinned=tvos/Package.swift ;;
+              *) pinned=hook/build.dart ;;
+            esac
             grep -q "$sha" "$GITHUB_WORKSPACE/$pinned" ||
               echo "::warning::$asset of this run is not the one pinned in $pinned; run scripts/update_libmpv.sh before the release."
           done
