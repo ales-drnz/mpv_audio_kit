@@ -14,6 +14,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:code_assets/code_assets.dart';
+import 'package:crypto/crypto.dart';
 import 'package:hooks/hooks.dart';
 import 'package:test/test.dart';
 
@@ -131,15 +132,29 @@ void main() {
     () async {
       final tmp = await Directory.systemTemp.createTemp('mak_hook_tizen');
       addTearDown(() => tmp.delete(recursive: true));
-      final (run, _) = await _runHook(tmp, Architecture.arm);
-      // Until a release has the asset, it is not pinned: the failure names it,
-      // never the arch as unsupported.
+      final (run, output) = await _runHook(tmp, Architecture.arm);
       final said = '${run.stdout}${run.stderr}';
-      if (run.exitCode != 0) {
+      if (output == null) {
+        // The pinned release is not published yet, or the network is
+        // down: the failure names the asset, never the arch as
+        // unsupported.
+        expect(run.exitCode, isNot(0));
         expect(said, contains('libmpv_tizen-armv7l.so'));
         expect(said, isNot(contains('no libmpv for')));
+        return;
       }
+      // Published: what it bundled is the Tizen asset the hook pins.
+      final code = output.assets.code.single;
+      expect(code.file!.pathSegments.last, 'libmpv_audio_kit.so');
+      final pinned = RegExp(
+        r"'libmpv_tizen-armv7l\.so':\s*'([0-9a-f]{64})'",
+      ).firstMatch(File('hook/build.dart').readAsStringSync())!.group(1);
+      expect(
+        sha256.convert(File.fromUri(code.file!).readAsBytesSync()).toString(),
+        pinned,
+      );
     },
+    tags: 'network',
   );
 
   // A string or a yes from YAML is not the bool the hook reads: an emulator
