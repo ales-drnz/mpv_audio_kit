@@ -24,4 +24,4 @@ The library plays through ALSA, the sound API of the webOS NDK. The media sessio
 
 ## What was checked
 
-LG has no emulator for native apps. The package's CI builds an app with flutter-webos and runs it under qemu-arm on the system libraries of the webOS NDK, the TVs' glibc and ALSA, with ALSA writing to a file: the app plays an asset past 2 seconds through ALSA, and its 440 Hz tone is in what ALSA wrote. What only a TV shows, its sandbox and its sound server, is not checked yet.
+LG has no emulator for native apps. A workflow of the package builds an app with flutter-webos and runs it under qemu-arm on the system libraries of the webOS NDK, the TVs' glibc and ALSA, with ALSA writing to a file: the app plays an asset past 2 seconds through ALSA, and its 440 Hz tone is in what ALSA wrote. What only a TV shows, its sandbox and its sound server, is not checked yet.
