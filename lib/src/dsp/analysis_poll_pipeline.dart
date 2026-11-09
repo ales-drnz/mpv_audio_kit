@@ -242,26 +242,28 @@ abstract class AnalysisPollPipeline<T extends Object> {
   Future<void> _doPoll() async {
     final (rc, value) = await _asyncGet(_dataProperty, MpvFormat.mpvFormatNode);
     if (_disposed || _idle || _result != null) return;
-    if (rc >= 0 && value is Map) {
-      // A new pass on the file loaded again: the held result goes at once,
-      // not with the first partial value.
-      if (_held != null && value['state'] != 'ready') {
-        emit(null);
-        _clearedHeld = true;
-      }
-      try {
-        onData(value);
-      } catch (_) {
-        // A single malformed node must never escape the poll: an uncaught
-        // throw would tear down the poll loop and freeze the analysis until
-        // the next file. The next tick retries against fresh native state.
-      } finally {
-        _clearedHeld = false;
-      }
-    }
+    if (rc >= 0 && value is Map) _onReply(value);
     // Still held: this reply said nothing of it. A result nothing confirms
     // does not stay on screen for good.
     if (_held != null && ++_heldWaited >= _heldReplies) emit(null);
+  }
+
+  /// Hands a reply to [onData]. A new pass on the file loaded again clears
+  /// the held result at once, not with the first partial value.
+  void _onReply(Map<Object?, Object?> value) {
+    if (_held != null && value['state'] != 'ready') {
+      emit(null);
+      _clearedHeld = true;
+    }
+    try {
+      onData(value);
+    } catch (_) {
+      // A single malformed node must never escape the poll: an uncaught
+      // throw would tear down the poll loop and freeze the analysis until
+      // the next file. The next tick retries against fresh native state.
+    } finally {
+      _clearedHeld = false;
+    }
   }
 }
 
