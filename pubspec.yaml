@@ -82,6 +82,10 @@ flutter:
       web:
         pluginClass: MpvAudioKitWeb
         fileName: src/web/mpv_audio_kit_web.dart
+      # flutter-webos (https://github.com/lg-flutter-webos/flutter-webos)
+      # runs no build hook: webos/CMakeLists.txt bundles libmpv.
+      webos:
+        ffiPlugin: true
       windows:
         pluginClass: MpvAudioKitPluginCApi
         ffiPlugin: true

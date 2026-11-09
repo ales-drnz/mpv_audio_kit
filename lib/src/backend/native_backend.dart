@@ -33,6 +33,11 @@ MpvSession createMpvSession({int? wakeupCounterAddress}) =>
 void startBackend({String? libmpv, required bool hotRestartCleanup}) =>
     startNativeBackend(libmpv: libmpv, hotRestartCleanup: hotRestartCleanup);
 
+/// The libmpv to open when the app gives none: the one a plugin bundles
+/// where no build hook ran (flutter-webos), else null for the hook's.
+@internal
+String? defaultLibmpv() => defaultNativeLibmpv();
+
 /// The native steps of [MpvAudioKit.ensureInitialized] once the kit
 /// counts as initialized, with the Hot Restart cleanup on.
 @internal
