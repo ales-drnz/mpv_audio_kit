@@ -22,7 +22,7 @@ import Foundation
 import PackageDescription
 
 let release = "libmpv-r24"
-let checksum = "0be74c31d11be6dc869391b9eedf2e1a222dd5c31b965054ee1d41bf4931f916"
+let checksum = "dc7bdd0927e14e4b9e8b7b2ee899b8b92e665e8695afc41e9af0df8617837301"
 
 let local = FileManager.default.fileExists(
     atPath: Context.packageDirectory + "/libmpv.xcframework")
