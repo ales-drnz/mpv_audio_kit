@@ -5,8 +5,9 @@
 # libmpv for LG webOS TVs, through flutter-webos
 # (https://github.com/lg-flutter-webos/flutter-webos), which runs no build
 # hook: libmpv_webos-armv7l.so of the release the package pins, checked
-# against its SHA-256, is bundled in the app's lib/ as libmpv_audio_kit.so,
-# where MpvAudioKit.ensureInitialized opens it.
+# against its SHA-256, is bundled in the app's lib/ as
+# libmpv_audio_kit_webos.so, a name of its own, which
+# MpvAudioKit.ensureInitialized looks for.
 #
 # MPV_AUDIO_KIT_LIBMPV in the environment of the build bundles another
 # libmpv, as the libmpv user define does for the hook: a file, or a
@@ -21,7 +22,7 @@ set(MAK_LIBMPV_RELEASE "libmpv-r23")
 set(MAK_LIBMPV_SHA256 "")
 
 set(asset "libmpv_webos-armv7l.so")
-set(out "${CMAKE_CURRENT_BINARY_DIR}/libmpv_audio_kit.so")
+set(out "${CMAKE_CURRENT_BINARY_DIR}/libmpv_audio_kit_webos.so")
 set(local "$ENV{MPV_AUDIO_KIT_LIBMPV}")
 if(local)
   if(IS_DIRECTORY "${local}")
@@ -33,7 +34,7 @@ if(local)
   configure_file("${local}" "${out}" COPYONLY)
 else()
   if(MAK_LIBMPV_SHA256 STREQUAL "")
-    message(FATAL_ERROR "mpv_audio_kit: no SHA-256 pinned for ${asset} in ${MAK_LIBMPV_RELEASE}")
+    message(FATAL_ERROR "mpv_audio_kit: no SHA-256 pinned for ${asset} in ${MAK_LIBMPV_RELEASE}; MPV_AUDIO_KIT_LIBMPV in the environment bundles a libmpv of your own")
   endif()
   # Downloaded once: a file already there with this checksum is kept.
   file(DOWNLOAD

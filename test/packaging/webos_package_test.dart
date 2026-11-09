@@ -4,8 +4,9 @@
 
 // webOS through flutter-webos, which runs no build hook: the package is an
 // FFI plugin there, and webos/CMakeLists.txt bundles libmpv_webos-armv7l.so
-// of the pinned release, at its SHA-256, as lib/libmpv_audio_kit.so.
+// of the pinned release, at its SHA-256, as lib/libmpv_audio_kit_webos.so.
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:mpv_audio_kit/src/internals/libmpv_release.dart';
@@ -29,6 +30,26 @@ void main() {
     expect(
       _pins(Directory.current.path).split('\n').first,
       'set(MAK_LIBMPV_RELEASE "libmpv-$libmpvRelease")',
+    );
+  });
+
+  // update_libmpv.sh writes an empty SHA-256 for a release without the
+  // webOS libmpv, and every webOS build then fails: from libmpv-r24, the
+  // first with it, the pinned manifest must have it, and the CMake file its
+  // SHA-256.
+  test('the webOS CMake file has the SHA-256 of the pinned manifest', () {
+    final manifest =
+        jsonDecode(File('tool/codegen/libmpv_manifest.json').readAsStringSync())
+            as Map<String, dynamic>;
+    final sha =
+        (manifest['assets'] as Map<String, dynamic>)['libmpv_webos-armv7l.so']
+            as String?;
+    if (int.parse(libmpvRelease.substring(1)) >= 24) {
+      expect(sha, isNotNull, reason: 'libmpv-$libmpvRelease has no webOS');
+    }
+    expect(
+      _pins(Directory.current.path).split('\n').last,
+      'set(MAK_LIBMPV_SHA256 "${sha ?? ''}")',
     );
   });
 

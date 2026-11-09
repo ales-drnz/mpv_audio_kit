@@ -25,7 +25,7 @@ permissions:
 env:
   # The libmpv-scripts Build whose webos-armv7l artifact the app bundles.
   LIBMPV_SCRIPTS_RUN: '42594670631'
-  FLUTTER_WEBOS_REF: 95039813
+  FLUTTER_WEBOS_REF: 950398131830e9bd5dc91e588c3db8f5c42322be
   WEBOS_NDK_VERSION: '11.2.0'
   WEBOS_NDK_SHA256: 3c93af87505a8771d5662cc4a15b596d46791e3c7d8a0cb9113fa8e846e15a42
   # Flutter's embedder.h at the framework revision of flutter-webos 3.38.10.
@@ -140,7 +140,7 @@ jobs:
           tar -xzf data.tar.gz
           app="$(ls -d "$RUNNER_TEMP"/ipk/usr/palm/applications/*/ | head -1)"
           ls -la "$app" "$app/lib"
-          test -f "$app/lib/libmpv_audio_kit.so"
+          test -f "$app/lib/libmpv_audio_kit_webos.so"
           echo "WEBOS_APP=$app" >> "$GITHUB_ENV"
       - name: fontconfig for the engine
         run: |
@@ -167,6 +167,7 @@ jobs:
           file "$WEBOS_APP/mak_headless_embedder"
       - name: The app plays under qemu-arm on the TVs' sysroot
         run: |
+          set -o pipefail
           out="$RUNNER_TEMP/out.raw"
           sed "s#MAK_ALSA_OUT#$out#" "$GITHUB_WORKSPACE/kit/.github/webos/asound.conf" > "$RUNNER_TEMP/asound.conf"
           o="$RUNNER_TEMP/overlay"
@@ -175,6 +176,6 @@ jobs:
             -E ALSA_CONFIG_PATH="$RUNNER_TEMP/asound.conf" \
             -E FONTCONFIG_FILE="$o/etc/fonts/fonts.conf" -E HOME="$RUNNER_TEMP" \
             "$WEBOS_APP/mak_headless_embedder" 480 2>&1 | grep -v '^\[pmlog [67] ' | tee run.txt
-          grep -q "^MAK_WEBOS_LIB .*/lib/libmpv_audio_kit.so$" run.txt
+          grep -q "^MAK_WEBOS_LIB .*/lib/libmpv_audio_kit_webos.so$" run.txt
           grep -q "^MAK_WEBOS_RESULT PASS" run.txt
           python3 "$GITHUB_WORKSPACE/kit/.github/webos/check_tone.py" "$out"

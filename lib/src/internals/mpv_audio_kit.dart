@@ -86,8 +86,8 @@ abstract final class MpvAudioKit {
   /// [libmpv] (optional): explicit path or filename for the native
   /// `libmpv` library to load via `DynamicLibrary.open`. When `null`
   /// (the default), the libmpv the package's build hook bundles with the
-  /// app is used; on webOS, where flutter-webos runs no build hook, the
-  /// one the package's webos/CMakeLists.txt bundles. Pass an explicit path only when shipping a custom
+  /// app is used, or on webOS, where flutter-webos runs no build hook,
+  /// the one webos/CMakeLists.txt bundles. Pass an explicit path only when shipping a custom
   /// libmpv build alongside your app; to bundle one in place of the
   /// default, set `hooks: user_defines: mpv_audio_kit: libmpv:` in the
   /// app's pubspec instead. A custom libmpv must be a build of
