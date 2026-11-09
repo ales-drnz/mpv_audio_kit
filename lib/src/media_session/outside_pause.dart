@@ -52,3 +52,55 @@ final class OutsidePauseFollower {
         orElse: () => InterruptionPolicy.pauseAndResume,
       );
 }
+
+/// Tells the plays and pauses of the session's `<audio>` element that come
+/// from outside the page's output (the browser, a call, another app) from
+/// the output's own. The output feeds it the element's events, the
+/// context's states and its own calls of `play()`.
+@internal
+final class OutsideElementWatch {
+  // The element plays.
+  bool _playing = false;
+  // A play() of the output's own waits for its `playing` event.
+  bool _asked = false;
+  // Paused from outside, and not played since.
+  bool _paused = false;
+
+  /// The output routes again: nothing of the element before counts.
+  void reset() => _playing = _asked = _paused = false;
+
+  /// The context's new [state]: whether the output plays the element now.
+  bool onContextState(String state) => state == 'running';
+
+  /// The output calls `play()` on the element, [elementPaused] before the
+  /// call. Only a paused element counts: `play()` on a playing one fires no
+  /// `playing`, and a flag left set would take the browser's next play,
+  /// after an outside pause, for the output's own.
+  void onOutputPlay({required bool elementPaused}) {
+    if (elementPaused) _asked = true;
+  }
+
+  /// The browser refused that `play()` (no gesture yet).
+  void onPlayRefused() => _asked = false;
+
+  /// The element's `playing` event: whether it plays again from outside
+  /// after an outside pause. A play of the output's own says no.
+  bool onPlaying() {
+    final asked = _asked;
+    _asked = false;
+    _playing = true;
+    if (!_paused) return false;
+    _paused = false;
+    return !asked;
+  }
+
+  /// The element's `pause` event: whether it is an outside pause, of an
+  /// element that played.
+  bool onPause() {
+    _asked = false;
+    if (!_playing) return false;
+    _playing = false;
+    _paused = true;
+    return true;
+  }
+}

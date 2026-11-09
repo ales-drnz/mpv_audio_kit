@@ -4,8 +4,8 @@
 
 // The web's outside pause of the session's <audio> element under each
 // interruption policy (0.7.0): the command it sends, as an interruption on
-// iOS and Android. test/web/web_media_session_test.dart checks the element
-// in Chrome.
+// iOS and Android, and what counts as an outside pause or play of the
+// element. test/web/web_audio_test.dart checks the element in Chrome.
 
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import 'package:mpv_audio_kit/src/media_session/outside_pause.dart';
@@ -88,4 +88,67 @@ void main() {
       expect(f.onOutside(elementPlaying: true, playing: false), isNull);
     },
   );
+
+  group('the element watch', () {
+    test('a pause of a playing element is an outside pause, once', () {
+      final w = OutsideElementWatch();
+      expect(w.onPause(), isFalse, reason: 'it never played');
+      w.onOutputPlay(elementPaused: true);
+      expect(w.onPlaying(), isFalse);
+      expect(w.onPause(), isTrue);
+      expect(w.onPause(), isFalse);
+    });
+
+    test('a play from outside after an outside pause says so', () {
+      final w = OutsideElementWatch();
+      w.onOutputPlay(elementPaused: true);
+      w.onPlaying();
+      w.onPause();
+      expect(w.onPlaying(), isTrue);
+      expect(w.onPlaying(), isFalse, reason: 'no pause since');
+    });
+
+    test('a play of the output after an outside pause does not', () {
+      final w = OutsideElementWatch();
+      w.onOutputPlay(elementPaused: true);
+      w.onPlaying();
+      w.onPause();
+      w.onOutputPlay(elementPaused: true);
+      expect(w.onPlaying(), isFalse);
+    });
+
+    test('play() on a playing element leaves no flag for the next play', () {
+      final w = OutsideElementWatch();
+      w.onOutputPlay(elementPaused: true);
+      w.onPlaying();
+      w.onOutputPlay(elementPaused: false);
+      w.onPause();
+      expect(w.onPlaying(), isTrue);
+    });
+
+    test('a refused play() leaves none either', () {
+      final w = OutsideElementWatch();
+      w.onOutputPlay(elementPaused: true);
+      w.onPlaying();
+      w.onPause();
+      w.onOutputPlay(elementPaused: true);
+      w.onPlayRefused();
+      expect(w.onPlaying(), isTrue);
+    });
+
+    test('a new route forgets the outside pause', () {
+      final w = OutsideElementWatch();
+      w.onOutputPlay(elementPaused: true);
+      w.onPlaying();
+      w.onPause();
+      w.reset();
+      expect(w.onPlaying(), isFalse);
+    });
+
+    test('the output plays the element when the context runs', () {
+      final w = OutsideElementWatch();
+      expect(w.onContextState('suspended'), isFalse);
+      expect(w.onContextState('running'), isTrue);
+    });
+  });
 }
