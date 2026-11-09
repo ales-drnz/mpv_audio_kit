@@ -62,6 +62,18 @@ check_release() {
     echo "::warning::Could not look up the pinned libmpv release $tag: $(cat "$err")"
     return 0
   fi
+  # Each of the two names its release itself: one left behind the pin would
+  # download from another release, whatever this one holds.
+  local own
+  for own in "$webos_cmake:^set(MAK_LIBMPV_RELEASE \"\\(.*\\)\")\$" "$tvos_package:^let release = \"\\(.*\\)\"\$"; do
+    local file="${own%%:*}" pinned
+    [[ -f "$file" ]] || continue
+    pinned="$(sed -n "s/${own#*:}/\\1/p" "$file")"
+    if [[ "$pinned" != "$tag" ]]; then
+      echo "::error::$file pins ${pinned:-no release}, $release_file pins $tag: run scripts/update_libmpv.sh."
+      exit 1
+    fi
+  done
   while read -r asset; do
     grep -qxF -- "$asset" <<<"$names" || missing+=("$asset")
   # A row with no SHA yet is a platform the next release adds: not pinned.

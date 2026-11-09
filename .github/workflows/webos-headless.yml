@@ -17,8 +17,9 @@ name: webOS headless
 #
 # Runs on the release branches when what a webOS app bundles changes, and by
 # hand, on any branch, with the libmpv-scripts Build to try. A branch named
-# wip/<something>-tv runs it at every push: GitHub starts a workflow by hand
-# only once it is on the default branch.
+# wip/<something>-tv runs it too, at a push that changes one of the paths
+# below: GitHub starts a workflow by hand only once it is on the default
+# branch.
 on:
   push:
     branches: ['release/**', 'wip/**-tv']
@@ -26,6 +27,8 @@ on:
       - 'webos/**'
       - 'lib/**'
       - 'pubspec.yaml'
+      - 'scripts/ci/resolve_libmpv_run.sh'
+      - 'test/fixtures/sine_5s.flac'
       - '.github/webos/**'
       - '.github/workflows/webos-headless.yml'
   workflow_dispatch:

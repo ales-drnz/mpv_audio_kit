@@ -1,8 +1,8 @@
 name: Tizen emulator
 
 # The kit on the Tizen 10.0 emulator of the Tizen SDK (x86_64), started
-# headless with KVM, with the libmpv_tizen-x86_64.so of a libmpv-scripts
-# Build: a small client plays a FLAC file through ao_tizen (sdb shell), and
+# headless with KVM, with the libmpv_tizen-x86_64.so of the pinned release or
+# of a libmpv-scripts Build: a small client plays a FLAC file through ao_tizen (sdb shell), and
 # an app built with flutter-tizen plays it as an asset and writes
 # MAK_TIZEN_RESULT to the log. The Samsung TV image would need a Samsung
 # certificate for the app and has sdb shell disabled; its audio APIs are
@@ -10,8 +10,9 @@ name: Tizen emulator
 #
 # Runs on the release branches when what a Tizen app bundles changes, and by
 # hand, on any branch, with the libmpv-scripts Build to try. A branch named
-# wip/<something>-tv runs it at every push: GitHub starts a workflow by hand
-# only once it is on the default branch.
+# wip/<something>-tv runs it too, at a push that changes one of the paths
+# below: GitHub starts a workflow by hand only once it is on the default
+# branch.
 on:
   push:
     branches: ['release/**', 'wip/**-tv']
@@ -19,6 +20,8 @@ on:
       - 'hook/**'
       - 'lib/**'
       - 'pubspec.yaml'
+      - 'scripts/ci/resolve_libmpv_run.sh'
+      - 'test/fixtures/sine_5s.flac'
       - '.github/tizen/**'
       - '.github/workflows/tizen-emulator.yml'
   workflow_dispatch:

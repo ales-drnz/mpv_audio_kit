@@ -15,8 +15,12 @@ preflight="$repo_root/scripts/ci/preflight.sh"
 mkdir -p "$scratch/kit/hook" "$scratch/kit/lib/src/internals" "$scratch/kit/webos" "$scratch/kit/tvos"
 cd "$scratch/kit"
 cp "$repo_root/hook/build.dart" hook/build.dart
-cp "$repo_root/webos/CMakeLists.txt" webos/CMakeLists.txt
-cp "$repo_root/tvos/Package.swift" tvos/Package.swift
+sed 's/^set(MAK_LIBMPV_RELEASE "[^"]*")$/set(MAK_LIBMPV_RELEASE "libmpv-r99")/' \
+  "$repo_root/webos/CMakeLists.txt" > webos/CMakeLists.txt
+grep -q '^set(MAK_LIBMPV_RELEASE "libmpv-r99")$' webos/CMakeLists.txt
+sed 's/^let release = "[^"]*"$/let release = "libmpv-r99"/' \
+  "$repo_root/tvos/Package.swift" > tvos/Package.swift
+grep -q '^let release = "libmpv-r99"$' tvos/Package.swift
 sed "s/^const String libmpvRelease = '[^']*';/const String libmpvRelease = 'r99';/" \
   "$repo_root/lib/src/internals/libmpv_release.dart" \
   > lib/src/internals/libmpv_release.dart
@@ -88,6 +92,16 @@ for a in "${assets[@]}"; do [[ "$a" == libmpv_webos-armv7l.so ]] || kept+=("$a")
 release "${kept[@]}"
 expect_eq "a webOS libmpv not pinned yet is not asked of the release" 0 "$(preflight "" "" "")"
 cp "$scratch/CMakeLists.txt.pinned" webos/CMakeLists.txt
+
+# Each of the two files names its release: one left behind the pin stops
+# the run, as its builds would download from another release.
+cp tvos/Package.swift "$scratch/Package.swift.pinned"
+sed -i 's/^let release = "libmpv-r99"$/let release = "libmpv-r98"/' tvos/Package.swift
+new_gh
+release "${assets[@]}"
+expect_eq "a tvOS package left on another release stops the run" 1 "$(preflight "" "" "")"
+expect_log "and names both" "::error::.*tvos/Package.swift pins libmpv-r98.*libmpv-r99"
+cp "$scratch/Package.swift.pinned" tvos/Package.swift
 
 new_gh
 touch "$FAKE_GH/down"

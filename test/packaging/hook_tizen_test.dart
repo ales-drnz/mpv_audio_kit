@@ -154,7 +154,6 @@ void main() {
         pinned,
       );
     },
-    tags: 'network',
   );
 
   // A string or a yes from YAML is not the bool the hook reads: an emulator
