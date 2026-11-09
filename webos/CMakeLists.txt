@@ -21,6 +21,13 @@ project(mpv_audio_kit LANGUAGES NONE)
 set(MAK_LIBMPV_RELEASE "libmpv-r24")
 set(MAK_LIBMPV_SHA256 "4478343538132b22cb2bfef2944048f39ceb4dd6943a413e1f1ed6eb10072605")
 
+# flutter-webos names its target here: arm, the TVs, or arm64 with
+# --target-arch arm64, which has no libmpv. Failing now beats an app that
+# bundles the 32-bit library and cannot load it.
+if(FLUTTER_TARGET_PLATFORM AND NOT FLUTTER_TARGET_PLATFORM STREQUAL "webos-arm")
+  message(FATAL_ERROR "mpv_audio_kit: no libmpv for ${FLUTTER_TARGET_PLATFORM}; build with --target-arch arm")
+endif()
+
 set(asset "libmpv_webos-armv7l.so")
 set(out "${CMAKE_CURRENT_BINARY_DIR}/libmpv_audio_kit_webos.so")
 set(local "$ENV{MPV_AUDIO_KIT_LIBMPV}")

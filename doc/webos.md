@@ -8,7 +8,7 @@ Set up flutter-webos and LG's webOS NDK as LG's guide says, then build as usual:
 flutter-webos build webos --release
 ```
 
-The first build downloads the library, so it needs network access.
+The first build downloads the library, so it needs network access. The library is 32-bit ARM, the TVs' arch: a build with `--target-arch arm64` fails, as there is no libmpv for it.
 
 ## A libmpv of your own
 
