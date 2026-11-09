@@ -18,10 +18,12 @@ import '../../types/settings/spectrum_settings.dart';
 
 part '../../generated/player_settings_data.dart';
 
-/// What the app asked of the player: volume and speed, the effects and the analysis, the output it wants, the network and the media session.
+/// What the app asked of the player: volume and speed, the effects and the
+/// analysis, the output it wants, the network and the media session.
 ///
-/// The [PlayerState.settings] of a player: read it from `player.state.settings`,
-/// or follow one value through its stream in `player.stream`.
+/// The [PlayerState.settings] of a player: read it from
+/// `player.state.settings`, or follow one value through its stream in
+/// `player.stream`.
 ///
 /// {@category State and streams}
 final class PlayerSettings with _$PlayerSettings {
@@ -97,7 +99,8 @@ final class PlayerSettings with _$PlayerSettings {
 
   /// Demuxer buffering configuration (forward cache cap, seekback cap,
   /// readahead). Set via [Player.setDemuxer]. Distinct from
-  /// [demuxerCacheState], which is the live read-only cache snapshot.
+  /// [NetworkState.demuxerCacheState], which is the live read-only cache
+  /// snapshot.
   final DemuxerSettings demuxer;
 
   /// Network connection timeout. Default 60s mirrors mpv's
@@ -181,8 +184,8 @@ final class PlayerSettings with _$PlayerSettings {
   /// disable. See [MediaSession] for the full field semantics.
   final MediaSession? mediaSession;
 
-  /// Creates a [PlayerSettings]; each value defaults to the one of a player that
-  /// has loaded nothing.
+  /// Creates a [PlayerSettings]; each value defaults to the one of a player
+  /// that has loaded nothing.
   const PlayerSettings({
     this.volume = 100.0,
     this.mute = false,

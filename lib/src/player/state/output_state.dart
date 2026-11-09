@@ -12,10 +12,11 @@ part '../../generated/output_state_data.dart';
 const _kAutoDevice = Device(name: 'auto', description: 'Auto');
 const _kDefaultDevices = <Device>[_kAutoDevice];
 
-/// The audio output in use: its device, the format it plays and its state, and the system mixer when the output has one.
+/// The audio output in use: its device, the format it plays and its state, and
+/// the system mixer when the output has one.
 ///
-/// The [PlayerState.output] of a player: read it from `player.state.output`,
-/// or follow one value through its stream in `player.stream`.
+/// The [PlayerState.output] of a player: read it from `player.state.output`, or
+/// follow one value through its stream in `player.stream`.
 ///
 /// {@category State and streams}
 final class OutputState with _$OutputState {
@@ -33,22 +34,22 @@ final class OutputState with _$OutputState {
   /// `failed`. See [AudioOutputState].
   final AudioOutputState audioOutputState;
 
-  /// Name of the audio output driver in use (e.g. `coreaudio`,
-  /// `pulse`, `wasapi`). Differs from [audioDriver] (which is the
+  /// Name of the audio output driver in use (e.g. `coreaudio`, `pulse`,
+  /// `wasapi`). Differs from [PlayerSettings.audioDriver] (which is the
   /// requested driver, empty for the automatic choice): this is what mpv
   /// actually resolved at runtime. Mirrors mpv's `current-ao`.
   final String currentAo;
 
-  /// The volume the audio driver exposes, in percent (`ao-volume`),
-  /// distinct from soft [volume]: the app's stream on most drivers, the
+  /// The volume the audio driver exposes, in percent (`ao-volume`), distinct
+  /// from soft [PlayerSettings.volume]: the app's stream on most drivers, the
   /// whole device with ALSA and WASAPI in exclusive mode. `null` when the
   /// active audio output doesn't expose it, as on iOS and Android. Set via
   /// [Player.setSystemVolume] (best-effort).
   final double? systemVolume;
 
   /// The mute the audio driver exposes (`ao-mute`), distinct from soft
-  /// [mute]. `null` when the active audio output doesn't expose it. Set via
-  /// [Player.setSystemMute].
+  /// [PlayerSettings.mute]. `null` when the active audio output doesn't expose
+  /// it. Set via [Player.setSystemMute].
   final bool? systemMute;
 
   /// Creates a [OutputState]; each value defaults to the one of a player that

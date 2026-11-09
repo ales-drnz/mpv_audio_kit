@@ -84,7 +84,7 @@ final class _Transport {
     current: _player._state.playback.playWhenReady,
   );
 
-  /// Writes the play-pause intent ([PlayerState.playback.playWhenReady]).
+  /// Writes the play-pause intent ([PlaybackState.playWhenReady]).
   void writeIntent(bool value) => _player._updateField(
     (s) => s.copyWith(playWhenReady: value),
     _player._reactives.playWhenReady,

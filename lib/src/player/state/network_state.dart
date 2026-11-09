@@ -7,7 +7,8 @@ import '../../models/demuxer_cache_state.dart';
 
 part '../../generated/network_state_data.dart';
 
-/// Buffering, cache and read health of the current source: what mpv holds ahead and how the transport is doing.
+/// Buffering, cache and read health of the current source: what mpv holds ahead
+/// and how the transport is doing.
 ///
 /// The [PlayerState.network] of a player: read it from `player.state.network`,
 /// or follow one value through its stream in `player.stream`.
@@ -24,15 +25,15 @@ final class NetworkState with _$NetworkState {
   /// to `demuxer-cache-time` in mpv), not a relative duration. For example,
   /// if the current position is 1:00 and 30 s are cached ahead, [buffer] is
   /// 1:30. Use this value directly as the buffered position in audio_service
-  /// or any progress-bar UI without adding [position].
+  /// or any progress-bar UI without adding [PlaybackState.position].
   final Duration buffer;
 
   /// Cache fill as a percentage (0.0 to 100.0) of [CacheSettings.secs].
   ///
-  /// With mpv's default `cache-secs` (1000 hours) this stays near 0 on any
-  /// real stream. For a buffering indicator use [cacheBufferingState]
-  /// (mpv's own 0 to 100 while it waits for data), or [bufferDuration]
-  /// (the headroom ahead of [position]) against a target of your choice.
+  /// With mpv's default `cache-secs` (1000 hours) this stays near 0 on any real
+  /// stream. For a buffering indicator use [cacheBufferingState] (mpv's own 0
+  /// to 100 while it waits for data), or [bufferDuration] (the headroom ahead
+  /// of [PlaybackState.position]) against a target of your choice.
   final double bufferingPercentage;
 
   /// Buffered duration ahead of the playhead (`demuxer-cache-duration`).
@@ -78,20 +79,21 @@ final class NetworkState with _$NetworkState {
   /// caching is active.
   final int cacheBufferingState;
 
-  /// Whether the entry that ended at the end of content ([completed])
-  /// stopped reading on an error instead of at its end, as
-  /// [MpvFileEndedEvent.readError] tells for an entry that ends with an
-  /// event. `null` while [completed] is `false`. It changes with
-  /// [completed]: read it when [PlayerStream.completed] turns `true`. A
-  /// seek at the park tries the read again, and the next park tells how it
-  /// ended then: [completed] turns `false` and `true` again for it, also
-  /// when the seek played on to the end at once.
+  /// Whether the entry that ended at the end of content
+  /// ([PlaybackState.completed]) stopped reading on an error instead of at its
+  /// end, as [MpvFileEndedEvent.readError] tells for an entry that ends with an
+  /// event. `null` while [PlaybackState.completed] is `false`. It changes with
+  /// [PlaybackState.completed]: read it when [PlayerStream.completed] turns
+  /// `true`. A seek at the park tries the read again, and the next park tells
+  /// how it ended then: [PlaybackState.completed] turns `false` and `true`
+  /// again for it, also when the seek played on to the end at once.
   final bool? readError;
 
   /// The HLS or DASH segments the entry that ended at the end of content
-  /// ([completed]) lost to errors, as [MpvFileEndedEvent.skippedSegments]
-  /// tells. `null` while [completed] is `false`. It changes with
-  /// [completed].
+  /// ([PlaybackState.completed]) lost to errors, as
+  /// [MpvFileEndedEvent.skippedSegments] tells. `null` while
+  /// [PlaybackState.completed] is `false`. It changes with
+  /// [PlaybackState.completed].
   final int? skippedSegments;
 
   /// Creates a [NetworkState]; each value defaults to the one of a player that
