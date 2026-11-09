@@ -1,3 +1,41 @@
+## [0.7.0] - 9-11-2026
+
+### libmpv-r24
+**All platforms**
+- The property `duration-estimated`: yes when FFmpeg estimated the duration from the bitrate.
+- The same file loaded again keeps its complete waveform and loudness scan, instead of decoding it again.
+- The ring of a filter tap follows the format of its stream and goes when the tap turns off.
+
+**Tizen**
+- `libmpv_tizen-armv7l.so` for the TVs, Tizen 6.0 on, and `libmpv_tizen-x86_64.so` for the TV emulator, with `ao_tizen`, an output on Tizen's `audio_out`.
+
+**webOS**
+- `libmpv_webos-armv7l.so` for LG TVs with webOS 26 on, built with LG's webOS NDK, playing through ALSA.
+
+### All platforms
+**Breaking**
+- `PlayerState` holds its values in six groups: `playback`, `network`, `file`, `output`, `settings` and `versions`. The flat fields read the same values, deprecated until 0.8.0. See MIGRATION.md.
+
+**Added**
+- `playback.durationEstimated` and `player.stream.durationEstimated`: the duration is FFmpeg's estimate from the bitrate, with no hint to replace it.
+
+**Changed**
+- Flutter 3.38.10 is the minimum, the Flutter of flutter-webos.
+- `playback.duration` is the entry's `waveformDurationHint` when FFmpeg estimated the duration from the bitrate. An exact duration still wins.
+- The same file loaded again, as a playlist of one entry with `Loop.playlist`, keeps its waveform and loudness scan, with no `null` in between.
+
+### Tizen
+**Added**
+- Samsung Tizen TVs through [flutter-tizen](https://github.com/flutter-tizen/flutter-tizen): the build hook bundles the Tizen libmpv, and the user define `tizen: true` picks the one of the TV emulator. Checked on the Tizen 10.0 emulator.
+
+### webOS
+**Added**
+- LG webOS TVs through [flutter-webos](https://github.com/lg-flutter-webos/flutter-webos): the package is an FFI plugin there, and `webos/CMakeLists.txt` bundles the webOS libmpv. Checked with the app running on the TVs' system libraries under qemu, not yet on a TV.
+
+### Web
+**Changed**
+- A pause of the media session's `<audio>` element from outside the page follows `MediaSession.interruptionPolicy`, as on iOS and Android. 0.6 played on, as `keepPlaying` still does.
+
 ## [0.6.4] - 8-11-2026
 
 ### libmpv-r23
