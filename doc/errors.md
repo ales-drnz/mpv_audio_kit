@@ -110,7 +110,7 @@ A call that fails throws a `PlayerException`:
 | Exception | When |
 | :--- | :--- |
 | `PlayerDisposedException` | The player was disposed |
-| `PlayerInitException` | libmpv could not load or start, or is not of libmpv-r21. Every call on that player throws it |
+| `PlayerInitException` | libmpv could not load or start, or is not of the libmpv release the package pins. Every call on that player throws it |
 | `MpvCommandException` | libmpv rejected the request, such as a seek with no file loaded |
 | `SourceException` | A source could not open, such as a missing asset or an unreadable `content://` URI |
 

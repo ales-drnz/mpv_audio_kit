@@ -225,7 +225,12 @@ final class Media {
   /// The waveform lays out this length. A hint a little off still ends
   /// final: a shorter one leaves the rest of the stream out, a longer one
   /// leaves the bins after the end of the stream unfilled. Any other
-  /// source ignores it. Unlike the other per-entry options it does not
+  /// source ignores it for the analysis.
+  ///
+  /// It is also [PlaybackState.duration] of this entry, whatever its
+  /// source, while mpv only has a duration estimated from the bitrate
+  /// ([PlaybackState.durationEstimated] is then false). An exact duration
+  /// of mpv's always wins. Unlike the other per-entry options it does not
   /// keep the entry from opening ahead with [Player.setPrefetchPlaylist].
   ///
   /// `null` (default) gives none. Must be positive. mpv ignores a hint past
