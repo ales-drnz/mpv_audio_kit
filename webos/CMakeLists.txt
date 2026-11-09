@@ -18,8 +18,8 @@
 cmake_minimum_required(VERSION 3.10)
 project(mpv_audio_kit LANGUAGES NONE)
 
-set(MAK_LIBMPV_RELEASE "libmpv-r23")
-set(MAK_LIBMPV_SHA256 "")
+set(MAK_LIBMPV_RELEASE "libmpv-r24")
+set(MAK_LIBMPV_SHA256 "4478343538132b22cb2bfef2944048f39ceb4dd6943a413e1f1ed6eb10072605")
 
 set(asset "libmpv_webos-armv7l.so")
 set(out "${CMAKE_CURRENT_BINARY_DIR}/libmpv_audio_kit_webos.so")

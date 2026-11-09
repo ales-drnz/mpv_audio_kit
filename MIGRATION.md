@@ -1,5 +1,9 @@
 # Migrating to 0.7.0
 
+0.7.0 runs on libmpv-r24, which the build hook bundles, and on no other
+libmpv. An app that bundles the default libmpv changes nothing; one that
+bundles its own needs a build of libmpv-scripts at libmpv-r24.
+
 ## PlayerState in groups
 
 `PlayerState` holds its values in six groups. The flat fields of 0.6
