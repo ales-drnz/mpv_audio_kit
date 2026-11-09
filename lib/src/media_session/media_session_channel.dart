@@ -107,7 +107,7 @@ class MediaSessionPlaybackSnapshot {
   final Loop loop;
   final bool shuffle;
 
-  /// End-of-content reached ([PlayerState.completed]: `eof-reached` on the
+  /// End-of-content reached ([PlaybackState.completed]: `eof-reached` on the
   /// last playlist entry with no loop on). The native side maps this to a
   /// terminal state (Android `STATE_ENDED`, Linux MPRIS
   /// `PlaybackStatus=Stopped` with empty `Metadata`) instead of leaving a

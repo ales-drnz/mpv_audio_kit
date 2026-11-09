@@ -240,12 +240,12 @@ class PlayerStream {
   /// [Player.pause], [Player.open] and [Player.stop] (and released at the
   /// natural end of content). Stable across seeks and buffering; this is
   /// the signal to bind a play-pause button to. See
-  /// [PlayerState.playWhenReady].
+  /// [PlaybackState.playWhenReady].
   final Stream<bool> playWhenReady;
 
   /// Emits `true` when playback reaches the end of a single track or of the
   /// last playlist entry, not between entries and not while looping. See
-  /// [PlayerState.completed].
+  /// [PlaybackState.completed].
   final Stream<bool> completed;
 
   /// Emits the current playback position as a [Duration].
@@ -283,12 +283,12 @@ class PlayerStream {
 
   /// Emits the absolute timestamp the demuxer has buffered up to
   /// (`demuxer-cache-time`), not a depth: [bufferDuration] is the headroom
-  /// ahead of the playhead. See [PlayerState.buffer].
+  /// ahead of the playhead. See [NetworkState.buffer].
   final Stream<Duration> buffer;
 
   /// Emits the cache fill as a percentage (0.0 to 100.0) of
   /// [CacheSettings.secs]. Near 0 with mpv's default `cache-secs` of 1000
-  /// hours: see [PlayerState.bufferingPercentage] for what to use instead.
+  /// hours: see [NetworkState.bufferingPercentage] for what to use instead.
   final Stream<double> bufferingPercentage;
 
   /// Emits the rich demuxer cache state (buffered ranges + network flags).
@@ -340,15 +340,15 @@ class PlayerStream {
   /// Emits the software volume gain in dB.
   final Stream<double> volumeGain;
 
-  /// Emits mpv's `volume-gain-min` in dB. See [PlayerState.volumeGainMin].
+  /// Emits mpv's `volume-gain-min` in dB. See [PlayerSettings.volumeGainMin].
   final Stream<double> volumeGainMin;
 
-  /// Emits mpv's `volume-gain-max` in dB. See [PlayerState.volumeGainMax].
+  /// Emits mpv's `volume-gain-max` in dB. See [PlayerSettings.volumeGainMax].
   final Stream<double> volumeGainMax;
 
   /// Emits the volume the audio driver exposes (`ao-volume`); `null` when
   /// the active audio output doesn't expose it. See
-  /// [PlayerState.systemVolume].
+  /// [OutputState.systemVolume].
   final Stream<double?> systemVolume;
 
   /// Emits the mute the audio driver exposes (`ao-mute`); `null` when the
@@ -407,7 +407,7 @@ class PlayerStream {
 
   /// All tracks reported by mpv for the current file (audio + embedded
   /// picture + any other type the demuxer surfaced). See
-  /// [PlayerState.tracks] for the filtering pattern.
+  /// [FileState.tracks] for the filtering pattern.
   final Stream<List<MpvTrack>> tracks;
 
   /// Currently-active audio track, or `null` when none is selected.
@@ -417,7 +417,7 @@ class PlayerStream {
   /// passthrough disabled.
   final Stream<Set<Spdif>> audioSpdif;
 
-  /// Emits mpv's `volume-max`. See [PlayerState.volumeMax].
+  /// Emits mpv's `volume-max`. See [PlayerSettings.volumeMax].
   final Stream<double> volumeMax;
 
   /// Emits the target sample rate.
@@ -467,7 +467,7 @@ class PlayerStream {
   /// compare [MpvFileEndedEvent.position] with
   /// [MpvFileEndedEvent.duration], not the state: when the event arrives
   /// the state can already describe the next entry. The last entry parks
-  /// on its end instead ([PlayerState.completed]) and emits here only
+  /// on its end instead ([PlaybackState.completed]) and emits here only
   /// when it is stopped or replaced.
   final Stream<MpvFileEndedEvent> endFile;
 
@@ -709,7 +709,7 @@ class PlayerStream {
   /// together. A player in another isolate replaces it with its own.
   ///
   /// [filter] names the stage's filter and [instance] which of its
-  /// occurrences in [PlayerState.audioEffects] (0, the default, for the
+  /// occurrences in [PlayerSettings.audioEffects] (0, the default, for the
   /// first): with two [EqualizerEffect]s in the list, `instance: 1` taps
   /// the second. Disabled stages count too, and a disabled stage emits
   /// nothing. The tap follows the occurrence, not a particular stage:

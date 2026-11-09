@@ -131,7 +131,7 @@ final class MpvTrack with _$MpvTrack {
   /// fallback as [replayGainAlbumGain].
   final double? replayGainAlbumPeak;
 
-  /// Per-track tag dictionary. Distinct from [PlayerState.metadata]
+  /// Per-track tag dictionary. Distinct from [FileState.metadata]
   /// (which is global and file-level): this is the metadata mpv keeps
   /// per stream, useful in multi-track containers where each track
   /// carries its own title, artist and role tags.

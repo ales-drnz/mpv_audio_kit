@@ -7,7 +7,7 @@
 ///
 /// Apply atomically via [Player.setDemuxer]. For one-off tweaks use
 /// `state.demuxer.copyWith(...)`. Read the current configuration via
-/// [PlayerState.demuxer] or observe live changes via [PlayerStream.demuxer].
+/// [PlayerSettings.demuxer] or observe live changes via [PlayerStream.demuxer].
 final class DemuxerSettings {
   /// Maximum bytes the demuxer is allowed to cache ahead of the playhead.
   /// Default 150 MiB (mpv's `--demuxer-max-bytes=150MiB`). A player on the

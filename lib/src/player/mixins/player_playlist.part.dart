@@ -359,7 +359,7 @@ mixin _PlaylistModule on _PlayerBase {
   /// the second write fails the first is rolled back so the consumer
   /// never observes a half-applied loop mode.
   ///
-  /// Turned on once the queue has ended ([PlayerState.playback.completed]), a loop
+  /// Turned on once the queue has ended ([PlaybackState.completed]), a loop
   /// rewinds: [Loop.file] seeks the track to its start, [Loop.playlist]
   /// moves to the first entry, and both stay paused, since the play
   /// intent was spent at the end. Call [Player.play] to start again.

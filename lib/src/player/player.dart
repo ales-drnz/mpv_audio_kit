@@ -160,7 +160,7 @@ class Player extends _PlayerBase
   /// `playlist-play-index` starts directly at [index]. The entry at
   /// position 0 is never loaded, played, or reported as current unless
   /// it IS the requested index, so a UI bound to
-  /// [PlayerState.playback.playlist]'s `index` never flashes track 1 before the
+  /// [PlaybackState.playlist]'s `index` never flashes track 1 before the
   /// selected track, and no audio from track 1 leaks out. During the
   /// transition the outgoing track keeps playing (or stays parked) until
   /// the jump; while entries build up on an idle core the playlist
@@ -181,7 +181,7 @@ class Player extends _PlayerBase
   /// become the playlist. This is the path for internet-radio station lists
   /// and remote `.m3u` playlists.
   ///
-  /// [PlayerStream.playlist] and [PlayerState.playback.playlist] reflect the parsed
+  /// [PlayerStream.playlist] and [PlaybackState.playlist] reflect the parsed
   /// entries once mpv expands them. When [play] is null the configuration's
   /// autoplay value decides. Replaces any currently loaded file or playlist.
   ///

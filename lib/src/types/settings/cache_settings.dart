@@ -9,7 +9,7 @@ import '../enums/cache.dart';
 ///
 /// Apply atomically via [Player.setCache]. For one-off tweaks use
 /// `state.cache.copyWith(...)`. Read the current configuration via
-/// [PlayerState.cache] or observe live changes via [PlayerStream.cache].
+/// [PlayerSettings.cache] or observe live changes via [PlayerStream.cache].
 ///
 /// {@category Network and cache}
 final class CacheSettings {

@@ -67,6 +67,8 @@ The build downloads the libmpv binary for each native target and checks its SHA-
 | iOS | 15.0 | arm64, simulator arm64 and x86_64 | 7.3 MB |
 | macOS | 12.0 | arm64, x86_64 | 15.1 MB universal |
 | tvOS | 15.0 | arm64, simulator arm64 and x86_64 | 7.3 MB |
+| Tizen | 6.0 | armv7l, emulator x86_64 | 6.0 MB, 8.6 MB on the emulator |
+| webOS | 26 | armv7l | 5.8 MB |
 | Windows | 10 | arm64, x86_64 | 7.8 MB |
 | Linux | glibc 2.31 | aarch64, x86_64 | 8.4 MB |
 | Web | a cross-origin isolated page | wasm32 | 4.3 MB, 2.0 MB zipped |
@@ -221,6 +223,14 @@ Android TV, Fire TV and Google TV run the Android build. The app needs a leanbac
 ### tvOS
 
 Build with [flutter-tvos](https://fluttertv.dev). It installs no code asset, so on tvOS the plugin's `tvos/Package.swift` links libmpv instead of the build hook: Swift Package Manager downloads `libmpv_tvos.xcframework.zip` of the release and checks its checksum. A libmpv of your own goes to `tvos/libmpv.xcframework` in a checkout of the package: the hook's `libmpv` user define does not reach tvOS.
+
+### Tizen
+
+Build with [flutter-tizen](https://github.com/flutter-tizen/flutter-tizen). The build hook bundles the Tizen libmpv for the TVs, and for the TV emulator when the app sets the user define `tizen: true`. See [Tizen](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Tizen-topic.html).
+
+### webOS
+
+Build with [flutter-webos](https://github.com/lg-flutter-webos/flutter-webos), for webOS 26 and later. It runs no build hook, so the package's `webos/CMakeLists.txt` bundles libmpv instead. See [webOS](https://pub.dev/documentation/mpv_audio_kit/latest/topics/webOS-topic.html).
 
 ### macOS
 

@@ -199,8 +199,8 @@ final class Media {
   /// preview, or a section of a long file queued as an entry of its own.
   ///
   /// The entry ends there as at the end of the file: the playlist moves
-  /// on, or the last entry parks and [PlayerState.completed] turns true.
-  /// [PlayerState.duration], `timeRemaining` and `percentPos` still
+  /// on, or the last entry parks and [PlaybackState.completed] turns true.
+  /// [PlaybackState.duration], `timeRemaining` and `percentPos` still
   /// describe the whole file. [Loop.file] and [Player.play] at the end of
   /// the queue start the file again from its beginning, and stop at [end]
   /// again. With [Player.setPrefetchPlaylist] on, an entry with an end is
