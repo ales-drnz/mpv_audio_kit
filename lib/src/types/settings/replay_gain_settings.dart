@@ -9,7 +9,7 @@ import '../enums/replay_gain.dart';
 ///
 /// Apply atomically via [Player.setReplayGain]. For one-off tweaks
 /// use `state.replayGain.copyWith(preamp: -3)`. Read the current
-/// configuration via [PlayerState.replayGain] or observe live changes
+/// configuration via [PlayerSettings.replayGain] or observe live changes
 /// via [PlayerStream.replayGain].
 final class ReplayGainSettings {
   /// Normalization mode (off, per-track or per-album).

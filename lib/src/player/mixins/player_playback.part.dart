@@ -28,7 +28,7 @@ mixin _PlaybackModule on _PlayerBase {
     await _gate();
     // Optimistic intent: `pause` is silent on the first load → playing
     // transition, so set the intent axis here rather than relying on the
-    // observer. See [PlayerState.playWhenReady].
+    // observer. See [PlaybackState.playWhenReady].
     final intent = _transport.claimIntent(true);
     // Parked at the end (`keep-open`), an unpause alone is undone by the
     // playloop hitting EOF again, and the intent would show playing over

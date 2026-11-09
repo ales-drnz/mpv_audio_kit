@@ -15,12 +15,13 @@
 ### All platforms
 **Breaking**
 - `PlayerState` holds its values in six groups: `playback`, `network`, `file`, `output`, `settings` and `versions`. The flat fields read the same values, deprecated until 0.8.0. See MIGRATION.md.
+- The `PlayerState` constructor takes the groups only: `PlayerState(settings: PlayerSettings(volume: 50))` for `PlayerState(volume: 50)`. `copyWith` still takes every field.
 
 **Added**
 - `playback.durationEstimated` and `player.stream.durationEstimated`: the duration is FFmpeg's estimate from the bitrate, with no hint to replace it.
 
 **Changed**
-- Flutter 3.38.10 is the minimum, the Flutter of flutter-webos.
+- Flutter 3.38.10 is the minimum, lowered from 3.41.0 for flutter-webos. Before Flutter 3.41 an app bundles the web module on every platform, about 4.6 MB.
 - `playback.duration` is the entry's `waveformDurationHint` when FFmpeg estimated the duration from the bitrate. An exact duration still wins.
 - The same file loaded again, as a playlist of one entry with `Loop.playlist`, keeps its waveform and loudness scan, with no `null` in between.
 
