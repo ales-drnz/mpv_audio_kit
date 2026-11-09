@@ -10,7 +10,7 @@
 
 /// The libmpv release whose license texts [libmpvLicenses] holds, or `''`
 /// when it holds none.
-const String libmpvLicensesRelease = 'r23';
+const String libmpvLicensesRelease = 'r24';
 
 /// The license texts of the libmpv the package ships, from the
 /// `licenses.zip` of [libmpvLicensesRelease], each text once across the
@@ -19,7 +19,7 @@ const String libmpvLicensesRelease = 'r23';
 const List<(List<String>, String)> libmpvLicenses = [
   (
     ["libmpv"],
-    "libmpv r23 for android-arm64-v8a: LGPL-3.0-or-later\n"
+    "libmpv r24 for android-arm64-v8a: LGPL-3.0-or-later\n"
         "\n"
         "This build of libmpv is LGPL, version 3 or later (the LGPLv3 is a set of\n"
         "permissions on top of the GPLv3, so both texts are here). It lets an app\n"
@@ -47,7 +47,7 @@ const List<(List<String>, String)> libmpvLicenses = [
         "  libsmb2        libsmb2: COPYING, LICENCE-LGPL-2.1.txt\n"
         "  mozilla-ca     the Mozilla CA bundle (MPL-2.0)\n"
         "\n"
-        "Source: https://github.com/ales-drnz/libmpv-scripts at commit 7bd23a3899383ccfeeed4d94bd848c170234eab0\n"
+        "Source: https://github.com/ales-drnz/libmpv-scripts at commit 0c42165066c1014aa8796216f6e6fad5520a68cb\n"
         "builds this library from the upstream sources below, pinned by SHA-256 (tarballs)\n"
         "or commit (git tags) in scripts/shared/_sources.sha256, with the patches under\n"
         "patches/ of that commit:\n"
@@ -65,7 +65,7 @@ const List<(List<String>, String)> libmpvLicenses = [
   ),
   (
     ["libmpv"],
-    "libmpv r23 for android-armeabi-v7a: LGPL-3.0-or-later\n"
+    "libmpv r24 for android-armeabi-v7a: LGPL-3.0-or-later\n"
         "\n"
         "This build of libmpv is LGPL, version 3 or later (the LGPLv3 is a set of\n"
         "permissions on top of the GPLv3, so both texts are here). It lets an app\n"
@@ -93,7 +93,7 @@ const List<(List<String>, String)> libmpvLicenses = [
         "  libsmb2        libsmb2: COPYING, LICENCE-LGPL-2.1.txt\n"
         "  mozilla-ca     the Mozilla CA bundle (MPL-2.0)\n"
         "\n"
-        "Source: https://github.com/ales-drnz/libmpv-scripts at commit 7bd23a3899383ccfeeed4d94bd848c170234eab0\n"
+        "Source: https://github.com/ales-drnz/libmpv-scripts at commit 0c42165066c1014aa8796216f6e6fad5520a68cb\n"
         "builds this library from the upstream sources below, pinned by SHA-256 (tarballs)\n"
         "or commit (git tags) in scripts/shared/_sources.sha256, with the patches under\n"
         "patches/ of that commit:\n"
@@ -111,7 +111,7 @@ const List<(List<String>, String)> libmpvLicenses = [
   ),
   (
     ["libmpv"],
-    "libmpv r23 for android-x86_64: LGPL-3.0-or-later\n"
+    "libmpv r24 for android-x86_64: LGPL-3.0-or-later\n"
         "\n"
         "This build of libmpv is LGPL, version 3 or later (the LGPLv3 is a set of\n"
         "permissions on top of the GPLv3, so both texts are here). It lets an app\n"
@@ -139,7 +139,7 @@ const List<(List<String>, String)> libmpvLicenses = [
         "  libsmb2        libsmb2: COPYING, LICENCE-LGPL-2.1.txt\n"
         "  mozilla-ca     the Mozilla CA bundle (MPL-2.0)\n"
         "\n"
-        "Source: https://github.com/ales-drnz/libmpv-scripts at commit 7bd23a3899383ccfeeed4d94bd848c170234eab0\n"
+        "Source: https://github.com/ales-drnz/libmpv-scripts at commit 0c42165066c1014aa8796216f6e6fad5520a68cb\n"
         "builds this library from the upstream sources below, pinned by SHA-256 (tarballs)\n"
         "or commit (git tags) in scripts/shared/_sources.sha256, with the patches under\n"
         "patches/ of that commit:\n"
@@ -157,7 +157,7 @@ const List<(List<String>, String)> libmpvLicenses = [
   ),
   (
     ["libmpv"],
-    "libmpv r23 for ios: LGPL-3.0-or-later\n"
+    "libmpv r24 for ios: LGPL-3.0-or-later\n"
         "\n"
         "This build of libmpv is LGPL, version 3 or later (the LGPLv3 is a set of\n"
         "permissions on top of the GPLv3, so both texts are here). It lets an app\n"
@@ -183,7 +183,7 @@ const List<(List<String>, String)> libmpvLicenses = [
         "  libsmb2        libsmb2: COPYING, LICENCE-LGPL-2.1.txt\n"
         "  mozilla-ca     the Mozilla CA bundle (MPL-2.0)\n"
         "\n"
-        "Source: https://github.com/ales-drnz/libmpv-scripts at commit 7bd23a3899383ccfeeed4d94bd848c170234eab0\n"
+        "Source: https://github.com/ales-drnz/libmpv-scripts at commit 0c42165066c1014aa8796216f6e6fad5520a68cb\n"
         "builds this library from the upstream sources below, pinned by SHA-256 (tarballs)\n"
         "or commit (git tags) in scripts/shared/_sources.sha256, with the patches under\n"
         "patches/ of that commit:\n"
@@ -200,7 +200,7 @@ const List<(List<String>, String)> libmpvLicenses = [
   ),
   (
     ["libmpv"],
-    "libmpv r23 for linux-aarch64: LGPL-3.0-or-later\n"
+    "libmpv r24 for linux-aarch64: LGPL-3.0-or-later\n"
         "\n"
         "This build of libmpv is LGPL, version 3 or later (the LGPLv3 is a set of\n"
         "permissions on top of the GPLv3, so both texts are here). It lets an app\n"
@@ -228,7 +228,7 @@ const List<(List<String>, String)> libmpvLicenses = [
         "  libsmb2        libsmb2: COPYING, LICENCE-LGPL-2.1.txt\n"
         "  mozilla-ca     the Mozilla CA bundle (MPL-2.0)\n"
         "\n"
-        "Source: https://github.com/ales-drnz/libmpv-scripts at commit 7bd23a3899383ccfeeed4d94bd848c170234eab0\n"
+        "Source: https://github.com/ales-drnz/libmpv-scripts at commit 0c42165066c1014aa8796216f6e6fad5520a68cb\n"
         "builds this library from the upstream sources below, pinned by SHA-256 (tarballs)\n"
         "or commit (git tags) in scripts/shared/_sources.sha256, with the patches under\n"
         "patches/ of that commit:\n"
@@ -246,7 +246,7 @@ const List<(List<String>, String)> libmpvLicenses = [
   ),
   (
     ["libmpv"],
-    "libmpv r23 for linux-x86_64: LGPL-3.0-or-later\n"
+    "libmpv r24 for linux-x86_64: LGPL-3.0-or-later\n"
         "\n"
         "This build of libmpv is LGPL, version 3 or later (the LGPLv3 is a set of\n"
         "permissions on top of the GPLv3, so both texts are here). It lets an app\n"
@@ -274,7 +274,7 @@ const List<(List<String>, String)> libmpvLicenses = [
         "  libsmb2        libsmb2: COPYING, LICENCE-LGPL-2.1.txt\n"
         "  mozilla-ca     the Mozilla CA bundle (MPL-2.0)\n"
         "\n"
-        "Source: https://github.com/ales-drnz/libmpv-scripts at commit 7bd23a3899383ccfeeed4d94bd848c170234eab0\n"
+        "Source: https://github.com/ales-drnz/libmpv-scripts at commit 0c42165066c1014aa8796216f6e6fad5520a68cb\n"
         "builds this library from the upstream sources below, pinned by SHA-256 (tarballs)\n"
         "or commit (git tags) in scripts/shared/_sources.sha256, with the patches under\n"
         "patches/ of that commit:\n"
@@ -292,7 +292,7 @@ const List<(List<String>, String)> libmpvLicenses = [
   ),
   (
     ["libmpv"],
-    "libmpv r23 for macos: LGPL-3.0-or-later\n"
+    "libmpv r24 for macos: LGPL-3.0-or-later\n"
         "\n"
         "This build of libmpv is LGPL, version 3 or later (the LGPLv3 is a set of\n"
         "permissions on top of the GPLv3, so both texts are here). It lets an app\n"
@@ -318,7 +318,7 @@ const List<(List<String>, String)> libmpvLicenses = [
         "  libsmb2        libsmb2: COPYING, LICENCE-LGPL-2.1.txt\n"
         "  mozilla-ca     the Mozilla CA bundle (MPL-2.0)\n"
         "\n"
-        "Source: https://github.com/ales-drnz/libmpv-scripts at commit 7bd23a3899383ccfeeed4d94bd848c170234eab0\n"
+        "Source: https://github.com/ales-drnz/libmpv-scripts at commit 0c42165066c1014aa8796216f6e6fad5520a68cb\n"
         "builds this library from the upstream sources below, pinned by SHA-256 (tarballs)\n"
         "or commit (git tags) in scripts/shared/_sources.sha256, with the patches under\n"
         "patches/ of that commit:\n"
@@ -335,7 +335,93 @@ const List<(List<String>, String)> libmpvLicenses = [
   ),
   (
     ["libmpv"],
-    "libmpv r23 for tvos: LGPL-3.0-or-later\n"
+    "libmpv r24 for tizen-armv7l: LGPL-3.0-or-later\n"
+        "\n"
+        "This build of libmpv is LGPL, version 3 or later (the LGPLv3 is a set of\n"
+        "permissions on top of the GPLv3, so both texts are here). It lets an app\n"
+        "link the library whatever its own license, on its conditions, among them:\n"
+        "ship these texts, say that the app uses libmpv and that libmpv is under\n"
+        "the LGPL, provide the source of this library (see Source below), and let\n"
+        "the user replace it with one built from modified source. libmpv is a\n"
+        "separate dynamic library or module on every platform. The texts are the terms.\n"
+        "\n"
+        "Components, and the license files of each one in the directory of its name:\n"
+        "  libmpv-scripts the build scripts and the patches of this repo: LICENSE (BSD-3-Clause),\n"
+        "                 NOTICE (its files under the LGPL, MIT and MPL-2.0), LICENSE.LGPL-2.1;\n"
+        "                 what a patch changes in mpv or FFmpeg is under their license\n"
+        "  mpv            mpv-0.41.0: LICENSE.LGPL, Copyright\n"
+        "  ffmpeg         ffmpeg-8.1.1: COPYING.LGPLv3, COPYING.GPLv3, LICENSE.md\n"
+        "  openssl        openssl-3.5.6: LICENSE.txt\n"
+        "  libplacebo     libplacebo-git: LICENSE\n"
+        "  libxml2        libxml2-2.14.6: Copyright\n"
+        "  zlib           zlib-1.3.2: LICENSE\n"
+        "  bzip2          bzip2-1.0.8: LICENSE\n"
+        "  xz             xz-5.8.3: COPYING, COPYING.0BSD, COPYING.GPLv2, COPYING.GPLv3, COPYING.LGPLv2.1\n"
+        "  speexdsp       speexdsp-SpeexDSP-1.2.1: COPYING\n"
+        "  libsmb2        libsmb2: COPYING, LICENCE-LGPL-2.1.txt\n"
+        "  mozilla-ca     the Mozilla CA bundle (MPL-2.0)\n"
+        "\n"
+        "Source: https://github.com/ales-drnz/libmpv-scripts at commit 0c42165066c1014aa8796216f6e6fad5520a68cb\n"
+        "builds this library from the upstream sources below, pinned by SHA-256 (tarballs)\n"
+        "or commit (git tags) in scripts/shared/_sources.sha256, with the patches under\n"
+        "patches/ of that commit:\n"
+        "  ee21092a5ee427353392360929dc64645c54479aefdb5babc5cfbb5fad626209  https://github.com/mpv-player/mpv/archive/refs/tags/v0.41.0.tar.gz\n"
+        "  1b856f26a07082b6879f3e5300d81e8c7ce3b410ade5898b14382d90c2904634  https://ffmpeg.org/releases/ffmpeg-8.1.1.tar.gz\n"
+        "  deae7c80cba99c4b4f940ecadb3c3338b13cb77418409238e57d7f31f2a3b736  https://github.com/openssl/openssl/releases/download/openssl-3.5.6/openssl-3.5.6.tar.gz\n"
+        "  1fd3c7bde7b943fe8985c893310b5269a09b46c5  https://code.videolan.org/videolan/libplacebo.git#v7.349.0\n"
+        "  7ce458a0affeb83f0b55f1f4f9e0e55735dbfc1a9de124ee86fb4a66b597203a  https://download.gnome.org/sources/libxml2/2.14/libxml2-2.14.6.tar.xz\n"
+        "  bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16  https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz\n"
+        "  ab5a03176ee106d3f0fa90e381da478ddae405918153cca248e682cd0c4a2269  https://sourceware.org/pub/bzip2/bzip2-1.0.8.tar.gz\n"
+        "  3d3a1b973af218114f4f889bbaa2f4c037deaae0c8e815eec381c3d546b974a0  https://github.com/tukaani-project/xz/releases/download/v5.8.3/xz-5.8.3.tar.gz\n"
+        "  d17ca363654556a4ff1d02cc13d9eb1fc5a8642c90b40bd54ce266c3807b91a7  https://github.com/xiph/speexdsp/archive/refs/tags/SpeexDSP-1.2.1.tar.gz\n"
+        "  b9444620ba7f26ed216a663bf2282a9427e36c36  https://github.com/sahlberg/libsmb2.git#v6.0.0\n",
+  ),
+  (
+    ["libmpv"],
+    "libmpv r24 for tizen-x86_64: LGPL-3.0-or-later\n"
+        "\n"
+        "This build of libmpv is LGPL, version 3 or later (the LGPLv3 is a set of\n"
+        "permissions on top of the GPLv3, so both texts are here). It lets an app\n"
+        "link the library whatever its own license, on its conditions, among them:\n"
+        "ship these texts, say that the app uses libmpv and that libmpv is under\n"
+        "the LGPL, provide the source of this library (see Source below), and let\n"
+        "the user replace it with one built from modified source. libmpv is a\n"
+        "separate dynamic library or module on every platform. The texts are the terms.\n"
+        "\n"
+        "Components, and the license files of each one in the directory of its name:\n"
+        "  libmpv-scripts the build scripts and the patches of this repo: LICENSE (BSD-3-Clause),\n"
+        "                 NOTICE (its files under the LGPL, MIT and MPL-2.0), LICENSE.LGPL-2.1;\n"
+        "                 what a patch changes in mpv or FFmpeg is under their license\n"
+        "  mpv            mpv-0.41.0: LICENSE.LGPL, Copyright\n"
+        "  ffmpeg         ffmpeg-8.1.1: COPYING.LGPLv3, COPYING.GPLv3, LICENSE.md\n"
+        "  openssl        openssl-3.5.6: LICENSE.txt\n"
+        "  libplacebo     libplacebo-git: LICENSE\n"
+        "  libxml2        libxml2-2.14.6: Copyright\n"
+        "  zlib           zlib-1.3.2: LICENSE\n"
+        "  bzip2          bzip2-1.0.8: LICENSE\n"
+        "  xz             xz-5.8.3: COPYING, COPYING.0BSD, COPYING.GPLv2, COPYING.GPLv3, COPYING.LGPLv2.1\n"
+        "  speexdsp       speexdsp-SpeexDSP-1.2.1: COPYING\n"
+        "  libsmb2        libsmb2: COPYING, LICENCE-LGPL-2.1.txt\n"
+        "  mozilla-ca     the Mozilla CA bundle (MPL-2.0)\n"
+        "\n"
+        "Source: https://github.com/ales-drnz/libmpv-scripts at commit 0c42165066c1014aa8796216f6e6fad5520a68cb\n"
+        "builds this library from the upstream sources below, pinned by SHA-256 (tarballs)\n"
+        "or commit (git tags) in scripts/shared/_sources.sha256, with the patches under\n"
+        "patches/ of that commit:\n"
+        "  ee21092a5ee427353392360929dc64645c54479aefdb5babc5cfbb5fad626209  https://github.com/mpv-player/mpv/archive/refs/tags/v0.41.0.tar.gz\n"
+        "  1b856f26a07082b6879f3e5300d81e8c7ce3b410ade5898b14382d90c2904634  https://ffmpeg.org/releases/ffmpeg-8.1.1.tar.gz\n"
+        "  deae7c80cba99c4b4f940ecadb3c3338b13cb77418409238e57d7f31f2a3b736  https://github.com/openssl/openssl/releases/download/openssl-3.5.6/openssl-3.5.6.tar.gz\n"
+        "  1fd3c7bde7b943fe8985c893310b5269a09b46c5  https://code.videolan.org/videolan/libplacebo.git#v7.349.0\n"
+        "  7ce458a0affeb83f0b55f1f4f9e0e55735dbfc1a9de124ee86fb4a66b597203a  https://download.gnome.org/sources/libxml2/2.14/libxml2-2.14.6.tar.xz\n"
+        "  bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16  https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz\n"
+        "  ab5a03176ee106d3f0fa90e381da478ddae405918153cca248e682cd0c4a2269  https://sourceware.org/pub/bzip2/bzip2-1.0.8.tar.gz\n"
+        "  3d3a1b973af218114f4f889bbaa2f4c037deaae0c8e815eec381c3d546b974a0  https://github.com/tukaani-project/xz/releases/download/v5.8.3/xz-5.8.3.tar.gz\n"
+        "  d17ca363654556a4ff1d02cc13d9eb1fc5a8642c90b40bd54ce266c3807b91a7  https://github.com/xiph/speexdsp/archive/refs/tags/SpeexDSP-1.2.1.tar.gz\n"
+        "  b9444620ba7f26ed216a663bf2282a9427e36c36  https://github.com/sahlberg/libsmb2.git#v6.0.0\n",
+  ),
+  (
+    ["libmpv"],
+    "libmpv r24 for tvos: LGPL-3.0-or-later\n"
         "\n"
         "This build of libmpv is LGPL, version 3 or later (the LGPLv3 is a set of\n"
         "permissions on top of the GPLv3, so both texts are here). It lets an app\n"
@@ -361,7 +447,7 @@ const List<(List<String>, String)> libmpvLicenses = [
         "  libsmb2        libsmb2: COPYING, LICENCE-LGPL-2.1.txt\n"
         "  mozilla-ca     the Mozilla CA bundle (MPL-2.0)\n"
         "\n"
-        "Source: https://github.com/ales-drnz/libmpv-scripts at commit 7bd23a3899383ccfeeed4d94bd848c170234eab0\n"
+        "Source: https://github.com/ales-drnz/libmpv-scripts at commit 0c42165066c1014aa8796216f6e6fad5520a68cb\n"
         "builds this library from the upstream sources below, pinned by SHA-256 (tarballs)\n"
         "or commit (git tags) in scripts/shared/_sources.sha256, with the patches under\n"
         "patches/ of that commit:\n"
@@ -378,7 +464,7 @@ const List<(List<String>, String)> libmpvLicenses = [
   ),
   (
     ["libmpv"],
-    "libmpv r23 for web: LGPL-3.0-or-later\n"
+    "libmpv r24 for web: LGPL-3.0-or-later\n"
         "\n"
         "This build of libmpv is LGPL, version 3 or later (the LGPLv3 is a set of\n"
         "permissions on top of the GPLv3, so both texts are here). It lets an app\n"
@@ -401,7 +487,7 @@ const List<(List<String>, String)> libmpvLicenses = [
         "  musl           musl libc of Emscripten of the toolchain: COPYRIGHT\n"
         "  llvm-runtimes  LLVM libc++, libc++abi, libunwind and compiler-rt of the toolchain: libcxx/LICENSE.TXT, libcxxabi/LICENSE.TXT, libunwind/LICENSE.TXT, compiler-rt/LICENSE.TXT\n"
         "\n"
-        "Source: https://github.com/ales-drnz/libmpv-scripts at commit 7bd23a3899383ccfeeed4d94bd848c170234eab0\n"
+        "Source: https://github.com/ales-drnz/libmpv-scripts at commit 0c42165066c1014aa8796216f6e6fad5520a68cb\n"
         "builds this library from the upstream sources below, pinned by SHA-256 (tarballs)\n"
         "or commit (git tags) in scripts/shared/_sources.sha256, with the patches under\n"
         "patches/ of that commit:\n"
@@ -413,7 +499,50 @@ const List<(List<String>, String)> libmpvLicenses = [
   ),
   (
     ["libmpv"],
-    "libmpv r23 for windows-arm64: LGPL-3.0-or-later\n"
+    "libmpv r24 for webos-armv7l: LGPL-3.0-or-later\n"
+        "\n"
+        "This build of libmpv is LGPL, version 3 or later (the LGPLv3 is a set of\n"
+        "permissions on top of the GPLv3, so both texts are here). It lets an app\n"
+        "link the library whatever its own license, on its conditions, among them:\n"
+        "ship these texts, say that the app uses libmpv and that libmpv is under\n"
+        "the LGPL, provide the source of this library (see Source below), and let\n"
+        "the user replace it with one built from modified source. libmpv is a\n"
+        "separate dynamic library or module on every platform. The texts are the terms.\n"
+        "\n"
+        "Components, and the license files of each one in the directory of its name:\n"
+        "  libmpv-scripts the build scripts and the patches of this repo: LICENSE (BSD-3-Clause),\n"
+        "                 NOTICE (its files under the LGPL, MIT and MPL-2.0), LICENSE.LGPL-2.1;\n"
+        "                 what a patch changes in mpv or FFmpeg is under their license\n"
+        "  mpv            mpv-0.41.0: LICENSE.LGPL, Copyright\n"
+        "  ffmpeg         ffmpeg-8.1.1: COPYING.LGPLv3, COPYING.GPLv3, LICENSE.md\n"
+        "  openssl        openssl-3.5.6: LICENSE.txt\n"
+        "  libplacebo     libplacebo-git: LICENSE\n"
+        "  libxml2        libxml2-2.14.6: Copyright\n"
+        "  zlib           zlib-1.3.2: LICENSE\n"
+        "  bzip2          bzip2-1.0.8: LICENSE\n"
+        "  xz             xz-5.8.3: COPYING, COPYING.0BSD, COPYING.GPLv2, COPYING.GPLv3, COPYING.LGPLv2.1\n"
+        "  speexdsp       speexdsp-SpeexDSP-1.2.1: COPYING\n"
+        "  libsmb2        libsmb2: COPYING, LICENCE-LGPL-2.1.txt\n"
+        "  mozilla-ca     the Mozilla CA bundle (MPL-2.0)\n"
+        "\n"
+        "Source: https://github.com/ales-drnz/libmpv-scripts at commit 0c42165066c1014aa8796216f6e6fad5520a68cb\n"
+        "builds this library from the upstream sources below, pinned by SHA-256 (tarballs)\n"
+        "or commit (git tags) in scripts/shared/_sources.sha256, with the patches under\n"
+        "patches/ of that commit:\n"
+        "  ee21092a5ee427353392360929dc64645c54479aefdb5babc5cfbb5fad626209  https://github.com/mpv-player/mpv/archive/refs/tags/v0.41.0.tar.gz\n"
+        "  1b856f26a07082b6879f3e5300d81e8c7ce3b410ade5898b14382d90c2904634  https://ffmpeg.org/releases/ffmpeg-8.1.1.tar.gz\n"
+        "  deae7c80cba99c4b4f940ecadb3c3338b13cb77418409238e57d7f31f2a3b736  https://github.com/openssl/openssl/releases/download/openssl-3.5.6/openssl-3.5.6.tar.gz\n"
+        "  1fd3c7bde7b943fe8985c893310b5269a09b46c5  https://code.videolan.org/videolan/libplacebo.git#v7.349.0\n"
+        "  7ce458a0affeb83f0b55f1f4f9e0e55735dbfc1a9de124ee86fb4a66b597203a  https://download.gnome.org/sources/libxml2/2.14/libxml2-2.14.6.tar.xz\n"
+        "  bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16  https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz\n"
+        "  ab5a03176ee106d3f0fa90e381da478ddae405918153cca248e682cd0c4a2269  https://sourceware.org/pub/bzip2/bzip2-1.0.8.tar.gz\n"
+        "  3d3a1b973af218114f4f889bbaa2f4c037deaae0c8e815eec381c3d546b974a0  https://github.com/tukaani-project/xz/releases/download/v5.8.3/xz-5.8.3.tar.gz\n"
+        "  d17ca363654556a4ff1d02cc13d9eb1fc5a8642c90b40bd54ce266c3807b91a7  https://github.com/xiph/speexdsp/archive/refs/tags/SpeexDSP-1.2.1.tar.gz\n"
+        "  b9444620ba7f26ed216a663bf2282a9427e36c36  https://github.com/sahlberg/libsmb2.git#v6.0.0\n",
+  ),
+  (
+    ["libmpv"],
+    "libmpv r24 for windows-arm64: LGPL-3.0-or-later\n"
         "\n"
         "This build of libmpv is LGPL, version 3 or later (the LGPLv3 is a set of\n"
         "permissions on top of the GPLv3, so both texts are here). It lets an app\n"
@@ -443,7 +572,7 @@ const List<(List<String>, String)> libmpvLicenses = [
         "  libsmb2        libsmb2: COPYING, LICENCE-LGPL-2.1.txt\n"
         "  mozilla-ca     the Mozilla CA bundle (MPL-2.0)\n"
         "\n"
-        "Source: https://github.com/ales-drnz/libmpv-scripts at commit 7bd23a3899383ccfeeed4d94bd848c170234eab0\n"
+        "Source: https://github.com/ales-drnz/libmpv-scripts at commit 0c42165066c1014aa8796216f6e6fad5520a68cb\n"
         "builds this library from the upstream sources below, pinned by SHA-256 (tarballs)\n"
         "or commit (git tags) in scripts/shared/_sources.sha256, with the patches under\n"
         "patches/ of that commit:\n"
@@ -461,7 +590,7 @@ const List<(List<String>, String)> libmpvLicenses = [
   ),
   (
     ["libmpv"],
-    "libmpv r23 for windows-x86_64: LGPL-3.0-or-later\n"
+    "libmpv r24 for windows-x86_64: LGPL-3.0-or-later\n"
         "\n"
         "This build of libmpv is LGPL, version 3 or later (the LGPLv3 is a set of\n"
         "permissions on top of the GPLv3, so both texts are here). It lets an app\n"
@@ -490,7 +619,7 @@ const List<(List<String>, String)> libmpvLicenses = [
         "  libsmb2        libsmb2: COPYING, LICENCE-LGPL-2.1.txt\n"
         "  mozilla-ca     the Mozilla CA bundle (MPL-2.0)\n"
         "\n"
-        "Source: https://github.com/ales-drnz/libmpv-scripts at commit 7bd23a3899383ccfeeed4d94bd848c170234eab0\n"
+        "Source: https://github.com/ales-drnz/libmpv-scripts at commit 0c42165066c1014aa8796216f6e6fad5520a68cb\n"
         "builds this library from the upstream sources below, pinned by SHA-256 (tarballs)\n"
         "or commit (git tags) in scripts/shared/_sources.sha256, with the patches under\n"
         "patches/ of that commit:\n"
