@@ -35,9 +35,11 @@ final class OutsidePauseFollower {
       _paused = policy == InterruptionPolicy.pauseAndResume;
       return 'pause';
     }
-    if (!_paused) return null;
+    // The policy now, not the one of the pause: an app that turned
+    // pauseOnly on since gets no play.
+    final resume = _paused && policy == InterruptionPolicy.pauseAndResume;
     _paused = false;
-    return 'play';
+    return resume ? 'play' : null;
   }
 
   /// Forgets a pause this sent: the session ended, or the user played or
@@ -56,7 +58,9 @@ final class OutsidePauseFollower {
 /// Tells the plays and pauses of the session's `<audio>` element that come
 /// from outside the page's output (the browser, a call, another app) from
 /// the output's own. The output feeds it the element's events, the
-/// context's states and its own calls of `play()`.
+/// context's states and its own calls of `play()`. A play at a gesture of
+/// the page is the output's own; the one at the end of an interruption is
+/// not.
 @internal
 final class OutsideElementWatch {
   // The element plays.
@@ -65,19 +69,33 @@ final class OutsideElementWatch {
   bool _asked = false;
   // Paused from outside, and not played since.
   bool _paused = false;
+  // The context's state, and whether it just ran again after an
+  // interruption: the output's next play() is then the interruption's end.
+  String _state = 'none';
+  bool _interruptionEnded = false;
 
   /// The output routes again: nothing of the element before counts.
-  void reset() => _playing = _asked = _paused = false;
+  void reset() => _playing = _asked = _paused = _interruptionEnded = false;
 
   /// The context's new [state]: whether the output plays the element now.
-  bool onContextState(String state) => state == 'running';
+  ///
+  /// A context that runs again after `interrupted` (iOS: a call, another
+  /// app's sound) is the interruption ending. The browser does not play
+  /// the element again by itself there, the output does: that play counts
+  /// as from outside, so the player resumes under pauseAndResume.
+  bool onContextState(String state) {
+    _interruptionEnded = _state == 'interrupted' && state == 'running';
+    _state = state;
+    return state == 'running';
+  }
 
   /// The output calls `play()` on the element, [elementPaused] before the
   /// call. Only a paused element counts: `play()` on a playing one fires no
   /// `playing`, and a flag left set would take the browser's next play,
   /// after an outside pause, for the output's own.
   void onOutputPlay({required bool elementPaused}) {
-    if (elementPaused) _asked = true;
+    if (elementPaused) _asked = !_interruptionEnded;
+    _interruptionEnded = false;
   }
 
   /// The browser refused that `play()` (no gesture yet).

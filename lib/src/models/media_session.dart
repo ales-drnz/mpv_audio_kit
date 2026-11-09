@@ -99,8 +99,8 @@ class MediaSession {
 
   /// How the player reacts to an OS audio interruption (phone call,
   /// Siri, another app taking focus). Defaults to
-  /// [InterruptionPolicy.pauseAndResume]; honoured on iOS and Android and
-  /// a no-op on macOS, Linux and Windows. See [InterruptionPolicy].
+  /// [InterruptionPolicy.pauseAndResume]; honoured on iOS, Android and the
+  /// web, and a no-op on macOS, Linux and Windows. See [InterruptionPolicy].
   final InterruptionPolicy interruptionPolicy;
 
   // ── Skip intervals ─────────────────────────────────────────────────

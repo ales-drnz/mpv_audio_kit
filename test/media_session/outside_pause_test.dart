@@ -89,6 +89,19 @@ void main() {
     },
   );
 
+  test('a policy changed to pauseOnly during the pause plays nothing', () {
+    final f = OutsidePauseFollower();
+    expect(f.onOutside(elementPlaying: false, playing: true), 'pause');
+    f.policy = InterruptionPolicy.pauseOnly;
+    expect(f.onOutside(elementPlaying: true, playing: false), isNull);
+    f.policy = InterruptionPolicy.pauseAndResume;
+    expect(
+      f.onOutside(elementPlaying: true, playing: false),
+      isNull,
+      reason: 'that pause is over',
+    );
+  });
+
   group('the element watch', () {
     test('a pause of a playing element is an outside pause, once', () {
       final w = OutsideElementWatch();
@@ -142,6 +155,49 @@ void main() {
       w.onPlaying();
       w.onPause();
       w.reset();
+      expect(w.onPlaying(), isFalse);
+    });
+
+    // An interruption (a call on iOS) pauses the element and leaves the
+    // context interrupted; when it ends the context runs again and the
+    // output plays the element. That play is the end of the interruption,
+    // not a gesture of the user's: the player resumes.
+    test('the play at the end of an interruption counts as from outside', () {
+      final w = OutsideElementWatch();
+      w.onContextState('running');
+      w.onOutputPlay(elementPaused: true);
+      w.onPlaying();
+      w.onContextState('interrupted');
+      expect(w.onPause(), isTrue);
+      expect(w.onContextState('running'), isTrue);
+      w.onOutputPlay(elementPaused: true);
+      expect(w.onPlaying(), isTrue);
+    });
+
+    test('the play when a suspended context runs stays the output\'s', () {
+      final w = OutsideElementWatch();
+      w.onContextState('running');
+      w.onOutputPlay(elementPaused: true);
+      w.onPlaying();
+      w.onContextState('suspended');
+      w.onPause();
+      w.onContextState('running');
+      w.onOutputPlay(elementPaused: true);
+      expect(w.onPlaying(), isFalse);
+    });
+
+    test('a gesture\'s play after the interruption ended is the output\'s', () {
+      final w = OutsideElementWatch();
+      w.onContextState('running');
+      w.onOutputPlay(elementPaused: true);
+      w.onPlaying();
+      w.onContextState('interrupted');
+      w.onPause();
+      w.onContextState('running');
+      w.onOutputPlay(elementPaused: true);
+      w.onPlayRefused();
+      // The gesture that follows plays it.
+      w.onOutputPlay(elementPaused: true);
       expect(w.onPlaying(), isFalse);
     });
 

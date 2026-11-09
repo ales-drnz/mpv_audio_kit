@@ -112,7 +112,7 @@ const MediaSession(interruptionPolicy: InterruptionPolicy.keepPlaying);
 ```
 
 - With `keepPlaying`, an accepted call or a voice assistant still takes the audio on iOS. Android 12 and later may fade the app out.
-- On the web the interruption is a pause of the session's `<audio>` element from outside the page (the browser, a call, another app). It ends when the browser plays the element again, which not every browser does.
+- On the web the interruption is a pause of the session's `<audio>` element from outside the page (the browser, a call, another app). It ends when the browser plays the element again, or when the page's audio runs again after an interruption (iOS). Not every browser does either.
 - Unplugging headphones always pauses.
 - On iOS the audio does not mix with other apps. Loading a file stops another app's audio, even with `play: false`.
 

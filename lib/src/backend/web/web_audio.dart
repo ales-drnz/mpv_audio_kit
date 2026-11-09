@@ -320,8 +320,10 @@ final class WebAudioOutput {
 
   /// `false` when the element, playing, is paused from outside the output
   /// (the browser, a call, another app), and `true` when the browser plays
-  /// it again after one. A play of the output itself, at a gesture, sends
-  /// nothing. The media session follows its interruption policy on these.
+  /// it again after one, or the output does when an interruption ends (the
+  /// context runs again after `interrupted`). A play of the output itself
+  /// at a gesture sends nothing. The media session follows its interruption
+  /// policy on these.
   Stream<bool> get outsidePlayback => _outside.stream;
 
   void _playElement() {
