@@ -73,7 +73,7 @@ The build downloads the libmpv binary for each native target and checks its SHA-
 | Linux | glibc 2.31 | aarch64, x86_64 | 8.4 MB |
 | Web | a cross-origin isolated page | wasm32 | 4.3 MB, 2.0 MB zipped |
 
-The package needs Flutter 3.38.10 or later, and Flutter 3.47.4 to build for iOS. Before Flutter 3.41 an app bundles the web module, about 4.6 MB, on every platform. Linux needs ALSA, and uses PipeWire or PulseAudio when they are installed.
+The package needs Flutter 3.38.10 or later, and Flutter 3.47.4 to build for iOS. Linux needs ALSA, and uses PipeWire or PulseAudio when they are installed.
 
 ### Play a file
 
