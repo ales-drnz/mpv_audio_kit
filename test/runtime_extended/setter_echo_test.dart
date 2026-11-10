@@ -47,7 +47,7 @@ void main() {
           () => player.setVolume(42.37),
           42.37,
         );
-        expect(player.state.volume, 42.37);
+        expect(player.state.settings.volume, 42.37);
       });
 
       test('volume gain, a float option', () async {

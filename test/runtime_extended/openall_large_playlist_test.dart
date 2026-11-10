@@ -32,14 +32,14 @@ void main() {
       await player.openAll(medias, play: false, index: n - 1);
       await waitUntil(
         () =>
-            player.state.playlist.items.length == n &&
-            player.state.playlist.index == n - 1,
+            player.state.playback.playlist.items.length == n &&
+            player.state.playback.playlist.index == n - 1,
       );
       watch.stop();
 
       expect(watch.elapsed, lessThan(const Duration(seconds: 5)));
       expect(emits, lessThan(200), reason: 'one playlist report per append');
-      final items = player.state.playlist.items;
+      final items = player.state.playback.playlist.items;
       for (var i = 0; i < n; i += 499) {
         expect(items[i].extras?['i'], i, reason: 'entry $i lost its Media');
       }

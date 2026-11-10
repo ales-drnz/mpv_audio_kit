@@ -45,8 +45,8 @@ void main() {
           // with both entries and the first one current.
           await waitUntil(
             () =>
-                player.state.playlist.items.length == 2 &&
-                player.state.playlist.index == 0,
+                player.state.playback.playlist.items.length == 2 &&
+                player.state.playback.playlist.index == 0,
           );
         },
         timeout: const Timeout(Duration(seconds: 30)),
@@ -54,13 +54,13 @@ void main() {
 
       test('setPrefetchPlaylist(true) flips state.prefetchPlaylist', () async {
         // Default mirrors mpv's own default (false).
-        expect(player.state.prefetchPlaylist, isFalse);
+        expect(player.state.settings.prefetchPlaylist, isFalse);
 
         await player.setPrefetchPlaylist(true);
-        expect(player.state.prefetchPlaylist, isTrue);
+        expect(player.state.settings.prefetchPlaylist, isTrue);
 
         await player.setPrefetchPlaylist(false);
-        expect(player.state.prefetchPlaylist, isFalse);
+        expect(player.state.settings.prefetchPlaylist, isFalse);
       }, timeout: const Timeout(Duration(seconds: 15)));
 
       test(
@@ -138,7 +138,7 @@ void main() {
         ], play: true);
         // The prefetch of the second entry runs while the first plays.
         await waitUntil(
-          () => player.state.playlist.index == 1,
+          () => player.state.playback.playlist.index == 1,
           timeout: const Duration(seconds: 10),
         );
 

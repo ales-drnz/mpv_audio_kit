@@ -12,7 +12,7 @@ mixin _AudioModule on _PlayerBase {
   ///
   /// Takes 0 to 1000. Throws [RangeError] when negative, and
   /// [MpvCommandException] above 1000, which mpv refuses.
-  /// [PlayerState.volumeMax] does not cap this call: it bounds mpv's
+  /// [PlayerSettings.volumeMax] does not cap this call: it bounds mpv's
   /// relative steps (`add`, `cycle`) only. Clamp a slider to it yourself.
   Future<void> setVolume(double volume) async {
     _checkRange(volume, 0, double.maxFinite, 'volume');
@@ -109,7 +109,7 @@ mixin _AudioModule on _PlayerBase {
       preamp: canonicalFloat(requested.preamp),
       fallback: canonicalFloat(requested.fallback),
     );
-    final previous = state.replayGain;
+    final previous = state.settings.replayGain;
     final writes = <(String, String, String)>[
       ('replaygain', settings.mode.mpvValue, previous.mode.mpvValue),
       (
@@ -207,7 +207,7 @@ mixin _AudioModule on _PlayerBase {
   ///
   /// Best-effort: where the driver exposes no volume (iOS, Android, macOS
   /// in exclusive mode, the null AO) the call is silently ignored: it does
-  /// NOT throw, and [PlayerState.systemVolume] stays `null`. On Android the
+  /// NOT throw, and [OutputState.systemVolume] stays `null`. On Android the
   /// app's volume is the system's media volume, which the app sets through
   /// the platform's AudioManager.
   ///
@@ -263,7 +263,7 @@ mixin _AudioModule on _PlayerBase {
   /// Range: 100 to 1000; default 130, mpv's own. It is the top of mpv's
   /// relative volume steps (`add` and `cycle` through
   /// [Player.sendRawCommand]), and a natural top for a volume slider, read
-  /// back from [PlayerState.volumeMax]. It does not cap [setVolume], which
+  /// back from [PlayerSettings.volumeMax]. It does not cap [setVolume], which
   /// takes up to 1000 whatever this value. mpv refuses values outside the
   /// range.
   Future<void> setVolumeMax(double limit) async {
@@ -283,7 +283,7 @@ mixin _AudioModule on _PlayerBase {
   /// (container default or first audio track),
   /// [Track.off] disables audio output entirely, and
   /// [Track.id] selects a specific track by its mpv ID
-  /// (match an entry in [PlayerState.tracks]).
+  /// (match an entry in [FileState.tracks]).
   ///
   /// State updates flow through the `current-tracks/audio` observer
   /// (no optimistic update: mpv may reject an unknown id).
@@ -295,7 +295,7 @@ mixin _AudioModule on _PlayerBase {
   /// Loads an external audio file as an additional selectable track on the
   /// currently-playing file (mpv's `audio-add`), e.g. a separate-language
   /// dub or a commentary track. The new track appears in
-  /// [PlayerState.tracks]; switch to it with [setAudioTrack].
+  /// [FileState.tracks]; switch to it with [setAudioTrack].
   ///
   /// [select] `true` (default) selects the new track immediately; `false`
   /// adds it without switching. [title] and [lang] tag it for the track list.
@@ -355,7 +355,7 @@ mixin _AudioModule on _PlayerBase {
   /// Removes an audio track (mpv's `audio-remove`). Pass [Track.id] to remove
   /// a specific track (typically one added via [addAudioTrack]); [Track.auto]
   /// removes the currently-selected audio track. The track-list observer
-  /// folds the removal back into [PlayerState.tracks].
+  /// folds the removal back into [FileState.tracks].
   ///
   /// [Track.off] is rejected with an [ArgumentError]: mpv's `audio-remove`
   /// takes an optional track id and has no "off" notion, so removing "no
@@ -395,7 +395,7 @@ mixin _AudioModule on _PlayerBase {
   /// It loads only what mpv's auto-load options allow, and the player's
   /// defaults allow none of it: cover images need [setCoverArtAuto], and
   /// companion audio files need mpv's `audio-file-auto`, set with
-  /// [Player.setRawProperty]. What it finds shows in [PlayerState.tracks]
+  /// [Player.setRawProperty]. What it finds shows in [FileState.tracks]
   /// only; a cover image does not reach [PlayerStream.coverArt].
   Future<void> rescanExternalFiles({bool keepSelection = false}) async {
     await _gate();
@@ -410,7 +410,7 @@ mixin _AudioModule on _PlayerBase {
   /// Controls whether mpv automatically loads external cover art files
   /// sitting next to the audio file (e.g. `cover.jpg`) as extra tracks.
   /// See [Cover] for the available variants. A loaded image shows in
-  /// [PlayerState.tracks] with `albumArt` and `externalFilename` set; it
+  /// [FileState.tracks] with `albumArt` and `externalFilename` set; it
   /// does not reach [PlayerStream.coverArt], which carries only embedded
   /// cover bytes, whatever this setting.
   Future<void> setCoverArtAuto(Cover cover) async {
@@ -441,7 +441,7 @@ mixin _AudioModule on _PlayerBase {
   /// changes mid-stream.
   ///
   /// Synchronous: the pipeline is Dart-side, so the new settings are in
-  /// [PlayerState.spectrum] when the call returns, even before the player
+  /// [PlayerSettings.spectrum] when the call returns, even before the player
   /// has finished starting. The pipeline is **lazy**: with no subscriber
   /// to [PlayerStream.fft] or [PlayerStream.pcm] this only stores the
   /// configuration; the poll loop starts on the first subscriber.
@@ -481,6 +481,6 @@ mixin _AudioModule on _PlayerBase {
   /// ));
   /// ```
   void updateSpectrum(SpectrumSettings Function(SpectrumSettings) mapper) {
-    setSpectrum(mapper(_state.spectrum));
+    setSpectrum(mapper(_state.settings.spectrum));
   }
 }

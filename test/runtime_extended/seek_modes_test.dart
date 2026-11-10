@@ -17,11 +17,11 @@ void main() {
       addTearDown(player.dispose);
 
       bool near(int ms, [int tol = 120]) =>
-          (player.state.position.inMilliseconds - ms).abs() <= tol;
+          (player.state.playback.position.inMilliseconds - ms).abs() <= tol;
       // Poll the state snapshot (robust under load) until the seek lands.
       Future<void> waitNear(int ms) => waitUntil(
         () => near(ms),
-        reason: 'expected ~${ms}ms, was ${player.state.position}',
+        reason: 'expected ~${ms}ms, was ${player.state.playback.position}',
       );
 
       await player.seek(const Duration(milliseconds: 600), exact: true);
@@ -39,7 +39,9 @@ void main() {
       final player = await buildPlayerWithFixture(fixturePath: fx);
       addTearDown(player.dispose);
       await player.seek(const Duration(milliseconds: 700), exact: true);
-      await waitUntil(() => player.state.position.inMilliseconds > 600);
+      await waitUntil(
+        () => player.state.playback.position.inMilliseconds > 600,
+      );
       // An app's "back 15 s" near the start: mpv alone counts a negative
       // absolute time from the end of the file.
       final restarted = player.stream.seekCompleted.first.timeout(
@@ -48,8 +50,8 @@ void main() {
       await player.seek(const Duration(milliseconds: -200), exact: true);
       await restarted;
       await waitUntil(
-        () => player.state.position.inMilliseconds < 100,
-        reason: 'expected the start, was ${player.state.position}',
+        () => player.state.playback.position.inMilliseconds < 100,
+        reason: 'expected the start, was ${player.state.playback.position}',
       );
     }, timeout: const Timeout(Duration(seconds: 25)));
   });

@@ -30,11 +30,11 @@ Future<List<String>> _playThrough(List<String> uris) async {
         .openAll([for (final u in uris) Media(u)], play: true)
         .timeout(const Duration(seconds: 10));
     await waitUntil(
-      () => player.state.completed,
+      () => player.state.playback.completed,
       timeout: const Duration(seconds: 12),
       what: 'the end of the playlist',
     );
-    expect(player.state.playlist.index, 1);
+    expect(player.state.playback.playlist.index, 1);
   } finally {
     await player.dispose().timeout(const Duration(seconds: 10));
   }

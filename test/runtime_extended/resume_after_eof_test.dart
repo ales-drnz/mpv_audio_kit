@@ -70,7 +70,7 @@ void main() {
           'no',
           reason: 'a play: true load must not inherit the keep-open pause',
         );
-        expect(player.state.playWhenReady, isTrue);
+        expect(player.state.playback.playWhenReady, isTrue);
       }, timeout: const Timeout(Duration(seconds: 60)));
 
       test(
@@ -125,13 +125,13 @@ void main() {
           await waitUntil(
             () async =>
                 await player.getRawProperty('pause') == 'no' &&
-                player.state.playing &&
-                !player.state.completed,
+                player.state.playback.playing &&
+                !player.state.playback.completed,
             reason: 'play() at the end must play, not only show pause',
           );
-          expect(player.state.playWhenReady, isTrue);
+          expect(player.state.playback.playWhenReady, isTrue);
           expect(
-            player.state.position,
+            player.state.playback.position,
             lessThan(const Duration(seconds: 4)),
             reason: 'the last track starts again from its beginning',
           );

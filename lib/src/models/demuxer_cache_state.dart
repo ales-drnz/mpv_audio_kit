@@ -29,8 +29,8 @@ final class CacheRange {
 
 /// Rich snapshot of mpv's `demuxer-cache-state`: the parts useful to an
 /// audio UI streaming over the network. Complements the scalar
-/// [PlayerState.bufferingPercentage] and [PlayerState.bufferDuration] with the
-/// structured cache picture.
+/// [NetworkState.bufferingPercentage] and [NetworkState.bufferDuration] with
+/// the structured cache picture.
 ///
 /// All fields are empty, `false` or `null` for directly-seekable local files
 /// (mpv only populates the cache state for network or cached sources).
@@ -40,7 +40,7 @@ final class DemuxerCacheState {
   final List<CacheRange> seekableRanges;
 
   /// Actual input (download) rate in bytes per second, or `null` when not
-  /// reading over the network. Distinct from [PlayerState.cacheSpeed] (the
+  /// reading over the network. Distinct from [NetworkState.cacheSpeed] (the
   /// cache fill rate); this is the raw stream read rate.
   final double? rawInputRate;
 
@@ -52,7 +52,7 @@ final class DemuxerCacheState {
   final bool bofCached;
 
   /// Whether the demuxer is currently starved (read faster than the network
-  /// delivers). Complements [PlayerState.pausedForCache].
+  /// delivers). Complements [NetworkState.pausedForCache].
   final bool underrun;
 
   /// Creates a cache-state snapshot; defaults model an inactive cache.

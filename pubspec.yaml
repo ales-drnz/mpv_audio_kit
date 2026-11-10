@@ -1,16 +1,21 @@
 name: mpv_audio_kit
-description: Dart audio player built on mpv v0.41.0. Supports audio filters, equalizer, visualizer, waveform and more. Targets macOS, Windows, Linux, iOS, Android, TVs and the web.
-version: 0.6.4
+description: Dart audio player built on mpv v0.41.0, with audio filters, equalizer, visualizer and waveform. For Android, iOS, macOS, Windows, Linux, web, Android TV, tvOS, Tizen and webOS.
+version: 0.7.0
 homepage: https://github.com/ales-drnz/mpv_audio_kit
 repository: https://github.com/ales-drnz/mpv_audio_kit
 issue_tracker: https://github.com/ales-drnz/mpv_audio_kit/issues
+documentation: https://pub.dev/documentation/mpv_audio_kit/latest/topics/Playback-topic.html
+
+funding:
+  - https://www.patreon.com/cw/ales_drnz
+  - https://www.buymeacoffee.com/ales.drnz
 
 topics:
-  - cross-platform
+  - audio
   - audio-player
-  - libmpv
+  - music
   - ffmpeg
-  - dsp
+  - tv
 
 platforms:
   android:
@@ -26,7 +31,9 @@ screenshots:
 
 environment:
   sdk: ^3.10.0
-  flutter: '>=3.41.0'
+  # 3.38.10 is the Flutter of flutter-webOS. Before 3.41 the web/ assets
+  # below ship on every platform, as `platforms` is not read there.
+  flutter: '>=3.38.10'
 
 dependencies:
   code_assets: '>=1.1.0 <3.0.0'
@@ -80,6 +87,10 @@ flutter:
       web:
         pluginClass: MpvAudioKitWeb
         fileName: src/web/mpv_audio_kit_web.dart
+      # flutter-webos (https://github.com/lg-flutter-webos/flutter-webos)
+      # runs no build hook: webos/CMakeLists.txt bundles libmpv.
+      webos:
+        ffiPlugin: true
       windows:
         pluginClass: MpvAudioKitPluginCApi
         ffiPlugin: true

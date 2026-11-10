@@ -78,7 +78,7 @@ void main() {
         await Future<void>.delayed(const Duration(seconds: 2));
 
         expect(
-          player.state.path,
+          player.state.file.path,
           plainPathB,
           reason:
               'open(B) was issued last, so B must be the loaded file. '

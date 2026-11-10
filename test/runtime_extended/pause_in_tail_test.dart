@@ -41,7 +41,7 @@ void main() {
             // output froze at the pause, a few ms; then it stays.
             await Future<void>.delayed(const Duration(milliseconds: 50));
             final at = await player.getRawProperty('time-pos');
-            final duration = player.state.duration;
+            final duration = player.state.playback.duration;
             await Future<void>.delayed(const Duration(milliseconds: 500));
             expect(
               await player.getRawProperty('time-pos'),
@@ -49,7 +49,7 @@ void main() {
               reason: 'the pause in the tail let the output play on',
             );
             expect(
-              player.state.completed,
+              player.state.playback.completed,
               isFalse,
               reason: 'a pause in the tail is no end of content',
             );
@@ -61,7 +61,7 @@ void main() {
             );
             await player.play();
             await waitUntil(
-              () => player.state.completed,
+              () => player.state.playback.completed,
               reason: 'the rest never played to the park',
             );
             final end = double.parse(

@@ -82,20 +82,22 @@ void main() {
           .any((s) => s != AudioOutputState.active);
       // ignore: avoid_print
       print(
-        '[f278] kill seen at ${player.state.position}, states $states, '
+        '[f278] kill seen at ${player.state.playback.position}, states $states, '
         '${reloaded ? 'reloaded' : 'no stop yet'}',
       );
 
       // Back: the output active again, and the position past where it was.
-      final stopAt = player.state.position;
+      final stopAt = player.state.playback.position;
       final back = DateTime.now().add(const Duration(seconds: 20));
-      while (!(player.state.audioOutputState == AudioOutputState.active &&
-          player.state.position > stopAt + const Duration(seconds: 1))) {
+      while (!(player.state.output.audioOutputState ==
+              AudioOutputState.active &&
+          player.state.playback.position >
+              stopAt + const Duration(seconds: 1))) {
         if (DateTime.now().isAfter(back)) {
           fail(
             'the output did not come back: state '
-            '${player.state.audioOutputState}, position '
-            '${player.state.position} (stopped at $stopAt), states $states',
+            '${player.state.output.audioOutputState}, position '
+            '${player.state.playback.position} (stopped at $stopAt), states $states',
           );
         }
         await Future<void>.delayed(const Duration(milliseconds: 100));

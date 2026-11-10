@@ -102,7 +102,7 @@ void main() {
           .firstWhere((ao) => ao == 'audiotrack')
           .timeout(const Duration(seconds: 10));
       await Future<void>.delayed(const Duration(seconds: 1));
-      expect(player.state.playWhenReady, isTrue);
+      expect(player.state.playback.playWhenReady, isTrue);
       final cpu = await threadCpuOver(audiotrackThread, _window);
       expect(cpu, lessThan(_restingCpu), reason: 'dry, it used $cpu');
       await source.close();

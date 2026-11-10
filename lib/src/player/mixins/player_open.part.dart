@@ -27,7 +27,7 @@ mixin _OpenModule on _PlayerBase, _FfiModule {
     // order instead of racing this write past the I/O hops. mpv leaves
     // `pause` at `no` and fires no PROPERTY_CHANGE on the first autoplay
     // load, so the observer alone would never surface this intent.
-    final previousIntent = _state.playWhenReady;
+    final previousIntent = _state.playback.playWhenReady;
     final intent = _transport.claimIntent(shouldPlay);
     _mediaCache.clear();
     _mediaCache[media.uri] = media;
@@ -130,7 +130,7 @@ mixin _OpenModule on _PlayerBase, _FfiModule {
     final shouldPlay = play ?? configuration.autoPlay;
     // Optimistic intent written at the call point, before the resolve and tls
     // awaits below; see [Player.open] for the rationale.
-    final previousIntent = _state.playWhenReady;
+    final previousIntent = _state.playback.playWhenReady;
     final intent = _transport.claimIntent(shouldPlay);
     _keepOutgoingMedia();
     // Resolved once per media ([_resolveAll]). Each source is released on
@@ -208,7 +208,7 @@ mixin _OpenModule on _PlayerBase, _FfiModule {
   /// transition of an [Player.openAll] (retained until the post-jump
   /// remove).
   void _keepOutgoingMedia() {
-    final old = _state.playlist;
+    final old = _state.playback.playlist;
     final index = old.index;
     _mediaCache.clear();
     if (index < 0 || index >= old.items.length) return;
@@ -410,7 +410,7 @@ mixin _OpenModule on _PlayerBase, _FfiModule {
     final shouldPlay = play ?? configuration.autoPlay;
     // Optimistic intent written at the call point: same rationale as
     // [Player.open].
-    final previousIntent = _state.playWhenReady;
+    final previousIntent = _state.playback.playWhenReady;
     final intent = _transport.claimIntent(shouldPlay);
     _mediaCache.clear();
     final OwnedSource source;

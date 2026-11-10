@@ -40,7 +40,7 @@ void main() {
         } on StateError {
           // The session is still free: a null is allowed anywhere.
           await player.setMediaSession(null);
-          return 'StateError, mediaSession ${player.state.mediaSession}';
+          return 'StateError, mediaSession ${player.state.settings.mediaSession}';
         } finally {
           await player.dispose();
         }
@@ -78,7 +78,7 @@ void main() {
           player.setMediaSession(const MediaSession()),
           throwsA(isA<FormatException>()),
         );
-        expect(player.state.mediaSession, isNull);
+        expect(player.state.settings.mediaSession, isNull);
         expect(calls.last, 'disable', reason: 'calls: $calls');
 
         // No controller is left to push the next change.

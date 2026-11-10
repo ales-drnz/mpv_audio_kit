@@ -38,7 +38,7 @@ void main() {
       );
       await Future.wait([f1, f2]);
 
-      final effects = player.state.audioEffects;
+      final effects = player.state.settings.audioEffects;
       expect(
         effects.whereType<BassEffect>(),
         hasLength(1),

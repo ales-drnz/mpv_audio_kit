@@ -84,7 +84,7 @@ void main() {
         );
         await Future<void>.delayed(const Duration(milliseconds: 100));
         expect(
-          player.state.completed,
+          player.state.playback.completed,
           isFalse,
           reason: 'the shim must hide the park from completed',
         );
@@ -165,7 +165,7 @@ void main() {
               'the parked entry must leave before the appends, or mpv '
               'advances into the new entry 0 ($started)',
         );
-        expect(player.state.playlist.items.length, 2);
+        expect(player.state.playback.playlist.items.length, 2);
       });
 
       test('play() from an unseen park starts the track again', () async {
@@ -174,11 +174,11 @@ void main() {
         await waitUntil(
           () async =>
               await player.getRawProperty('pause') == 'no' &&
-              player.state.playing,
+              player.state.playback.playing,
           reason: 'play() at an unseen park must play',
         );
         expect(
-          player.state.position,
+          player.state.playback.position,
           lessThan(const Duration(seconds: 4)),
           reason: 'the last track starts again from its beginning',
         );
@@ -230,7 +230,7 @@ void main() {
           );
           expect(completions, contains(false), reason: 'the read saw no park');
           await waitUntil(
-            () => player.state.completed,
+            () => player.state.playback.completed,
             timeout: const Duration(seconds: 2),
             reason: 'the park must be read again',
           );
@@ -251,7 +251,7 @@ void main() {
         await player.open(Media(longFixture), play: true);
         await parked;
         await Future<void>.delayed(const Duration(milliseconds: 300));
-        expect(player.state.playWhenReady, isFalse);
+        expect(player.state.playback.playWhenReady, isFalse);
         final completions = <bool>[];
         final sub = player.stream.completed.skip(1).listen(completions.add);
         addTearDown(sub.cancel);
@@ -262,19 +262,19 @@ void main() {
           () async =>
               await player.getRawProperty('eof-reached') == 'yes' &&
               await player.getRawProperty('pause') == 'yes' &&
-              player.state.position > const Duration(seconds: 4),
+              player.state.playback.position > const Duration(seconds: 4),
           timeout: const Duration(seconds: 10),
           reason: 'mpv never parked at the end again',
         );
         await Future<void>.delayed(const Duration(milliseconds: 300));
-        expect(player.state.completed, isTrue);
+        expect(player.state.playback.completed, isTrue);
         expect(
           completions,
           containsAllInOrder([false, true]),
           reason: 'the seek left the park and the play parked again',
         );
         expect(
-          player.state.playWhenReady,
+          player.state.playback.playWhenReady,
           isFalse,
           reason: 'the intent of play() ends at the new park',
         );
@@ -293,7 +293,7 @@ void main() {
         await player.openAll(uris.map(Media.new).toList(), play: true);
         await waitUntil(
           () async =>
-              player.state.completed &&
+              player.state.playback.completed &&
               await player.getRawProperty('playlist-pos') ==
                   '${uris.length - 1}',
           timeout: const Duration(seconds: 10),
@@ -301,7 +301,7 @@ void main() {
         );
         // The reads the park itself started are done by then.
         await Future<void>.delayed(const Duration(milliseconds: 300));
-        expect(player.state.playWhenReady, isFalse);
+        expect(player.state.playback.playWhenReady, isFalse);
         expect(await player.getRawProperty('seekable'), 'yes');
         return empty.path;
       }
@@ -324,9 +324,9 @@ void main() {
         );
         // The reads keep-open's pause can still start.
         await Future<void>.delayed(const Duration(milliseconds: 300));
-        expect(player.state.completed, isTrue);
-        expect(player.state.playWhenReady, isFalse, reason: why);
-        expect(player.state.playing, isFalse);
+        expect(player.state.playback.completed, isTrue);
+        expect(player.state.playback.playWhenReady, isFalse, reason: why);
+        expect(player.state.playback.playing, isFalse);
       }
 
       // play() at the park of an entry with no audio frames: its seek back
@@ -422,11 +422,14 @@ void main() {
         await waitUntil(
           () async =>
               await player.getRawProperty('pause') == 'no' &&
-              player.state.playing,
+              player.state.playback.playing,
           reason: 'play() at the park must play',
         );
-        expect(player.state.playWhenReady, isTrue);
-        expect(player.state.position, lessThan(const Duration(seconds: 4)));
+        expect(player.state.playback.playWhenReady, isTrue);
+        expect(
+          player.state.playback.position,
+          lessThan(const Duration(seconds: 4)),
+        );
       });
 
       // play() at a park while a seek to the end, called just before it, is
@@ -443,7 +446,7 @@ void main() {
         await player.play();
         await waitUntil(
           () async =>
-              player.state.completed &&
+              player.state.playback.completed &&
               await player.getRawProperty('eof-reached') == 'yes' &&
               await player.getRawProperty('pause') == 'yes',
           timeout: const Duration(seconds: 10),
@@ -451,7 +454,7 @@ void main() {
         );
         // The reads the park itself started are done by then.
         await Future<void>.delayed(const Duration(milliseconds: 300));
-        expect(player.state.playWhenReady, isFalse);
+        expect(player.state.playback.playWhenReady, isFalse);
         final completions = recordCompletions();
         shim()
           ..holdRequest('seek')
@@ -487,18 +490,21 @@ void main() {
         await waitUntil(
           () async =>
               await player.getRawProperty('pause') == 'no' &&
-              player.state.playing,
+              player.state.playback.playing,
           reason: 'play() at the park must play',
         );
         // The reads of the restart of play()'s seek.
         await Future<void>.delayed(const Duration(milliseconds: 300));
-        expect(player.state.playing, isTrue);
+        expect(player.state.playback.playing, isTrue);
         expect(
-          player.state.playWhenReady,
+          player.state.playback.playWhenReady,
           isTrue,
           reason: 'playing from the start: the intent of play() stands',
         );
-        expect(player.state.position, lessThan(const Duration(seconds: 2)));
+        expect(
+          player.state.playback.position,
+          lessThan(const Duration(seconds: 2)),
+        );
       });
 
       group('a park reached while a load runs', () {
@@ -520,17 +526,17 @@ void main() {
         // replaces it, and plays.
         test('keeps the intent of the load', () async {
           await player.open(Media(fixturePath), play: true);
-          await waitUntil(() => player.state.playing);
+          await waitUntil(() => player.state.playback.playing);
           final completions = recordCompletions();
           await player.open(const Media('slow://1500'), play: true);
           expect(completions, contains(true), reason: 'no park in the load');
           await waitUntil(
             () async =>
                 await player.getRawProperty('pause') == 'no' &&
-                player.state.playing,
+                player.state.playback.playing,
             reason: 'the load must play',
           );
-          expect(player.state.playWhenReady, isTrue);
+          expect(player.state.playback.playWhenReady, isTrue);
         });
 
         // A clearPlaylist() that keeps the parked entry supersedes the load
@@ -538,21 +544,21 @@ void main() {
         // the intent once the load is over.
         test('spends the intent when the load is superseded', () async {
           await player.open(Media(fixturePath), play: true);
-          await waitUntil(() => player.state.playing);
+          await waitUntil(() => player.state.playback.playing);
           final load = player.open(const Media('slow://2500'), play: true);
           await waitUntil(
-            () => player.state.completed,
+            () => player.state.playback.completed,
             reason: 'the 1 s track never parked',
           );
           expect(
-            player.state.playWhenReady,
+            player.state.playback.playWhenReady,
             isTrue,
             reason: 'the park waits for the load',
           );
           await player.clearPlaylist(keepCurrent: true);
           await load;
-          expect(player.state.completed, isTrue);
-          expect(player.state.playWhenReady, isFalse);
+          expect(player.state.playback.completed, isTrue);
+          expect(player.state.playback.playWhenReady, isFalse);
         });
       });
 
@@ -581,30 +587,30 @@ void main() {
         'a loop toggled at a park does not spend its intent again',
         () async {
           await player.open(Media(longFixture), play: true);
-          await waitUntil(() => player.state.playing);
+          await waitUntil(() => player.state.playback.playing);
           shim().set('freeze_park', 1);
           await player.setLoop(Loop.file);
           await player.setLoop(Loop.off);
           await waitUntil(
-            () => player.state.completed,
+            () => player.state.playback.completed,
             timeout: const Duration(seconds: 2),
             reason: 'the read must find the park',
           );
-          expect(player.state.playWhenReady, isFalse);
+          expect(player.state.playback.playWhenReady, isFalse);
           await player.play();
-          expect(player.state.playWhenReady, isTrue);
+          expect(player.state.playback.playWhenReady, isTrue);
           final completions = recordCompletions();
           await player.setLoop(Loop.file);
-          await waitUntil(() => !player.state.completed);
+          await waitUntil(() => !player.state.playback.completed);
           await player.setLoop(Loop.off);
           await waitUntil(
-            () => player.state.completed,
+            () => player.state.playback.completed,
             timeout: const Duration(seconds: 2),
             reason: 'the read must find the park again',
           );
           await Future<void>.delayed(const Duration(milliseconds: 200));
           expect(completions, [false, true]);
-          expect(player.state.playWhenReady, isTrue);
+          expect(player.state.playback.playWhenReady, isTrue);
           expect(await player.getRawProperty('pause'), 'no');
         },
       );
@@ -632,7 +638,11 @@ void main() {
             play: true,
           );
           await parked;
-          expect(player.state.readError, isTrue, reason: server.describe());
+          expect(
+            player.state.network.readError,
+            isTrue,
+            reason: server.describe(),
+          );
           // kit-core-4: the new value comes with completed, as at any end.
           final completions = <bool>[];
           final sub = player.stream.completed.listen(completions.add);
@@ -652,12 +662,12 @@ void main() {
             reason: 'mpv never parked at the real end (${server.describe()})',
           );
           expect(
-            player.state.completed,
+            player.state.playback.completed,
             isTrue,
             reason: 'parked at the real end',
           );
           await waitUntil(
-            () => player.state.readError == false,
+            () => player.state.network.readError == false,
             reason: 'the park at the real end reads how it ended again',
           );
           expect(completions, [

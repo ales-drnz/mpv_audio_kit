@@ -111,7 +111,7 @@ jobs:
       fail-fast: false
       matrix:
         # The declared floor and the current stable.
-        flutter: ['3.41.x', 'any']
+        flutter: ['3.38.x', 'any']
     steps:
       - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
@@ -192,6 +192,11 @@ jobs:
             git diff -- lib/src/generated | head -100
             exit 1
           fi
+      # The API docs pub.dev builds: no reference that does not resolve.
+      - name: API docs
+        run: |
+          flutter pub get
+          bash test/docs/dartdoc_test.sh
       - name: Red and green of the fix commits
         id: trailers
         env:

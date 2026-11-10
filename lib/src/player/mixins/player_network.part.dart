@@ -22,7 +22,7 @@ mixin _NetworkModule on _PlayerBase {
   /// a new `pause` holds only until that entry ends.
   Future<void> setCache(CacheSettings settings) async {
     await _gate();
-    final previous = state.cache;
+    final previous = state.settings.cache;
     final writes = <(String, String, String)>[
       ('cache', settings.mode.mpvValue, previous.mode.mpvValue),
       (
@@ -103,7 +103,7 @@ mixin _NetworkModule on _PlayerBase {
   /// The longest timeout is 2147.483647 seconds (about 36 minutes): FFmpeg
   /// keeps it as a 32-bit count of microseconds, and a longer one would
   /// fail every network open. A longer [timeout] is capped there, in mpv
-  /// and in [PlayerState.networkTimeout] alike.
+  /// and in [PlayerSettings.networkTimeout] alike.
   ///
   /// For `smb2://` sources, with [Duration.zero] the connection gets 30
   /// seconds, with no limit on the reads after it, and a stop, a track
@@ -209,7 +209,7 @@ mixin _NetworkModule on _PlayerBase {
   /// `await player.setDemuxer(state.demuxer.copyWith(maxBackBytes: 0))`.
   Future<void> setDemuxer(DemuxerSettings settings) async {
     await _gate();
-    final previous = state.demuxer;
+    final previous = state.settings.demuxer;
     final writes = <(String, String, String)>[
       (
         'demuxer-max-bytes',

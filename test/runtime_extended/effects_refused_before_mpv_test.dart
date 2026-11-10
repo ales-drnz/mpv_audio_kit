@@ -43,7 +43,7 @@ void main() {
         player.setAudioEffects([...accepted, unsafe]),
         throwsArgumentError,
       );
-      expect(player.state.audioEffects, accepted);
+      expect(player.state.settings.audioEffects, accepted);
       expect(await player.getRawProperty('af'), af);
     });
 
@@ -54,7 +54,7 @@ void main() {
         player.updateAudioEffects((fx) => [...fx, unsafe]),
         throwsArgumentError,
       );
-      expect(player.state.audioEffects, accepted);
+      expect(player.state.settings.audioEffects, accepted);
       expect(await player.getRawProperty('af'), af);
     });
 
@@ -71,7 +71,7 @@ void main() {
       // The check runs with the others, before the state: the state and
       // its stream never show the list, not even while mpv answers.
       await expectLater(player.setAudioEffects(refused), throwsArgumentError);
-      expect(player.state.audioEffects, accepted);
+      expect(player.state.settings.audioEffects, accepted);
       await Future<void>.delayed(Duration.zero);
       await sub.cancel();
       expect(seen, isNot(contains(refused)));

@@ -6,9 +6,14 @@
 /// Siri, an alarm, or another app taking audio focus. Set via
 /// [MediaSession.interruptionPolicy].
 ///
-/// **Platform reach:** honoured on iOS (`AVAudioSession`) and Android
-/// (audio focus). macOS, Linux and Windows have no per-app audio session,
-/// so the policy is a no-op there; the OS arbitrates routing itself.
+/// **Platform reach:** honoured on iOS (`AVAudioSession`), Android (audio
+/// focus) and the web, where the interruption is a pause of the media
+/// session's `<audio>` element from outside the page's output (the
+/// browser, a call, another app) and the end of it the browser playing
+/// that element again, or the page's audio running again after an
+/// interruption (iOS). macOS, Linux and Windows have no per-app audio
+/// session, so the policy is a no-op there; the OS arbitrates routing
+/// itself.
 ///
 /// Under every policy the player keeps playing when another app asks it
 /// to duck, such as a navigation prompt: Android 8 and later lower the

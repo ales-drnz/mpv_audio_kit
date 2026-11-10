@@ -19,6 +19,7 @@ final Map<String, Stream<Object?> Function(PlayerStream s)> playerStreams = {
   'position': (s) => s.position,
   'seekCompleted': (s) => s.seekCompleted,
   'duration': (s) => s.duration,
+  'durationEstimated': (s) => s.durationEstimated,
   'volume': (s) => s.volume,
   'rate': (s) => s.rate,
   'pitch': (s) => s.pitch,

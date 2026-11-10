@@ -41,7 +41,7 @@ void main() {
       EqualizerEffect(frequency: 1000, gain: 3),
     ]);
     await player.open(Media(long), play: true);
-    await waitUntil(() => player.state.playing, what: 'playing');
+    await waitUntil(() => player.state.playback.playing, what: 'playing');
     // Registered while the chain plays, then continued at each load.
     await player.registerHook(Hook.unload, timeout: const Duration(seconds: 1));
     final hooks = player.stream.hook.listen((e) => player.continueHook(e.id));
@@ -51,7 +51,7 @@ void main() {
       await player.add(Media(short));
       await player.next();
       await waitUntil(
-        () => player.state.playlist.index == i + 1,
+        () => player.state.playback.playlist.index == i + 1,
         what: 'entry ${i + 1}',
       );
     }

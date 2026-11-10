@@ -52,9 +52,22 @@ class DefaultPropertyReactives {
     Duration.zero,
   );
 
-  /// Total duration of the current file (`duration`).
+  /// Total duration of the current file (`duration`, or the entry's
+  /// duration hint over an estimated one).
   final ReactiveProperty<Duration> duration = ReactiveProperty<Duration>(
     Duration.zero,
+  );
+
+  /// Whether [duration] is an estimate from the bitrate
+  /// (`duration-estimated`, with no hint to replace it).
+  final ReactiveProperty<bool> durationEstimated = ReactiveProperty<bool>(
+    false,
+  );
+
+  /// mpv's own `duration-estimated`, before the hint: the cell of its spec,
+  /// which sets [duration] and [durationEstimated] from it. Not a stream.
+  final ReactiveProperty<bool> mpvDurationEstimated = ReactiveProperty<bool>(
+    false,
   );
 
   /// Absolute timestamp in the file the demuxer has buffered up to

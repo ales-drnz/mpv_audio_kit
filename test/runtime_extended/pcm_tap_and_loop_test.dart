@@ -137,10 +137,10 @@ void main() {
               .timeout(const Duration(seconds: 6), onTimeout: () => false);
           await player.open(source.toMedia(), play: true);
           expect(await parked, isTrue, reason: 'the entry never ended');
-          final at = player.state.position;
+          final at = player.state.playback.position;
           await Future<void>.delayed(const Duration(milliseconds: 500));
-          expect(player.state.position, at, reason: 'it plays on');
-          expect(player.state.playing, isFalse);
+          expect(player.state.playback.position, at, reason: 'it plays on');
+          expect(player.state.playback.playing, isFalse);
           expect(seekErrors, 0, reason: 'mpv tried to loop a live source');
         }, timeout: const Timeout(Duration(seconds: 30)));
 
@@ -154,8 +154,8 @@ void main() {
               .timeout(const Duration(seconds: 6), onTimeout: () => false);
           await player.open(source.toMedia(), play: true);
           expect(await completed, isTrue, reason: 'no completed at the park');
-          expect(player.state.loop, Loop.file);
-          expect(player.state.playWhenReady, isFalse);
+          expect(player.state.playback.loop, Loop.file);
+          expect(player.state.playback.playWhenReady, isFalse);
         }, timeout: const Timeout(Duration(seconds: 30)));
 
         test('and the next entry follows', () async {

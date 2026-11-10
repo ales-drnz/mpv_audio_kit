@@ -179,7 +179,7 @@ mixin _PlaylistModule on _PlayerBase {
     // unobserved, so skipping the write here would leave
     // `state.playWhenReady` (and the OS play-pause button bound to it)
     // stuck on "paused" while audio is audibly playing.
-    final previous = _state.playWhenReady;
+    final previous = _state.playback.playWhenReady;
     final intent = _transport.claimIntent(true);
     try {
       if (await _checkPlaylistIndex(index, 'index') == null) return;
@@ -336,7 +336,7 @@ mixin _PlaylistModule on _PlayerBase {
     // The kept entry keeps its Media, under every URI it is cached by: the
     // source resolver looks it up there when the entry loads again (a
     // playlist loop).
-    final playlist = _state.playlist;
+    final playlist = _state.playback.playlist;
     final current = keepCurrent && playlist.index >= 0
         ? playlist.items.elementAtOrNull(playlist.index)
         : null;
@@ -359,7 +359,7 @@ mixin _PlaylistModule on _PlayerBase {
   /// the second write fails the first is rolled back so the consumer
   /// never observes a half-applied loop mode.
   ///
-  /// Turned on once the queue has ended ([PlayerState.completed]), a loop
+  /// Turned on once the queue has ended ([PlaybackState.completed]), a loop
   /// rewinds: [Loop.file] seeks the track to its start, [Loop.playlist]
   /// moves to the first entry, and both stay paused, since the play
   /// intent was spent at the end. Call [Player.play] to start again.
@@ -367,7 +367,7 @@ mixin _PlaylistModule on _PlayerBase {
     await _gate();
     String loopFile(Loop l) => l == Loop.file ? 'inf' : 'no';
     String loopPlaylist(Loop l) => l == Loop.playlist ? 'inf' : 'no';
-    final previous = state.loop;
+    final previous = state.playback.loop;
     // Write the option that turns on first: going from file to playlist,
     // `loop-file=no` first would echo a passing Loop.off.
     final writes = [

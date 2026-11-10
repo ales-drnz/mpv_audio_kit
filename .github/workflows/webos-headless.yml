@@ -1,0 +1,211 @@
+name: webOS headless
+
+# The kit as a webOS TV runs it, without a TV: LG has no emulator for native
+# apps. An app built with flutter-webos and LG's webOS NDK, with the
+# libmpv_webos-armv7l.so of a libmpv-scripts Build, is taken out of its IPK
+# and run under qemu-arm on the NDK's sysroot (the TVs' glibc 2.39 and
+# alsa-lib). Its own engine, AOT code, plugin library and Dart run as on
+# the TV; .github/webos/mak_headless_embedder.c drives the engine through
+# Flutter's embedder API in place of the runner, which needs the TV's
+# compositor. ALSA's default device writes to a file: the app plays an
+# asset, writes MAK_WEBOS_RESULT to the log, and check_tone.py finds the
+# 440 Hz sine in what ao_alsa wrote. Not covered: the TV's sandbox and its
+# sound server.
+#
+# The NDK's licence allows it on our machines only, the runner included:
+# it is installed from LG's release at its checksum and never stored.
+#
+# Runs on the release branches when what a webOS app bundles changes, and by
+# hand, on any branch, with the libmpv-scripts Build to try. A branch named
+# wip/<something>-tv runs it too, at a push that changes one of the paths
+# below: GitHub starts a workflow by hand only once it is on the default
+# branch.
+on:
+  push:
+    branches: ['release/**', 'wip/*-tv']
+    paths:
+      - 'webos/**'
+      - 'lib/**'
+      - 'pubspec.yaml'
+      - 'scripts/ci/resolve_libmpv_run.sh'
+      - 'test/fixtures/sine_5s.flac'
+      - '.github/webos/**'
+      - '.github/workflows/webos-headless.yml'
+  workflow_dispatch:
+    inputs:
+      libmpv_scripts_run:
+        description: 'libmpv-scripts Build run id to take libmpv from, instead of the pinned release'
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  # A libmpv-scripts Build to take libmpv from, by hand. Empty: the pinned
+  # release when it is published, else the latest Build of its release
+  # branch, as ci.yml does (scripts/ci/resolve_libmpv_run.sh).
+  LIBMPV_SCRIPTS_RUN: ${{ inputs.libmpv_scripts_run || vars.LIBMPV_SCRIPTS_RUN }}
+  FLUTTER_WEBOS_REF: 950398131830e9bd5dc91e588c3db8f5c42322be
+  WEBOS_NDK_VERSION: '11.2.0'
+  WEBOS_NDK_SHA256: 3c93af87505a8771d5662cc4a15b596d46791e3c7d8a0cb9113fa8e846e15a42
+  # Flutter's embedder.h at the framework revision of flutter-webos 3.38.10.
+  FLUTTER_REV: c6f67dede3d4aa1aa7a69dd56a3494a5cde6cc80
+  EMBEDDER_H_SHA256: 6a517e6e2746d1018d238ddf84a11eb91b73ce16c715c40fa0e6f9c501c4218b
+  # fontconfig, which the engine links and the NDK lacks: Debian bookworm's
+  # armel packages (the soft-float calling convention, glibc 2.36).
+  DEBIAN_IMAGE: debian@sha256:268fb24c39bca92d326dd83ea3abebe4a3f7751c804ffef23bb6d857dd343ff8
+
+jobs:
+  tv:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: kit
+      # ares 3.2.6, which packs the IPK, asks for Node 20.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '20'
+      - name: Packages of LG's getting-started guide, and qemu-user
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl unzip cmake pkg-config file libgtk-3-0 libgtk-3-dev \
+            git ninja-build clang git-lfs make xz-utils qemu-user-static
+          npm install -g @webos-tools/cli@3.2.6
+      - name: webOS NDK
+        run: |
+          ndk="webos-ndk-flutter-starfish-x86_64-ca9v1-$WEBOS_NDK_VERSION.sh"
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/$ndk" \
+            "https://github.com/lg-flutter-webos/ndk/releases/download/$WEBOS_NDK_VERSION/$ndk"
+          echo "$WEBOS_NDK_SHA256  $RUNNER_TEMP/$ndk" | sha256sum -c -
+          sh "$RUNNER_TEMP/$ndk" -y -d "$RUNNER_TEMP/webos-ndk"
+          rm "$RUNNER_TEMP/$ndk"
+          sysroot="$RUNNER_TEMP/webos-ndk/sysroots/ca9v1-webosmllib32-linux-gnueabi"
+          # A merged /usr: the loader the binaries name is /lib/ld-linux.so.3.
+          ln -s usr/lib "$sysroot/lib"
+          echo "WEBOS_SYSROOT=$sysroot" >> "$GITHUB_ENV"
+          echo "WEBOS_FLUTTER_NDK_ENV=$RUNNER_TEMP/webos-ndk/environment-setup-ca9v1-webosmllib32-linux-gnueabi" >> "$GITHUB_ENV"
+      - name: flutter-webos
+        run: |
+          git clone -q https://github.com/lg-flutter-webos/flutter-webos "$RUNNER_TEMP/flutter-webos"
+          git -C "$RUNNER_TEMP/flutter-webos" checkout -q "$FLUTTER_WEBOS_REF"
+          echo "$RUNNER_TEMP/flutter-webos/bin" >> "$GITHUB_PATH"
+          # The engine artifacts come from GitHub releases, which sometimes
+          # answer 5xx: what was downloaded stays cached between tries.
+          for i in 1 2 3; do
+            "$RUNNER_TEMP/flutter-webos/bin/flutter-webos" precache -f && break
+            echo "precache failed, try $i"; sleep 30
+          done
+          "$RUNNER_TEMP/flutter-webos/bin/flutter-webos" --version
+      # From a Build, MPV_AUDIO_KIT_LIBMPV bundles its library; from the
+      # pinned release, webos/CMakeLists.txt downloads it at its SHA-256, as
+      # an app's build does.
+      - name: libmpv
+        env:
+          GH_TOKEN: ${{ secrets.LIBMPV_SCRIPTS_TOKEN }}
+          RELEASE_TOKEN: ${{ github.token }}
+        run: |
+          run="$(kit/scripts/ci/resolve_libmpv_run.sh)"
+          if [[ -n "$run" ]]; then
+            gh run download "$run" -R ales-drnz/libmpv-scripts -n webos-armv7l -D "$RUNNER_TEMP/libmpv"
+            ls -la "$RUNNER_TEMP/libmpv"
+            echo "MPV_AUDIO_KIT_LIBMPV=$RUNNER_TEMP/libmpv/libmpv_webos-armv7l.so" >> "$GITHUB_ENV"
+          else
+            echo "The pinned release: webos/CMakeLists.txt downloads its libmpv."
+          fi
+      - name: The app
+        run: |
+          cd "$RUNNER_TEMP"
+          flutter-webos create --platforms webos --project-name mak_webos_check app
+          cd app
+          rm -rf test
+          mkdir -p assets
+          cp "$GITHUB_WORKSPACE/kit/test/fixtures/sine_5s.flac" assets/
+          python3 - <<'PY'
+          import os, re
+          p = 'pubspec.yaml'
+          s = open(p).read()
+          s = s.replace('dependencies:\n', 'dependencies:\n  mpv_audio_kit:\n    path: ' + os.environ['GITHUB_WORKSPACE'] + '/kit\n', 1)
+          s = re.sub(r'(\nflutter:\n)', r'\1  assets:\n    - assets/sine_5s.flac\n', s, count=1)
+          open(p, 'w').write(s)
+          PY
+          cat > lib/main.dart <<'DART'
+          import 'package:flutter/widgets.dart';
+          import 'package:mpv_audio_kit/mpv_audio_kit.dart';
+
+          Future<void> main() async {
+            WidgetsFlutterBinding.ensureInitialized();
+            runApp(const ColoredBox(color: Color(0xFF000000)));
+            try {
+              MpvAudioKit.ensureInitialized();
+              print('MAK_WEBOS_LIB ${MpvAudioKit.libraryPath}');
+              final player = Player();
+              await player.ready;
+              await player.open(Media('asset://assets/sine_5s.flac'));
+              await player.play();
+              final at = await player.stream.position
+                  .firstWhere((p) => p > const Duration(seconds: 2))
+                  .timeout(const Duration(seconds: 90));
+              final driver = player.state.output.currentAo;
+              final ok = driver == 'alsa' && player.state.playback.playing;
+              print('MAK_WEBOS_RESULT ${ok ? 'PASS' : 'FAIL'} ao=$driver '
+                  'position=$at params=${player.state.output.audioOutParams}');
+              await player.dispose();
+            } catch (e, s) {
+              print('MAK_WEBOS_RESULT FAIL $e\n$s');
+            }
+          }
+          DART
+          flutter-webos pub get
+      - name: Build the IPK
+        run: |
+          cd "$RUNNER_TEMP/app"
+          . "$WEBOS_FLUTTER_NDK_ENV"
+          flutter-webos build webos --release
+          ipk="$(find build -name '*.ipk' | head -1)"
+          echo "IPK: $ipk"
+          mkdir -p "$RUNNER_TEMP/ipk" && cd "$RUNNER_TEMP/ipk"
+          ar x "$RUNNER_TEMP/app/$ipk"
+          tar -xzf data.tar.gz
+          app="$(ls -d "$RUNNER_TEMP"/ipk/usr/palm/applications/*/ | head -1)"
+          ls -la "$app" "$app/lib"
+          test -f "$app/lib/libmpv_audio_kit_webos.so"
+          echo "WEBOS_APP=$app" >> "$GITHUB_ENV"
+      - name: fontconfig for the engine
+        run: |
+          mkdir -p "$RUNNER_TEMP/overlay"
+          docker run --rm -v "$RUNNER_TEMP/overlay:/out" "$DEBIAN_IMAGE" bash -c '
+            dpkg --add-architecture armel && apt-get update -qq &&
+            mkdir /debs && cd /debs &&
+            apt-get download -qq libfontconfig1:armel libfreetype6:armel libexpat1:armel \
+              libpng16-16:armel zlib1g:armel libbrotli1:armel fontconfig-config fonts-dejavu-core &&
+            for d in *.deb; do dpkg-deb -x "$d" /out; done &&
+            chown -R '"$(id -u):$(id -g)"' /out'
+          find "$RUNNER_TEMP/overlay" -name 'libfontconfig.so*'
+      - name: The headless embedder
+        run: |
+          w="$GITHUB_WORKSPACE/kit/.github/webos"
+          curl -fsSL -o "$RUNNER_TEMP/embedder.h" \
+            "https://raw.githubusercontent.com/flutter/flutter/$FLUTTER_REV/engine/src/flutter/shell/platform/embedder/embedder.h"
+          echo "$EMBEDDER_H_SHA256  $RUNNER_TEMP/embedder.h" | sha256sum -c -
+          . "$WEBOS_FLUTTER_NDK_ENV"
+          $CC -O1 -I"$RUNNER_TEMP" "$w/mak_headless_embedder.c" -L"$WEBOS_APP/lib" -lflutter_engine \
+            -Wl,-rpath,'$ORIGIN/lib' -Wl,--allow-shlib-undefined -o "$WEBOS_APP/mak_headless_embedder"
+          mkdir -p "$RUNNER_TEMP/stub"
+          $CC -shared -fPIC -O1 -Wl,-soname,libPmLogLib.so.3 "$w/pmlog_stub.c" -o "$RUNNER_TEMP/stub/libPmLogLib.so.3"
+          file "$WEBOS_APP/mak_headless_embedder"
+      - name: The app plays under qemu-arm on the TVs' sysroot
+        run: |
+          set -o pipefail
+          out="$RUNNER_TEMP/out.raw"
+          sed "s#MAK_ALSA_OUT#$out#" "$GITHUB_WORKSPACE/kit/.github/webos/asound.conf" > "$RUNNER_TEMP/asound.conf"
+          o="$RUNNER_TEMP/overlay"
+          timeout 600 qemu-arm-static -L "$WEBOS_SYSROOT" \
+            -E LD_LIBRARY_PATH="$RUNNER_TEMP/stub:/usr/lib:/lib:$o/usr/lib/arm-linux-gnueabi:$o/lib/arm-linux-gnueabi" \
+            -E ALSA_CONFIG_PATH="$RUNNER_TEMP/asound.conf" \
+            -E FONTCONFIG_FILE="$o/etc/fonts/fonts.conf" -E HOME="$RUNNER_TEMP" \
+            "$WEBOS_APP/mak_headless_embedder" 480 2>&1 | grep -v '^\[pmlog [67] ' | tee run.txt
+          grep -q "^MAK_WEBOS_LIB .*/lib/libmpv_audio_kit_webos.so$" run.txt
+          grep -q "^MAK_WEBOS_RESULT PASS" run.txt
+          python3 "$GITHUB_WORKSPACE/kit/.github/webos/check_tone.py" "$out"

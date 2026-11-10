@@ -20,10 +20,15 @@ library;
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
 
+import 'dart:ui_web' as ui_web;
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import 'package:mpv_audio_kit/src/backend/web/web_audio.dart';
 import 'package:mpv_audio_kit/src/backend/web_backend.dart';
+import 'package:mpv_audio_kit/src/media_session/media_session_channel.dart';
+import 'package:mpv_audio_kit/src/web/mpv_audio_kit_web.dart';
 
 import '../_helpers/parity_scenario.dart';
 import 'web_module_helper.dart';
@@ -62,6 +67,18 @@ void main() {
     TestWidgetsFlutterBinding.ensureInitialized();
     debugWebAudioTrace = trace.add;
     MpvAudioKit.needsUserGestureStream.listen(gestures.add);
+    // The media session's plugin, for the outside pauses: platform
+    // messages delivered as in web_media_session_test.dart.
+    ui_web.TestEnvironment.setUp(
+      const ui_web.TestEnvironment(
+        forceTestFonts: true,
+        disableFontFallbacks: true,
+        keepSemanticsDisabledOnUpdate: true,
+        defaultToTestUrlStrategy: true,
+      ),
+    );
+    MpvAudioKitWeb.registerWith(webPluginRegistrar);
+    webPluginRegistrar.registerMessageHandler();
     await loadTestModule();
     MpvAudioKit.ensureInitialized(hotRestartCleanup: false);
     // The module and the output are up once a player is.
@@ -89,15 +106,18 @@ void main() {
       await player.play();
       expect(trace, contains('resume'));
       await waitUntil(
-        () => player.state.audioOutputState == AudioOutputState.active,
+        () => player.state.output.audioOutputState == AudioOutputState.active,
         what: 'the output open',
       );
-      await waitUntil(() => player.state.currentAo.isNotEmpty, what: 'ao');
-      expect(player.state.currentAo, 'webaudio');
+      await waitUntil(
+        () => player.state.output.currentAo.isNotEmpty,
+        what: 'ao',
+      );
+      expect(player.state.output.currentAo, 'webaudio');
       await Future<void>.delayed(const Duration(milliseconds: 1500));
-      expect(player.state.completed, isFalse);
+      expect(player.state.playback.completed, isFalse);
       expect(
-        player.state.position,
+        player.state.playback.position,
         lessThan(const Duration(milliseconds: 300)),
       );
       expect(errors, isEmpty);
@@ -120,9 +140,9 @@ void main() {
         Media(testUrl('fixtures/sine_stereo_1s.flac')),
         play: true,
       );
-      await waitUntil(() => player.state.completed, what: 'the end');
+      await waitUntil(() => player.state.playback.completed, what: 'the end');
       final seconds = clock.elapsedMilliseconds / 1000;
-      expect(player.state.currentAo, 'webaudio');
+      expect(player.state.output.currentAo, 'webaudio');
       expect(seconds, inInclusiveRange(0.9, 3.0));
       final rate = ((await _context())['sampleRate'] as JSNumber).toDartInt;
       expect(await _consumed() - before, greaterThan(rate * 0.8));
@@ -142,7 +162,7 @@ void main() {
         Media(testUrl('fixtures/sine_stereo_1s.flac')),
         play: true,
       );
-      await waitUntil(() => player.state.completed, what: 'the end');
+      await waitUntil(() => player.state.playback.completed, what: 'the end');
       expect(await _consumed() - before, greaterThan(30000));
       expect((element['paused'] as JSBoolean).toDart, isFalse);
     });
@@ -176,6 +196,81 @@ void main() {
       );
       expect(trace, contains('direct false'));
     });
+
+    // 0.7.0: an outside pause of the session's <audio> element (the browser,
+    // a call, another app) follows MediaSession.interruptionPolicy, as on
+    // iOS and Android. 0.6 played on, as keepPlaying.
+    group('an outside pause follows the interruption policy', () {
+      /// Enables a session with [policy] and [playing], waits for the
+      /// element to play, then pauses it and plays it again from outside
+      /// the output. Returns the commands sent.
+      Future<List<MediaSessionCommand>> outside(
+        InterruptionPolicy policy, {
+        bool playing = true,
+      }) async {
+        final channel = MediaSessionChannel();
+        final commands = <MediaSessionCommand>[];
+        final sub = channel.commandStream.listen(commands.add);
+        addTearDown(sub.cancel);
+        addTearDown(channel.disable);
+        await channel.enable(
+          session: MediaSession(interruptionPolicy: policy),
+          metadata: const MediaSessionMetadataSnapshot(title: 'Outside'),
+          playback: MediaSessionPlaybackSnapshot(
+            playing: playing,
+            position: Duration.zero,
+            rate: 1,
+            seekable: true,
+            loop: Loop.off,
+            shuffle: false,
+          ),
+        );
+        final output = await webAudioOutput();
+        final element = output.element!;
+        await waitUntil(
+          () => (element['paused'] as JSBoolean).toDart == false,
+          what: 'the element playing',
+        );
+        // Let its playing event land before the outside pause.
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+        element.callMethod('pause'.toJS);
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+        element.callMethod('play'.toJS);
+        await waitUntil(
+          () => (element['paused'] as JSBoolean).toDart == false,
+          what: 'the element playing again',
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+        return commands;
+      }
+
+      test(
+        'pauseAndResume pauses, and plays when the element plays again',
+        () async {
+          expect(await outside(InterruptionPolicy.pauseAndResume), [
+            MediaSessionCommand.pause,
+            MediaSessionCommand.play,
+          ]);
+        },
+      );
+
+      test('pauseOnly pauses and stays paused', () async {
+        expect(await outside(InterruptionPolicy.pauseOnly), [
+          MediaSessionCommand.pause,
+        ]);
+      });
+
+      test('keepPlaying sends nothing, as 0.6', () async {
+        expect(await outside(InterruptionPolicy.keepPlaying), isEmpty);
+      });
+
+      test('a player already paused is not resumed', () async {
+        expect(
+          await outside(InterruptionPolicy.pauseAndResume, playing: false),
+          isEmpty,
+        );
+      });
+    });
   });
 
   test('setSystemVolume and setSystemMute before the first file set the '
@@ -185,8 +280,8 @@ void main() {
     await player.ready;
     await player.setSystemVolume(50);
     await player.setSystemMute(true);
-    expect(player.state.systemVolume, 50);
-    expect(player.state.systemMute, isTrue);
+    expect(player.state.output.systemVolume, 50);
+    expect(player.state.output.systemMute, isTrue);
     expect(double.parse((await player.getRawProperty('webaudio-volume'))!), 50);
     expect(await player.getRawProperty('webaudio-mute'), 'yes');
   });
@@ -204,7 +299,7 @@ void main() {
     await expectLater(player.setAudioSampleRate(1000), throwsStateError);
     expect(trace, ['init 1000', 'init 0']);
     expect(((await _context())['sampleRate'] as JSNumber).toDartInt, rate);
-    expect(player.state.audioSampleRate, 0);
+    expect(player.state.settings.audioSampleRate, 0);
     expect(await player.getRawProperty('audio-samplerate'), samplerate);
     // The same rate again tries again.
     trace.clear();
@@ -225,7 +320,7 @@ void main() {
       await expectLater(refused, throwsStateError);
       await accepted;
       addTearDown(() => player.setAudioSampleRate(0));
-      expect(player.state.audioSampleRate, 32000);
+      expect(player.state.settings.audioSampleRate, 32000);
       expect(await player.getRawProperty('audio-samplerate'), '32000');
     },
   );

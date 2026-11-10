@@ -23,18 +23,21 @@ import '../_helpers/update_libmpv_fixture.dart';
 void main() {
   final root = Directory.current.path;
 
-  test('pubspec ships web/ as a web asset folder, Flutter 3.41 or later', () {
-    // A Windows checkout may end the lines with CRLF (core.autocrlf).
-    final pubspec = File(
-      '$root/pubspec.yaml',
-    ).readAsStringSync().replaceAll('\r\n', '\n');
-    expect(pubspec, contains("flutter: '>=3.41.0'"));
-    expect(
-      pubspec,
-      matches(RegExp(r'assets:\n\s+- path: web/\n\s+platforms: \[web\]\n')),
-    );
-    expect(Directory('$root/web').existsSync(), isTrue);
-  });
+  test(
+    'pubspec ships web/ as a web asset folder, Flutter 3.38.10 or later',
+    () {
+      // A Windows checkout may end the lines with CRLF (core.autocrlf).
+      final pubspec = File(
+        '$root/pubspec.yaml',
+      ).readAsStringSync().replaceAll('\r\n', '\n');
+      expect(pubspec, contains("flutter: '>=3.38.10'"));
+      expect(
+        pubspec,
+        matches(RegExp(r'assets:\n\s+- path: web/\n\s+platforms: \[web\]\n')),
+      );
+      expect(Directory('$root/web').existsSync(), isTrue);
+    },
+  );
 
   test('git ignores the web module, the published package keeps it', () {
     final ignored = Process.runSync('git', [

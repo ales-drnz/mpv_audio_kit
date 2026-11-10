@@ -62,21 +62,29 @@ void main() {
       await player.stream.position
           .firstWhere((p) => p > const Duration(milliseconds: 300))
           .timeout(const Duration(seconds: 10));
-      await press('KEYCODE_MEDIA_PAUSE', () => !player.state.playing, 'paused');
-      await press('KEYCODE_MEDIA_PLAY', () => player.state.playing, 'played');
+      await press(
+        'KEYCODE_MEDIA_PAUSE',
+        () => !player.state.playback.playing,
+        'paused',
+      );
+      await press(
+        'KEYCODE_MEDIA_PLAY',
+        () => player.state.playback.playing,
+        'played',
+      );
       await press(
         'KEYCODE_MEDIA_NEXT',
-        () => player.state.playlist.index == 1,
+        () => player.state.playback.playlist.index == 1,
         'went to the next entry',
       );
       await press(
         'KEYCODE_MEDIA_PREVIOUS',
-        () => player.state.playlist.index == 0,
+        () => player.state.playback.playlist.index == 0,
         'went to the previous entry',
       );
       await press(
         'KEYCODE_MEDIA_PLAY_PAUSE',
-        () => !player.state.playing,
+        () => !player.state.playback.playing,
         'toggled to pause',
       );
       // ignore: avoid_print

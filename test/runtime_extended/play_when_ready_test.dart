@@ -50,7 +50,7 @@ void main() {
               .timeout(const Duration(seconds: 10));
           await player.open(Media(fixturePath), play: true);
           await firstTrue;
-          expect(player.state.playWhenReady, isTrue);
+          expect(player.state.playback.playWhenReady, isTrue);
         },
         timeout: const Timeout(Duration(seconds: 20)),
       );
@@ -60,7 +60,7 @@ void main() {
         addTearDown(player.dispose);
 
         await openAndWaitForLoad(player, fixturePath); // opens with play: false
-        expect(player.state.playWhenReady, isFalse);
+        expect(player.state.playback.playWhenReady, isFalse);
       }, timeout: const Timeout(Duration(seconds: 20)));
 
       test(
@@ -80,7 +80,7 @@ void main() {
               .timeout(const Duration(seconds: 10));
           await player.open(Media(fixturePath), play: true);
           await playing;
-          expect(player.state.playWhenReady, isTrue);
+          expect(player.state.playback.playWhenReady, isTrue);
 
           // Loop the file so the untimed null AO can't race to EOF mid-test
           // (EOF → idle-active would legitimately clear intent — that is not
@@ -109,7 +109,7 @@ void main() {
             isNot(contains(false)),
             reason: 'intent must not flip false during seeks (button flicker)',
           );
-          expect(player.state.playWhenReady, isTrue);
+          expect(player.state.playback.playWhenReady, isTrue);
         },
         timeout: const Timeout(Duration(seconds: 30)),
       );
@@ -132,14 +132,14 @@ void main() {
             .timeout(const Duration(seconds: 5));
         await player.pause();
         await down;
-        expect(player.state.playWhenReady, isFalse);
+        expect(player.state.playback.playWhenReady, isFalse);
 
         final up2 = player.stream.playWhenReady
             .firstWhere((p) => p)
             .timeout(const Duration(seconds: 5));
         await player.play();
         await up2;
-        expect(player.state.playWhenReady, isTrue);
+        expect(player.state.playback.playWhenReady, isTrue);
       }, timeout: const Timeout(Duration(seconds: 25)));
 
       test('stop() clears playWhenReady', () async {
@@ -157,7 +157,7 @@ void main() {
             .timeout(const Duration(seconds: 5));
         await player.stop();
         await down;
-        expect(player.state.playWhenReady, isFalse);
+        expect(player.state.playback.playWhenReady, isFalse);
       }, timeout: const Timeout(Duration(seconds: 25)));
     });
   });

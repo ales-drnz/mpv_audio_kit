@@ -62,13 +62,13 @@ void main() {
 
           await advanced;
           expect(
-            player.state.playlist.index,
+            player.state.playback.playlist.index,
             1,
             reason:
                 'mpv must advance to the second track when the first '
                 'reaches EOF naturally',
           );
-          expect(player.state.playlist.items.length, 2);
+          expect(player.state.playback.playlist.items.length, 2);
         },
         timeout: const Timeout(Duration(seconds: 60)),
       );

@@ -11,6 +11,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:mpv_audio_kit/mpv_audio_kit.dart' show LoudnessScan;
 import 'package:mpv_audio_kit/src/dsp/loudness_scan_pipeline.dart';
 import 'package:mpv_audio_kit/src/dsp/waveform_pipeline.dart';
 import 'package:test/test.dart';
@@ -114,6 +115,196 @@ void main() {
       await p.dispose();
       await _settle();
       expect(mpv.sets, ['waveform-enabled=yes', 'waveform-enabled=no']);
+    });
+  });
+
+  group('the same file loaded again (r24)', () {
+    test('a finished result stays, with no null', () async {
+      final mpv = _FakeMpv()..values['waveform-data'] = _readyWave();
+      final p = WaveformPipeline(asyncGet: mpv.get, asyncSet: mpv.set);
+      final got = <Object?>[];
+      final sub = p.stream.listen(got.add);
+      p.setEnabled(true);
+      await _settle();
+      expect(got.whereType<Object>(), hasLength(1), reason: 'ready');
+      got.clear();
+
+      // mpv kept the analysis: the reply is the same result.
+      p.reset(sameFile: true);
+      await _settle();
+      expect(got.contains(null), isFalse, reason: 'never cleared: $got');
+      await sub.cancel();
+      await p.dispose();
+    });
+
+    test('a new pass under the same path clears it at once', () async {
+      final mpv = _FakeMpv()..values['waveform-data'] = _readyWave();
+      final p = WaveformPipeline(asyncGet: mpv.get, asyncSet: mpv.set);
+      final got = <Object?>[];
+      final sub = p.stream.listen(got.add);
+      p.setEnabled(true);
+      await _settle();
+      got.clear();
+
+      // Other content under the same path: mpv decodes again, with no
+      // bins yet.
+      mpv.values['waveform-data'] = {'state': 'decoding', 'duration_us': 0};
+      p.reset(sameFile: true);
+      await _settle();
+      expect(got, [null], reason: 'the held result goes at the first reply');
+      await sub.cancel();
+      await p.dispose();
+    });
+
+    test('another path clears it right away, as before', () async {
+      final mpv = _FakeMpv()..values['waveform-data'] = _readyWave();
+      final p = WaveformPipeline(asyncGet: mpv.get, asyncSet: mpv.set);
+      final got = <Object?>[];
+      final sub = p.stream.listen(got.add);
+      p.setEnabled(true);
+      await _settle();
+      got.clear();
+
+      p.reset();
+      await _settle();
+      expect(got.first, isNull, reason: 'cleared before any reply');
+      await sub.cancel();
+      await p.dispose();
+    });
+
+    test('a reply equal to the held envelope, a new instance, is not '
+        'emitted again', () async {
+      final mpv = _FakeMpv()..values['waveform-data'] = _readyWave();
+      final p = WaveformPipeline(asyncGet: mpv.get, asyncSet: mpv.set);
+      final got = <Object?>[];
+      final sub = p.stream.listen(got.add);
+      p.setEnabled(true);
+      await _settle();
+      got.clear();
+      // The core answers with a fresh node of the same content.
+      mpv.values['waveform-data'] = _readyWave();
+      p.reset(sameFile: true);
+      await _settle();
+      expect(got, isEmpty, reason: 'the same envelope again: $got');
+      await sub.cancel();
+      await p.dispose();
+    });
+
+    test(
+      'a failed loudness scan is not held: null, then the new reply',
+      () async {
+        final mpv = _FakeMpv()
+          ..values['loudness-scan-data'] = {'state': 'failed'};
+        final p = LoudnessScanPipeline(asyncGet: mpv.get, asyncSet: mpv.set);
+        final got = <Object?>[];
+        final sub = p.stream.listen(got.add);
+        p.setEnabled(true);
+        await _settle();
+        got.clear();
+        p.reset(sameFile: true);
+        await _settle();
+        expect(got.first, isNull, reason: 'cleared at once: $got');
+        expect(got.where((e) => e == null), hasLength(1), reason: '$got');
+        expect(
+          got.last,
+          isA<LoudnessScan>(),
+          reason: 'ends on the reply: $got',
+        );
+        await sub.cancel();
+        await p.dispose();
+      },
+    );
+
+    test('a failed pass after the reload clears it once', () async {
+      final mpv = _FakeMpv()..values['waveform-data'] = _readyWave();
+      final p = WaveformPipeline(asyncGet: mpv.get, asyncSet: mpv.set);
+      final got = <Object?>[];
+      final sub = p.stream.listen(got.add);
+      p.setEnabled(true);
+      await _settle();
+      got.clear();
+
+      mpv.values['waveform-data'] = {'state': 'failed'};
+      p.reset(sameFile: true);
+      await _settle();
+      expect(got, [null]);
+      await sub.cancel();
+      await p.dispose();
+    });
+
+    test('loaded again twice before the first reply, it still stays', () async {
+      var gate = Completer<void>();
+      final mpv = _FakeMpv();
+      final p = WaveformPipeline(
+        asyncGet: (name, format) async {
+          await gate.future;
+          return (0, _readyWave());
+        },
+        asyncSet: mpv.set,
+      );
+      final got = <Object?>[];
+      final sub = p.stream.listen(got.add);
+      p.setEnabled(true);
+      gate.complete();
+      await _settle();
+      expect(got.whereType<Object>(), hasLength(1), reason: 'ready');
+      got.clear();
+
+      // A short entry on loop: the second FILE_LOADED before any reply.
+      gate = Completer<void>();
+      p.reset(sameFile: true);
+      p.reset(sameFile: true);
+      gate.complete();
+      await _settle();
+      expect(got, isEmpty, reason: 'never cleared: $got');
+      await sub.cancel();
+      await p.dispose();
+    });
+
+    test('with no reply that confirms it, it goes after a while', () async {
+      final mpv = _FakeMpv()..values['waveform-data'] = _readyWave();
+      final p = WaveformPipeline(
+        asyncGet: mpv.get,
+        asyncSet: mpv.set,
+        pollInterval: const Duration(milliseconds: 1),
+      );
+      final got = <Object?>[];
+      final sub = p.stream.listen(got.add);
+      p.setEnabled(true);
+      await _settle();
+      got.clear();
+
+      // The property errors from now on: nothing says the result stands.
+      mpv.values.remove('waveform-data');
+      p.reset(sameFile: true);
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      expect(got, [null], reason: 'a stale envelope does not stay for good');
+      await sub.cancel();
+      await p.dispose();
+    });
+
+    test('the loudness scan keeps its result too', () async {
+      final mpv = _FakeMpv()
+        ..values['loudness-scan-data'] = {
+          'state': 'ready',
+          'integrated_lufs': -14.0,
+          'lra_lu': 6.0,
+          'sample_peak': 0.9,
+          'true_peak': 0.95,
+        };
+      final p = LoudnessScanPipeline(asyncGet: mpv.get, asyncSet: mpv.set);
+      final got = <Object?>[];
+      final sub = p.stream.listen(got.add);
+      p.setEnabled(true);
+      await _settle();
+      expect(got.whereType<Object>(), hasLength(1), reason: 'ready');
+      got.clear();
+
+      p.reset(sameFile: true);
+      await _settle();
+      expect(got, isEmpty, reason: 'the same result is not emitted again');
+      await sub.cancel();
+      await p.dispose();
     });
   });
 

@@ -40,20 +40,20 @@ void main() {
       final player = await buildPlayer();
       addTearDown(player.dispose);
       await player.play();
-      expect(player.state.playWhenReady, isFalse);
+      expect(player.state.playback.playWhenReady, isFalse);
     }, timeout: t);
 
     test('play() after stop() leaves the intent off', () async {
       final player = await buildPlayer();
       addTearDown(player.dispose);
       await player.open(Media(fixturePath), play: true);
-      await waitUntil(() => player.state.playing);
+      await waitUntil(() => player.state.playback.playing);
       await player.stop();
       await waitUntil(
         () async => await player.getRawProperty('idle-active') == 'yes',
       );
       await player.play();
-      expect(player.state.playWhenReady, isFalse);
+      expect(player.state.playback.playWhenReady, isFalse);
     }, timeout: t);
 
     // The core is still idle when play() reads it: the load in flight is
@@ -64,11 +64,11 @@ void main() {
       final opening = player.open(Media(fixturePath), play: false);
       await player.play();
       await opening;
-      expect(player.state.playWhenReady, isTrue);
+      expect(player.state.playback.playWhenReady, isTrue);
       // The pause write of the open comes after the unpause: it follows
       // the intent the play() set, so the file plays.
       expect(await player.getRawProperty('pause'), 'no');
-      await waitUntil(() => player.state.playing);
+      await waitUntil(() => player.state.playback.playing);
     }, timeout: t);
 
     test('pause() right after an unawaited open keeps it paused', () async {
@@ -77,7 +77,7 @@ void main() {
       final opening = player.open(Media(fixturePath), play: true);
       await player.pause();
       await opening;
-      expect(player.state.playWhenReady, isFalse);
+      expect(player.state.playback.playWhenReady, isFalse);
       expect(await player.getRawProperty('pause'), 'yes');
     }, timeout: t);
 
@@ -90,7 +90,7 @@ void main() {
       ], play: false);
       await player.play();
       await opening;
-      expect(player.state.playWhenReady, isTrue);
+      expect(player.state.playback.playWhenReady, isTrue);
       expect(await player.getRawProperty('pause'), 'no');
     }, timeout: t);
 
@@ -108,11 +108,11 @@ void main() {
       await player.play();
       await Future<void>.delayed(const Duration(milliseconds: 500));
       expect(
-        player.state.playWhenReady,
+        player.state.playback.playWhenReady,
         isFalse,
         reason: 'the intent shows playback over a source that cannot restart',
       );
-      expect(player.state.completed, isTrue);
+      expect(player.state.playback.completed, isTrue);
     }, timeout: t);
 
     test('play() at the end of a file starts it again', () async {
@@ -125,8 +125,10 @@ void main() {
       await completed;
 
       await player.play();
-      await waitUntil(() => !player.state.completed && player.state.playing);
-      expect(player.state.playWhenReady, isTrue);
+      await waitUntil(
+        () => !player.state.playback.completed && player.state.playback.playing,
+      );
+      expect(player.state.playback.playWhenReady, isTrue);
     }, timeout: t);
 
     // play() reads the core before it unpauses: a pause() called after it
@@ -140,8 +142,8 @@ void main() {
       await Future.wait([playing, pausing]);
       await Future<void>.delayed(const Duration(milliseconds: 300));
       expect(await player.getRawProperty('pause'), 'yes');
-      expect(player.state.playWhenReady, isFalse);
-      expect(player.state.playing, isFalse);
+      expect(player.state.playback.playWhenReady, isFalse);
+      expect(player.state.playback.playing, isFalse);
     }, timeout: t);
 
     test('play() at the end then pause() stays paused', () async {
@@ -158,8 +160,8 @@ void main() {
       await Future.wait([playing, pausing]);
       await Future<void>.delayed(const Duration(milliseconds: 300));
       expect(await player.getRawProperty('pause'), 'yes');
-      expect(player.state.playWhenReady, isFalse);
-      expect(player.state.playing, isFalse);
+      expect(player.state.playback.playWhenReady, isFalse);
+      expect(player.state.playback.playing, isFalse);
     }, timeout: t);
 
     // At the end of the queue openAll steps through idle: mpv cannot append
@@ -173,7 +175,7 @@ void main() {
         final player = await buildPlayer();
         await player.openAll([Media(shortFixture)], play: true);
         await waitUntil(
-          () => player.state.completed,
+          () => player.state.playback.completed,
           timeout: const Duration(seconds: 15),
           reason: 'never parked',
         );
@@ -191,11 +193,13 @@ void main() {
             await player.play();
             await opening;
             await waitUntil(
-              () => player.state.playing && player.state.playWhenReady,
+              () =>
+                  player.state.playback.playing &&
+                  player.state.playback.playWhenReady,
               timeout: const Duration(seconds: 2),
               reason:
-                  'run $run: playing ${player.state.playing}, '
-                  'playWhenReady ${player.state.playWhenReady}',
+                  'run $run: playing ${player.state.playback.playing}, '
+                  'playWhenReady ${player.state.playback.playWhenReady}',
             );
             expect(await player.getRawProperty('pause'), 'no');
           } finally {
@@ -217,13 +221,13 @@ void main() {
               Media(fixturePath),
             ], play: true);
             await waitUntil(
-              () => player.state.playing,
+              () => player.state.playback.playing,
               timeout: const Duration(seconds: 2),
               reason: 'run $run: not playing',
             );
             await Future<void>.delayed(const Duration(milliseconds: 200));
             expect(seen, isNot(contains(false)), reason: 'run $run: $seen');
-            expect(player.state.playWhenReady, isTrue);
+            expect(player.state.playback.playWhenReady, isTrue);
           } finally {
             await sub.cancel();
             await player.dispose();
@@ -259,8 +263,8 @@ void main() {
         );
         await Future<void>.delayed(const Duration(milliseconds: 300));
         expect(await player.getRawProperty('pause'), 'yes');
-        expect(player.state.playWhenReady, isFalse);
-        expect(player.state.playing, isFalse);
+        expect(player.state.playback.playWhenReady, isFalse);
+        expect(player.state.playback.playing, isFalse);
       }, timeout: t);
 
       test('after an unawaited open() has the last word', () async {
@@ -270,13 +274,13 @@ void main() {
         await Future.wait([opening, jumping]);
         await Future<void>.delayed(const Duration(milliseconds: 300));
         expect(await player.getRawProperty('pause'), 'no');
-        expect(player.state.playWhenReady, isTrue);
+        expect(player.state.playback.playWhenReady, isTrue);
       }, timeout: t);
 
       test('out of range leaves the intent it found', () async {
         final player = await pausedQueue();
         await expectLater(player.jump(5), throwsRangeError);
-        expect(player.state.playWhenReady, isFalse);
+        expect(player.state.playback.playWhenReady, isFalse);
         expect(await player.getRawProperty('pause'), 'yes');
       }, timeout: t);
     });
@@ -285,13 +289,13 @@ void main() {
       final player = await buildPlayer();
       addTearDown(player.dispose);
       await player.open(Media(fixturePath), play: false);
-      expect(player.state.playWhenReady, isFalse);
+      expect(player.state.playback.playWhenReady, isFalse);
 
       await expectLater(
         player.open(const Media('asset://missing/nothing.wav'), play: true),
         throwsA(anything),
       );
-      expect(player.state.playWhenReady, isFalse);
+      expect(player.state.playback.playWhenReady, isFalse);
       await expectLater(
         player.openAll([
           Media(fixturePath),
@@ -299,7 +303,7 @@ void main() {
         ], play: true),
         throwsA(anything),
       );
-      expect(player.state.playWhenReady, isFalse);
+      expect(player.state.playback.playWhenReady, isFalse);
       await expectLater(
         player.openPlaylistFile(
           const Media('asset://missing/list.m3u'),
@@ -307,7 +311,7 @@ void main() {
         ),
         throwsA(anything),
       );
-      expect(player.state.playWhenReady, isFalse);
+      expect(player.state.playback.playWhenReady, isFalse);
     }, timeout: t);
   });
 }

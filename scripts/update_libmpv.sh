@@ -107,6 +107,18 @@ tvos, n_checksum = re.subn(r'^let checksum = "[0-9a-f]*"$', f'let checksum = "{t
 if (n_release, n_checksum) != (1, 1):
     sys.exit("tvos/Package.swift: the release or checksum line not found")
 
+# webOS: the release and SHA-256 lines of webos/CMakeLists.txt, which
+# flutter-webos builds in place of the hook.
+webos_path = f"{root}/webos/CMakeLists.txt"
+webos = open(webos_path).read()
+webos_sha = manifest["assets"].get("libmpv_webos-armv7l.so", "")
+webos, n_release = re.subn(r'^set\(MAK_LIBMPV_RELEASE "[^"]*"\)$',
+                           f'set(MAK_LIBMPV_RELEASE "{tag}")', webos, flags=re.M)
+webos, n_sha = re.subn(r'^set\(MAK_LIBMPV_SHA256 "[0-9a-f]*"\)$',
+                       f'set(MAK_LIBMPV_SHA256 "{webos_sha}")', webos, flags=re.M)
+if (n_release, n_sha) != (1, 1):
+    sys.exit("webos/CMakeLists.txt: the release or SHA-256 line not found")
+
 release_path = f"{root}/lib/src/internals/libmpv_release.dart"
 release = open(release_path).read()
 release, n = re.subn(r"const String libmpvRelease = '[^']*';",
@@ -229,6 +241,7 @@ else:
 # Every check passed: write.
 open(hook_path, "w").write(hook)
 open(tvos_path, "w").write(tvos)
+open(webos_path, "w").write(webos)
 open(release_path, "w").write(release)
 web_module.install(files, f"{root}/web")
 web_module.install({COMBINED: web_texts}, f"{root}/web")

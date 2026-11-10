@@ -26,9 +26,9 @@ void main() {
         player = await buildPlayerWithFixture(fixturePath: fixturePath);
         await waitUntil(
           () =>
-              player.state.path.isNotEmpty &&
-              player.state.duration > Duration.zero &&
-              player.state.fileSize > 0,
+              player.state.file.path.isNotEmpty &&
+              player.state.playback.duration > Duration.zero &&
+              player.state.file.fileSize > 0,
         );
       });
 
@@ -37,32 +37,32 @@ void main() {
       test('stop() clears the per-file state', () async {
         await player.stop();
         await waitUntil(
-          () => player.state.path.isEmpty,
+          () => player.state.file.path.isEmpty,
           reason: 'path must clear once the file is unloaded',
         );
         final s = player.state;
-        expect(s.filename, isEmpty);
-        expect(s.mediaTitle, isEmpty);
-        expect(s.fileFormat, isEmpty);
-        expect(s.fileSize, 0);
-        expect(s.duration, Duration.zero);
-        expect(s.position, Duration.zero);
-        expect(s.seekable, isFalse);
+        expect(s.file.filename, isEmpty);
+        expect(s.file.mediaTitle, isEmpty);
+        expect(s.file.fileFormat, isEmpty);
+        expect(s.file.fileSize, 0);
+        expect(s.playback.duration, Duration.zero);
+        expect(s.playback.position, Duration.zero);
+        expect(s.playback.seekable, isFalse);
       }, timeout: const Timeout(Duration(seconds: 15)));
 
       test('reopening the same file restores equal values', () async {
-        final duration = player.state.duration;
+        final duration = player.state.playback.duration;
         await player.stop();
-        await waitUntil(() => player.state.duration == Duration.zero);
+        await waitUntil(() => player.state.playback.duration == Duration.zero);
 
         // mpv re-emits a value after it was unavailable even when it equals
         // the one before, so the cells don't stay at their seed.
         await openAndWaitForLoad(player, fixturePath);
         await waitUntil(
           () =>
-              player.state.duration == duration &&
-              player.state.path.isNotEmpty &&
-              player.state.fileSize > 0,
+              player.state.playback.duration == duration &&
+              player.state.file.path.isNotEmpty &&
+              player.state.file.fileSize > 0,
           reason: 'the reloaded file must report its values again',
         );
       }, timeout: const Timeout(Duration(seconds: 15)));

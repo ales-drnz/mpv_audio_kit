@@ -42,11 +42,11 @@ void main() {
         'addAudioTrack adds and removeAudioTrack removes a selectable track',
         () async {
           expect(
-            audioCount(player.state.tracks),
+            audioCount(player.state.file.tracks),
             1,
             reason: 'the fixture has a single audio track to start',
           );
-          final beforeIds = player.state.tracks
+          final beforeIds = player.state.file.tracks
               .where((t) => t.type == 'audio')
               .map((t) => t.id)
               .toSet();
@@ -101,7 +101,7 @@ void main() {
       );
 
       test('a file mpv refuses to add throws', () async {
-        final tracks = player.state.tracks;
+        final tracks = player.state.file.tracks;
         await expectLater(
           player.addAudioTrack(Media('${tmp.path}/missing.wav')),
           throwsA(
@@ -112,11 +112,11 @@ void main() {
             ),
           ),
         );
-        expect(player.state.tracks, tracks);
+        expect(player.state.file.tracks, tracks);
       });
 
       test('a track mpv refuses to remove throws', () async {
-        final tracks = player.state.tracks;
+        final tracks = player.state.file.tracks;
         await expectLater(
           player.removeAudioTrack(const Track.id(99)),
           throwsA(
@@ -127,7 +127,7 @@ void main() {
             ),
           ),
         );
-        expect(player.state.tracks, tracks);
+        expect(player.state.file.tracks, tracks);
       });
     });
 

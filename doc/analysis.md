@@ -66,7 +66,7 @@ player.stream
     .listen((pcm) => paintInput(pcm.samples));
 
 // Bands from a tap, with the same FFT and smoothing as stream.fft
-final processor = BandProcessor(player.state.spectrum);
+final processor = BandProcessor(player.state.settings.spectrum);
 player.stream.spectrum.listen(processor.setSettings);
 player.stream.tap(AudioFilter.equalizer, side: TapSide.post).listen((pcm) {
   final fft = processor.process(pcm);
@@ -82,7 +82,7 @@ player.stream.tap(AudioFilter.equalizer, side: TapSide.post).listen((pcm) {
 
 ```dart
 player.stream.waveform.listen((wave) {
-  if (wave == null) return; // null at each file load
+  if (wave == null) return; // null at each new file load
   for (var i = 0; i < wave.bins; i++) {
     if (wave.filled[i] == 0) continue; // no data yet, draw a baseline
     // Outline from wave.min[i] to wave.max[i], range -1 to 1
@@ -105,6 +105,8 @@ On loud, heavily limited masters, draw `rms` as the body and min and max as a li
 | Live stream | A rolling window, with `live` true |
 | External track from `addAudioTrack` | Fills in as playback advances |
 
+The same file loaded again, such as a playlist of one entry with `Loop.playlist`, keeps its finished envelope: it is not decoded again.
+
 A network file downloads once, because the analysis reads the libmpv cache. After a seek past the cache, or with a file larger than the cache, the analysis opens the source a second time with the playback network options.
 
 <img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/analysis_cache_feed.png" width="100%" alt="Playback and the analysis read the same libmpv cache">
@@ -122,7 +124,7 @@ player.stream.loudnessScan.listen((scan) {
 });
 ```
 
-The stream emits `null` at each file load. Adaptive, live and non-seekable streams and external tracks report `LoudnessScanState.unavailable`, so use the live meter for them.
+The stream emits `null` at each file load, but the same file loaded again keeps a terminal result. Adaptive, live and non-seekable streams and external tracks report `LoudnessScanState.unavailable`, so use the live meter for them.
 
 ## Live meter
 

@@ -9,50 +9,50 @@ void main() {
   group('PlayerState defaults — coherence with mpv defaults', () {
     test('lifecycle flags start false', () {
       const s = PlayerState();
-      expect(s.playing, isFalse);
-      expect(s.completed, isFalse);
-      expect(s.buffering, isFalse);
-      expect(s.shuffle, isFalse);
-      expect(s.mute, isFalse);
+      expect(s.playback.playing, isFalse);
+      expect(s.playback.completed, isFalse);
+      expect(s.network.buffering, isFalse);
+      expect(s.playback.shuffle, isFalse);
+      expect(s.settings.mute, isFalse);
     });
 
     test('volume / rate / pitch start at neutral', () {
       const s = PlayerState();
-      expect(s.volume, 100.0);
-      expect(s.rate, 1.0);
-      expect(s.pitch, 1.0);
-      expect(s.pitchCorrection, isTrue);
+      expect(s.settings.volume, 100.0);
+      expect(s.settings.rate, 1.0);
+      expect(s.settings.pitch, 1.0);
+      expect(s.settings.pitchCorrection, isTrue);
     });
 
     test('playlist starts empty', () {
       const s = PlayerState();
-      expect(s.playlist, Playlist.empty);
-      expect(s.loop, Loop.off);
+      expect(s.playback.playlist, Playlist.empty);
+      expect(s.playback.loop, Loop.off);
     });
 
     test('Duration fields default to mpv-aligned values', () {
       const s = PlayerState();
-      expect(s.position, Duration.zero);
-      expect(s.duration, Duration.zero);
-      expect(s.buffer, Duration.zero);
-      expect(s.audioDelay, Duration.zero);
+      expect(s.playback.position, Duration.zero);
+      expect(s.playback.duration, Duration.zero);
+      expect(s.network.buffer, Duration.zero);
+      expect(s.settings.audioDelay, Duration.zero);
       expect(
-        s.cache.secs,
+        s.settings.cache.secs,
         const Duration(hours: 1000),
         reason: 'matches mpv `--cache-secs` default (~1000h)',
       );
       expect(
-        s.cache.pauseWait,
+        s.settings.cache.pauseWait,
         const Duration(seconds: 1),
         reason: 'matches mpv `--cache-pause-wait=1.0`',
       );
       expect(
-        s.networkTimeout,
+        s.settings.networkTimeout,
         const Duration(seconds: 60),
         reason: 'matches mpv `--network-timeout=60`',
       );
       expect(
-        s.audioBuffer,
+        s.settings.audioBuffer,
         const Duration(milliseconds: 200),
         reason: 'matches mpv `--audio-buffer=0.2`',
       );
@@ -63,14 +63,14 @@ void main() {
       // the previous string defaults' semantics.
       const s = PlayerState();
       expect(
-        s.gapless,
+        s.settings.gapless,
         Gapless.weak,
         reason: 'matches mpv default `gapless-audio=weak`',
       );
-      expect(s.replayGain.mode, ReplayGain.no);
-      expect(s.cache.mode, Cache.auto);
+      expect(s.settings.replayGain.mode, ReplayGain.no);
+      expect(s.settings.cache.mode, Cache.auto);
       expect(
-        s.coverArtAuto,
+        s.settings.coverArtAuto,
         Cover.no,
         reason:
             'library default is `no` (mpv default would be `exact`); '
@@ -82,32 +82,32 @@ void main() {
       'replayGain + cache config defaults aggregate the granular fields',
       () {
         const s = PlayerState();
-        expect(s.replayGain, const ReplayGainSettings());
-        expect(s.replayGain.mode, ReplayGain.no);
-        expect(s.replayGain.preamp, 0.0);
-        expect(s.replayGain.clip, isFalse);
-        expect(s.replayGain.fallback, 0.0);
+        expect(s.settings.replayGain, const ReplayGainSettings());
+        expect(s.settings.replayGain.mode, ReplayGain.no);
+        expect(s.settings.replayGain.preamp, 0.0);
+        expect(s.settings.replayGain.clip, isFalse);
+        expect(s.settings.replayGain.fallback, 0.0);
 
-        expect(s.cache, const CacheSettings());
-        expect(s.cache.mode, Cache.auto);
-        expect(s.cache.secs, const Duration(hours: 1000));
-        expect(s.cache.onDisk, isFalse);
-        expect(s.cache.pause, isTrue);
-        expect(s.cache.pauseWait, const Duration(seconds: 1));
+        expect(s.settings.cache, const CacheSettings());
+        expect(s.settings.cache.mode, Cache.auto);
+        expect(s.settings.cache.secs, const Duration(hours: 1000));
+        expect(s.settings.cache.onDisk, isFalse);
+        expect(s.settings.cache.pause, isTrue);
+        expect(s.settings.cache.pauseWait, const Duration(seconds: 1));
 
-        expect(s.demuxer, const DemuxerSettings());
+        expect(s.settings.demuxer, const DemuxerSettings());
         expect(
-          s.demuxer.maxBytes,
+          s.settings.demuxer.maxBytes,
           150 * 1024 * 1024,
           reason: 'matches mpv `--demuxer-max-bytes=150MiB`',
         );
         expect(
-          s.demuxer.maxBackBytes,
+          s.settings.demuxer.maxBackBytes,
           50 * 1024 * 1024,
           reason: 'matches mpv `--demuxer-max-back-bytes=50MiB`',
         );
         expect(
-          s.demuxer.readahead,
+          s.settings.demuxer.readahead,
           const Duration(seconds: 1),
           reason: 'matches mpv `--demuxer-readahead-secs=1`',
         );
@@ -119,38 +119,42 @@ void main() {
       // null = "unavailable". A consumer comparing `>0` for "playing
       // a stream" would silently misbehave if this default were 0.0.
       const s = PlayerState();
-      expect(s.audioBitrate, isNull);
+      expect(s.file.audioBitrate, isNull);
     });
 
     test('the effects chain starts empty', () {
       const s = PlayerState();
-      expect(s.audioEffects, isEmpty);
+      expect(s.settings.audioEffects, isEmpty);
     });
 
     test('states with equal effect lists are equal', () {
       // Lists compare by identity in Dart; PlayerState compares the
       // effects element by element.
-      const a = PlayerState(audioEffects: [BassEffect(gain: 3)]);
-      const b = PlayerState(audioEffects: [BassEffect(gain: 3)]);
+      const a = PlayerState(
+        settings: PlayerSettings(audioEffects: [BassEffect(gain: 3)]),
+      );
+      const b = PlayerState(
+        settings: PlayerSettings(audioEffects: [BassEffect(gain: 3)]),
+      );
       expect(a, b);
       expect(a.hashCode, b.hashCode);
     });
 
     test('audioParams + audioOutParams default to all-null AudioParams', () {
       const s = PlayerState();
-      expect(s.audioParams, const AudioParams());
-      expect(s.audioOutParams, const AudioParams());
+      expect(s.file.audioParams, const AudioParams());
+      expect(s.output.audioOutParams, const AudioParams());
     });
 
     test('audioDevices default contains a single Auto entry', () {
       const s = PlayerState();
-      expect(s.audioDevices.length, 1);
-      expect(s.audioDevices.first.name, 'auto');
+      expect(s.output.audioDevices.length, 1);
+      expect(s.output.audioDevices.first.name, 'auto');
     });
 
     test('prefetchPlaylist defaults to false (mpv 0.41 default)', () {
       const s = PlayerState();
-      expect(s.prefetchPlaylist, isFalse);
+      expect(s.settings.prefetchPlaylist, isFalse);
     });
   });
 
@@ -173,17 +177,17 @@ void main() {
     });
 
     test('copyWith no-op returns equal instance', () {
-      const a = PlayerState(volume: 75.0, mute: true);
+      const a = PlayerState(settings: PlayerSettings(volume: 75.0, mute: true));
       final b = a.copyWith();
       expect(a, b);
     });
 
     test('copyWith preserves other fields', () {
-      const a = PlayerState(volume: 50.0, mute: true);
+      const a = PlayerState(settings: PlayerSettings(volume: 50.0, mute: true));
       final b = a.copyWith(volume: 75.0);
-      expect(b.volume, 75.0);
+      expect(b.settings.volume, 75.0);
       expect(
-        b.mute,
+        b.settings.mute,
         isTrue,
         reason: 'unrelated fields must survive a partial copyWith',
       );

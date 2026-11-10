@@ -110,6 +110,31 @@ Future<void> terminateDestroyOffMain(
   }
 }
 
+/// The libmpv a plugin bundles where the build hook does not run
+/// (flutter-webos, whose webos/CMakeLists.txt installs it): on Linux,
+/// lib/libmpv_audio_kit_webos.so beside [executable] when it [exists]. Its
+/// own name, not the hook's asset (lib/libmpv_audio_kit.so on Linux
+/// desktop), so nothing is loaded to tell them apart. null elsewhere: the
+/// hook's libmpv.
+@internal
+String? pluginLibmpv({
+  required bool isLinux,
+  required String executable,
+  required bool Function(String path) exists,
+}) {
+  if (!isLinux) return null;
+  final path = '${File(executable).parent.path}/lib/libmpv_audio_kit_webos.so';
+  return exists(path) ? path : null;
+}
+
+/// [pluginLibmpv] of this process.
+@internal
+String? defaultNativeLibmpv() => pluginLibmpv(
+  isLinux: Platform.isLinux,
+  executable: Platform.resolvedExecutable,
+  exists: (path) => File(path).existsSync(),
+);
+
 /// The native steps of [MpvAudioKit.ensureInitialized] before the kit
 /// counts as initialized: the platform quirks, and with
 /// [hotRestartCleanup] the orphan tracker, whose reap of the cores a

@@ -35,13 +35,16 @@ void main() {
           pauseInitial: true,
         );
         await player.setCache(cfg);
-        expect(player.state.cache.mode, Cache.yes);
-        expect(player.state.cache.secs, const Duration(seconds: 5));
-        expect(player.state.cache.onDisk, isTrue);
-        expect(player.state.cache.pause, isFalse);
-        expect(player.state.cache.pauseWait, const Duration(seconds: 2));
+        expect(player.state.settings.cache.mode, Cache.yes);
+        expect(player.state.settings.cache.secs, const Duration(seconds: 5));
+        expect(player.state.settings.cache.onDisk, isTrue);
+        expect(player.state.settings.cache.pause, isFalse);
+        expect(
+          player.state.settings.cache.pauseWait,
+          const Duration(seconds: 2),
+        );
         // #6: buffer-before-start knob round-trips through real libmpv.
-        expect(player.state.cache.pauseInitial, isTrue);
+        expect(player.state.settings.cache.pauseInitial, isTrue);
         // The durations reach mpv in seconds.
         await expectMpv(player, 'cache-secs', 5.0);
         await expectMpv(player, 'cache-pause-wait', 2.0);

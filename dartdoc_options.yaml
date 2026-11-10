@@ -24,6 +24,10 @@ dartdoc:
       markdown: doc/web.md
     "Android TV":
       markdown: doc/android_tv.md
+    "Tizen":
+      markdown: doc/tizen.md
+    "webOS":
+      markdown: doc/webos.md
   categoryOrder:
     - "Playback"
     - "Effects"
@@ -37,3 +41,5 @@ dartdoc:
     - "Media session"
     - "Web"
     - "Android TV"
+    - "Tizen"
+    - "webOS"

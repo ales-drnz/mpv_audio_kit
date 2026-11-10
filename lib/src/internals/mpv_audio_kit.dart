@@ -16,6 +16,9 @@ import 'passthrough_codecs.dart';
 /// Flutter Hot-Restarts, both of which the backend carries out.
 ///
 /// {@category Web}
+/// {@category Android TV}
+/// {@category Tizen}
+/// {@category webOS}
 abstract final class MpvAudioKit {
   MpvAudioKit._();
 
@@ -86,7 +89,8 @@ abstract final class MpvAudioKit {
   /// [libmpv] (optional): explicit path or filename for the native
   /// `libmpv` library to load via `DynamicLibrary.open`. When `null`
   /// (the default), the libmpv the package's build hook bundles with the
-  /// app is used. Pass an explicit path only when shipping a custom
+  /// app is used, or on webOS, where flutter-webos runs no build hook,
+  /// the one webos/CMakeLists.txt bundles. Pass an explicit path only when shipping a custom
   /// libmpv build alongside your app; to bundle one in place of the
   /// default, set `hooks: user_defines: mpv_audio_kit: libmpv:` in the
   /// app's pubspec instead. A custom libmpv must be a build of
@@ -127,6 +131,7 @@ abstract final class MpvAudioKit {
       return;
     }
     registerLibmpvLicenses();
+    libmpv ??= backend.defaultLibmpv();
     backend.startBackend(libmpv: libmpv, hotRestartCleanup: hotRestartCleanup);
     _libraryPath = libmpv;
     _initialized = true;

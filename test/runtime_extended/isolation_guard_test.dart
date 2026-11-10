@@ -52,9 +52,11 @@ void main() {
             .firstWhere((d) => d.inMilliseconds > 0)
             .timeout(const Duration(seconds: 5));
         await openAndWaitForLoad(player, fixturePath);
-        if (player.state.duration == Duration.zero) await durationSettled;
+        if (player.state.playback.duration == Duration.zero) {
+          await durationSettled;
+        }
         expect(
-          player.state.duration.inMilliseconds,
+          player.state.playback.duration.inMilliseconds,
           inInclusiveRange(900, 1100),
         );
 
@@ -63,7 +65,7 @@ void main() {
         // don't subscribe to the stream because the broadcast emission
         // happens during the setter and would have already passed.)
         await player.setVolume(72.0);
-        expect(player.state.volume, 72.0);
+        expect(player.state.settings.volume, 72.0);
       }, timeout: const Timeout(Duration(seconds: 30)));
     });
   });

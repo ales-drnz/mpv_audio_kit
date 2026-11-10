@@ -17,7 +17,7 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
 void main() {
   test('the package compiles for the browser', () {
-    expect(const PlayerState().playing, isFalse);
+    expect(const PlayerState().playback.playing, isFalse);
     expect(ApadEffect.padLenMax, greaterThan(9007199254740991 ~/ 2));
   });
 }

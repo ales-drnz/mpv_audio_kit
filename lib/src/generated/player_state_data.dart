@@ -3,51 +3,99 @@
 
 part of '../player/player_state.dart';
 
-/// The copyWith, == and hashCode of [PlayerState].
+/// The copyWith, == and hashCode of [PlayerState], and its flat fields.
 mixin _$PlayerState {
   PlayerState get _self => this as PlayerState;
 
-  /// Returns a copy with the given fields replaced. Pass `null` for a
-  /// nullable field to clear it; omitted fields keep their current value.
+  /// Returns a copy with the given groups or fields replaced. A field
+  /// replaces its value in its group, after a group given whole. Pass
+  /// `null` for a nullable field to clear it; omitted fields keep their
+  /// current value.
   PlayerState copyWith({
+    PlaybackState? playback,
+    NetworkState? network,
+    FileState? file,
+    OutputState? output,
+    PlayerSettings? settings,
+    LibraryVersions? versions,
     Playlist? playlist,
     bool? playing,
     bool? playWhenReady,
     bool? completed,
-    Object? readError = unset,
-    Object? skippedSegments = unset,
     Duration? position,
     Duration? duration,
-    double? volume,
-    double? rate,
-    double? pitch,
+    bool? durationEstimated,
+    bool? seeking,
+    bool? seekable,
+    bool? partiallySeekable,
+    double? percentPos,
+    Duration? timeRemaining,
+    Duration? playtimeRemaining,
+    bool? eofReached,
+    Duration? audioPts,
+    Object? currentChapter = unset,
+    Loop? loop,
+    bool? shuffle,
+    Object? abLoopA = unset,
+    Object? abLoopB = unset,
+    Object? abLoopCount = unset,
+    Object? remainingAbLoops = unset,
     bool? buffering,
     Duration? buffer,
     double? bufferingPercentage,
+    Duration? bufferDuration,
     DemuxerCacheState? demuxerCacheState,
-    Loop? loop,
-    bool? shuffle,
+    bool? pausedForCache,
+    bool? demuxerViaNetwork,
+    bool? demuxerIdle,
+    double? cacheSpeed,
+    int? cacheBufferingState,
+    Object? readError = unset,
+    Object? skippedSegments = unset,
+    Map<String, String>? metadata,
+    Map<String, String>? chapterMetadata,
+    List<Chapter>? chapters,
+    List<MpvTrack>? tracks,
+    Object? currentAudioTrack = unset,
     AudioParams? audioParams,
-    AudioParams? audioOutParams,
     Object? audioBitrate = unset,
+    Object? coverArt = unset,
+    String? mediaTitle,
+    String? fileFormat,
+    int? fileSize,
+    String? path,
+    String? filename,
+    String? streamPath,
+    String? streamOpenFilename,
+    String? playlistPath,
+    String? currentDemuxer,
+    Duration? demuxerStartTime,
+    AudioParams? audioOutParams,
     Device? audioDevice,
     List<Device>? audioDevices,
+    AudioOutputState? audioOutputState,
+    String? currentAo,
+    Object? systemVolume = unset,
+    Object? systemMute = unset,
+    double? volume,
     bool? mute,
-    Duration? audioDelay,
-    bool? pitchCorrection,
-    Map<String, String>? metadata,
-    Gapless? gapless,
-    ReplayGainSettings? replayGain,
+    double? volumeMax,
     double? volumeGain,
     double? volumeGainMin,
     double? volumeGainMax,
-    Object? systemVolume = unset,
-    Object? systemMute = unset,
+    double? rate,
+    double? pitch,
+    bool? pitchCorrection,
+    Duration? audioDelay,
+    Gapless? gapless,
+    ReplayGainSettings? replayGain,
+    List<AudioEffect>? audioEffects,
+    SpectrumSettings? spectrum,
+    Cover? coverArtAuto,
+    bool? prefetchPlaylist,
     CacheSettings? cache,
     DemuxerSettings? demuxer,
     Duration? networkTimeout,
-    bool? pausedForCache,
-    bool? demuxerViaNetwork,
     bool? tlsVerify,
     String? tlsCaFile,
     HlsBitrate? hlsBitrate,
@@ -58,406 +106,636 @@ mixin _$PlayerState {
     Duration? audioBuffer,
     bool? audioStreamSilence,
     bool? audioNullUntimed,
-    List<MpvTrack>? tracks,
-    Object? currentAudioTrack = unset,
     Set<Spdif>? audioSpdif,
-    double? volumeMax,
     int? audioSampleRate,
     Format? audioFormat,
     Channels? audioChannels,
     String? audioClientName,
     String? audioDriver,
-    AudioOutputState? audioOutputState,
-    List<AudioEffect>? audioEffects,
-    SpectrumSettings? spectrum,
-    Object? coverArt = unset,
-    Cover? coverArtAuto,
-    bool? prefetchPlaylist,
-    Duration? audioPts,
-    Duration? timeRemaining,
-    Duration? playtimeRemaining,
-    bool? eofReached,
-    bool? seekable,
-    bool? partiallySeekable,
-    String? mediaTitle,
-    String? fileFormat,
-    int? fileSize,
-    Duration? bufferDuration,
-    bool? demuxerIdle,
-    Object? currentChapter = unset,
-    List<Chapter>? chapters,
-    String? path,
-    String? filename,
-    String? streamPath,
-    String? streamOpenFilename,
-    String? playlistPath,
-    Object? abLoopA = unset,
-    Object? abLoopB = unset,
-    Object? abLoopCount = unset,
-    Object? remainingAbLoops = unset,
-    bool? seeking,
-    double? percentPos,
-    double? cacheSpeed,
-    int? cacheBufferingState,
-    String? currentDemuxer,
-    String? currentAo,
-    Duration? demuxerStartTime,
-    Map<String, String>? chapterMetadata,
+    Object? mediaSession = unset,
     String? mpvVersion,
     String? ffmpegVersion,
-    Object? mediaSession = unset,
   }) => PlayerState(
-    playlist: playlist ?? _self.playlist,
-    playing: playing ?? _self.playing,
-    playWhenReady: playWhenReady ?? _self.playWhenReady,
-    completed: completed ?? _self.completed,
-    readError: identical(readError, unset)
-        ? _self.readError
-        : readError as bool?,
-    skippedSegments: identical(skippedSegments, unset)
-        ? _self.skippedSegments
-        : skippedSegments as int?,
-    position: position ?? _self.position,
-    duration: duration ?? _self.duration,
-    volume: volume ?? _self.volume,
-    rate: rate ?? _self.rate,
-    pitch: pitch ?? _self.pitch,
-    buffering: buffering ?? _self.buffering,
-    buffer: buffer ?? _self.buffer,
-    bufferingPercentage: bufferingPercentage ?? _self.bufferingPercentage,
-    demuxerCacheState: demuxerCacheState ?? _self.demuxerCacheState,
-    loop: loop ?? _self.loop,
-    shuffle: shuffle ?? _self.shuffle,
-    audioParams: audioParams ?? _self.audioParams,
-    audioOutParams: audioOutParams ?? _self.audioOutParams,
-    audioBitrate: identical(audioBitrate, unset)
-        ? _self.audioBitrate
-        : audioBitrate as double?,
-    audioDevice: audioDevice ?? _self.audioDevice,
-    audioDevices: audioDevices ?? _self.audioDevices,
-    mute: mute ?? _self.mute,
-    audioDelay: audioDelay ?? _self.audioDelay,
-    pitchCorrection: pitchCorrection ?? _self.pitchCorrection,
-    metadata: metadata ?? _self.metadata,
-    gapless: gapless ?? _self.gapless,
-    replayGain: replayGain ?? _self.replayGain,
-    volumeGain: volumeGain ?? _self.volumeGain,
-    volumeGainMin: volumeGainMin ?? _self.volumeGainMin,
-    volumeGainMax: volumeGainMax ?? _self.volumeGainMax,
-    systemVolume: identical(systemVolume, unset)
-        ? _self.systemVolume
-        : systemVolume as double?,
-    systemMute: identical(systemMute, unset)
-        ? _self.systemMute
-        : systemMute as bool?,
-    cache: cache ?? _self.cache,
-    demuxer: demuxer ?? _self.demuxer,
-    networkTimeout: networkTimeout ?? _self.networkTimeout,
-    pausedForCache: pausedForCache ?? _self.pausedForCache,
-    demuxerViaNetwork: demuxerViaNetwork ?? _self.demuxerViaNetwork,
-    tlsVerify: tlsVerify ?? _self.tlsVerify,
-    tlsCaFile: tlsCaFile ?? _self.tlsCaFile,
-    hlsBitrate: hlsBitrate ?? _self.hlsBitrate,
-    cookies: cookies ?? _self.cookies,
-    httpProxy: httpProxy ?? _self.httpProxy,
-    audioExclusive: audioExclusive ?? _self.audioExclusive,
-    audioMediaRole: audioMediaRole ?? _self.audioMediaRole,
-    audioBuffer: audioBuffer ?? _self.audioBuffer,
-    audioStreamSilence: audioStreamSilence ?? _self.audioStreamSilence,
-    audioNullUntimed: audioNullUntimed ?? _self.audioNullUntimed,
-    tracks: tracks ?? _self.tracks,
-    currentAudioTrack: identical(currentAudioTrack, unset)
-        ? _self.currentAudioTrack
-        : currentAudioTrack as MpvTrack?,
-    audioSpdif: audioSpdif ?? _self.audioSpdif,
-    volumeMax: volumeMax ?? _self.volumeMax,
-    audioSampleRate: audioSampleRate ?? _self.audioSampleRate,
-    audioFormat: audioFormat ?? _self.audioFormat,
-    audioChannels: audioChannels ?? _self.audioChannels,
-    audioClientName: audioClientName ?? _self.audioClientName,
-    audioDriver: audioDriver ?? _self.audioDriver,
-    audioOutputState: audioOutputState ?? _self.audioOutputState,
-    audioEffects: audioEffects ?? _self.audioEffects,
-    spectrum: spectrum ?? _self.spectrum,
-    coverArt: identical(coverArt, unset)
-        ? _self.coverArt
-        : coverArt as CoverArt?,
-    coverArtAuto: coverArtAuto ?? _self.coverArtAuto,
-    prefetchPlaylist: prefetchPlaylist ?? _self.prefetchPlaylist,
-    audioPts: audioPts ?? _self.audioPts,
-    timeRemaining: timeRemaining ?? _self.timeRemaining,
-    playtimeRemaining: playtimeRemaining ?? _self.playtimeRemaining,
-    eofReached: eofReached ?? _self.eofReached,
-    seekable: seekable ?? _self.seekable,
-    partiallySeekable: partiallySeekable ?? _self.partiallySeekable,
-    mediaTitle: mediaTitle ?? _self.mediaTitle,
-    fileFormat: fileFormat ?? _self.fileFormat,
-    fileSize: fileSize ?? _self.fileSize,
-    bufferDuration: bufferDuration ?? _self.bufferDuration,
-    demuxerIdle: demuxerIdle ?? _self.demuxerIdle,
-    currentChapter: identical(currentChapter, unset)
-        ? _self.currentChapter
-        : currentChapter as int?,
-    chapters: chapters ?? _self.chapters,
-    path: path ?? _self.path,
-    filename: filename ?? _self.filename,
-    streamPath: streamPath ?? _self.streamPath,
-    streamOpenFilename: streamOpenFilename ?? _self.streamOpenFilename,
-    playlistPath: playlistPath ?? _self.playlistPath,
-    abLoopA: identical(abLoopA, unset) ? _self.abLoopA : abLoopA as Duration?,
-    abLoopB: identical(abLoopB, unset) ? _self.abLoopB : abLoopB as Duration?,
-    abLoopCount: identical(abLoopCount, unset)
-        ? _self.abLoopCount
-        : abLoopCount as int?,
-    remainingAbLoops: identical(remainingAbLoops, unset)
-        ? _self.remainingAbLoops
-        : remainingAbLoops as int?,
-    seeking: seeking ?? _self.seeking,
-    percentPos: percentPos ?? _self.percentPos,
-    cacheSpeed: cacheSpeed ?? _self.cacheSpeed,
-    cacheBufferingState: cacheBufferingState ?? _self.cacheBufferingState,
-    currentDemuxer: currentDemuxer ?? _self.currentDemuxer,
-    currentAo: currentAo ?? _self.currentAo,
-    demuxerStartTime: demuxerStartTime ?? _self.demuxerStartTime,
-    chapterMetadata: chapterMetadata ?? _self.chapterMetadata,
-    mpvVersion: mpvVersion ?? _self.mpvVersion,
-    ffmpegVersion: ffmpegVersion ?? _self.ffmpegVersion,
-    mediaSession: identical(mediaSession, unset)
-        ? _self.mediaSession
-        : mediaSession as MediaSession?,
+    playback:
+        playlist == null &&
+            playing == null &&
+            playWhenReady == null &&
+            completed == null &&
+            position == null &&
+            duration == null &&
+            durationEstimated == null &&
+            seeking == null &&
+            seekable == null &&
+            partiallySeekable == null &&
+            percentPos == null &&
+            timeRemaining == null &&
+            playtimeRemaining == null &&
+            eofReached == null &&
+            audioPts == null &&
+            identical(currentChapter, unset) &&
+            loop == null &&
+            shuffle == null &&
+            identical(abLoopA, unset) &&
+            identical(abLoopB, unset) &&
+            identical(abLoopCount, unset) &&
+            identical(remainingAbLoops, unset)
+        ? (playback ?? _self.playback)
+        : (playback ?? _self.playback).copyWith(
+            playlist: playlist,
+            playing: playing,
+            playWhenReady: playWhenReady,
+            completed: completed,
+            position: position,
+            duration: duration,
+            durationEstimated: durationEstimated,
+            seeking: seeking,
+            seekable: seekable,
+            partiallySeekable: partiallySeekable,
+            percentPos: percentPos,
+            timeRemaining: timeRemaining,
+            playtimeRemaining: playtimeRemaining,
+            eofReached: eofReached,
+            audioPts: audioPts,
+            currentChapter: currentChapter,
+            loop: loop,
+            shuffle: shuffle,
+            abLoopA: abLoopA,
+            abLoopB: abLoopB,
+            abLoopCount: abLoopCount,
+            remainingAbLoops: remainingAbLoops,
+          ),
+    network:
+        buffering == null &&
+            buffer == null &&
+            bufferingPercentage == null &&
+            bufferDuration == null &&
+            demuxerCacheState == null &&
+            pausedForCache == null &&
+            demuxerViaNetwork == null &&
+            demuxerIdle == null &&
+            cacheSpeed == null &&
+            cacheBufferingState == null &&
+            identical(readError, unset) &&
+            identical(skippedSegments, unset)
+        ? (network ?? _self.network)
+        : (network ?? _self.network).copyWith(
+            buffering: buffering,
+            buffer: buffer,
+            bufferingPercentage: bufferingPercentage,
+            bufferDuration: bufferDuration,
+            demuxerCacheState: demuxerCacheState,
+            pausedForCache: pausedForCache,
+            demuxerViaNetwork: demuxerViaNetwork,
+            demuxerIdle: demuxerIdle,
+            cacheSpeed: cacheSpeed,
+            cacheBufferingState: cacheBufferingState,
+            readError: readError,
+            skippedSegments: skippedSegments,
+          ),
+    file:
+        metadata == null &&
+            chapterMetadata == null &&
+            chapters == null &&
+            tracks == null &&
+            identical(currentAudioTrack, unset) &&
+            audioParams == null &&
+            identical(audioBitrate, unset) &&
+            identical(coverArt, unset) &&
+            mediaTitle == null &&
+            fileFormat == null &&
+            fileSize == null &&
+            path == null &&
+            filename == null &&
+            streamPath == null &&
+            streamOpenFilename == null &&
+            playlistPath == null &&
+            currentDemuxer == null &&
+            demuxerStartTime == null
+        ? (file ?? _self.file)
+        : (file ?? _self.file).copyWith(
+            metadata: metadata,
+            chapterMetadata: chapterMetadata,
+            chapters: chapters,
+            tracks: tracks,
+            currentAudioTrack: currentAudioTrack,
+            audioParams: audioParams,
+            audioBitrate: audioBitrate,
+            coverArt: coverArt,
+            mediaTitle: mediaTitle,
+            fileFormat: fileFormat,
+            fileSize: fileSize,
+            path: path,
+            filename: filename,
+            streamPath: streamPath,
+            streamOpenFilename: streamOpenFilename,
+            playlistPath: playlistPath,
+            currentDemuxer: currentDemuxer,
+            demuxerStartTime: demuxerStartTime,
+          ),
+    output:
+        audioOutParams == null &&
+            audioDevice == null &&
+            audioDevices == null &&
+            audioOutputState == null &&
+            currentAo == null &&
+            identical(systemVolume, unset) &&
+            identical(systemMute, unset)
+        ? (output ?? _self.output)
+        : (output ?? _self.output).copyWith(
+            audioOutParams: audioOutParams,
+            audioDevice: audioDevice,
+            audioDevices: audioDevices,
+            audioOutputState: audioOutputState,
+            currentAo: currentAo,
+            systemVolume: systemVolume,
+            systemMute: systemMute,
+          ),
+    settings:
+        volume == null &&
+            mute == null &&
+            volumeMax == null &&
+            volumeGain == null &&
+            volumeGainMin == null &&
+            volumeGainMax == null &&
+            rate == null &&
+            pitch == null &&
+            pitchCorrection == null &&
+            audioDelay == null &&
+            gapless == null &&
+            replayGain == null &&
+            audioEffects == null &&
+            spectrum == null &&
+            coverArtAuto == null &&
+            prefetchPlaylist == null &&
+            cache == null &&
+            demuxer == null &&
+            networkTimeout == null &&
+            tlsVerify == null &&
+            tlsCaFile == null &&
+            hlsBitrate == null &&
+            cookies == null &&
+            httpProxy == null &&
+            audioExclusive == null &&
+            audioMediaRole == null &&
+            audioBuffer == null &&
+            audioStreamSilence == null &&
+            audioNullUntimed == null &&
+            audioSpdif == null &&
+            audioSampleRate == null &&
+            audioFormat == null &&
+            audioChannels == null &&
+            audioClientName == null &&
+            audioDriver == null &&
+            identical(mediaSession, unset)
+        ? (settings ?? _self.settings)
+        : (settings ?? _self.settings).copyWith(
+            volume: volume,
+            mute: mute,
+            volumeMax: volumeMax,
+            volumeGain: volumeGain,
+            volumeGainMin: volumeGainMin,
+            volumeGainMax: volumeGainMax,
+            rate: rate,
+            pitch: pitch,
+            pitchCorrection: pitchCorrection,
+            audioDelay: audioDelay,
+            gapless: gapless,
+            replayGain: replayGain,
+            audioEffects: audioEffects,
+            spectrum: spectrum,
+            coverArtAuto: coverArtAuto,
+            prefetchPlaylist: prefetchPlaylist,
+            cache: cache,
+            demuxer: demuxer,
+            networkTimeout: networkTimeout,
+            tlsVerify: tlsVerify,
+            tlsCaFile: tlsCaFile,
+            hlsBitrate: hlsBitrate,
+            cookies: cookies,
+            httpProxy: httpProxy,
+            audioExclusive: audioExclusive,
+            audioMediaRole: audioMediaRole,
+            audioBuffer: audioBuffer,
+            audioStreamSilence: audioStreamSilence,
+            audioNullUntimed: audioNullUntimed,
+            audioSpdif: audioSpdif,
+            audioSampleRate: audioSampleRate,
+            audioFormat: audioFormat,
+            audioChannels: audioChannels,
+            audioClientName: audioClientName,
+            audioDriver: audioDriver,
+            mediaSession: mediaSession,
+          ),
+    versions: mpvVersion == null && ffmpegVersion == null
+        ? (versions ?? _self.versions)
+        : (versions ?? _self.versions).copyWith(
+            mpvVersion: mpvVersion,
+            ffmpegVersion: ffmpegVersion,
+          ),
   );
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is PlayerState &&
-          other.playlist == _self.playlist &&
-          other.playing == _self.playing &&
-          other.playWhenReady == _self.playWhenReady &&
-          other.completed == _self.completed &&
-          other.readError == _self.readError &&
-          other.skippedSegments == _self.skippedSegments &&
-          other.position == _self.position &&
-          other.duration == _self.duration &&
-          other.volume == _self.volume &&
-          other.rate == _self.rate &&
-          other.pitch == _self.pitch &&
-          other.buffering == _self.buffering &&
-          other.buffer == _self.buffer &&
-          other.bufferingPercentage == _self.bufferingPercentage &&
-          other.demuxerCacheState == _self.demuxerCacheState &&
-          other.loop == _self.loop &&
-          other.shuffle == _self.shuffle &&
-          other.audioParams == _self.audioParams &&
-          other.audioOutParams == _self.audioOutParams &&
-          other.audioBitrate == _self.audioBitrate &&
-          other.audioDevice == _self.audioDevice &&
-          _dataListEq(_self.audioDevices, other.audioDevices) &&
-          other.mute == _self.mute &&
-          other.audioDelay == _self.audioDelay &&
-          other.pitchCorrection == _self.pitchCorrection &&
-          _dataMapEq(_self.metadata, other.metadata) &&
-          other.gapless == _self.gapless &&
-          other.replayGain == _self.replayGain &&
-          other.volumeGain == _self.volumeGain &&
-          other.volumeGainMin == _self.volumeGainMin &&
-          other.volumeGainMax == _self.volumeGainMax &&
-          other.systemVolume == _self.systemVolume &&
-          other.systemMute == _self.systemMute &&
-          other.cache == _self.cache &&
-          other.demuxer == _self.demuxer &&
-          other.networkTimeout == _self.networkTimeout &&
-          other.pausedForCache == _self.pausedForCache &&
-          other.demuxerViaNetwork == _self.demuxerViaNetwork &&
-          other.tlsVerify == _self.tlsVerify &&
-          other.tlsCaFile == _self.tlsCaFile &&
-          other.hlsBitrate == _self.hlsBitrate &&
-          other.cookies == _self.cookies &&
-          other.httpProxy == _self.httpProxy &&
-          other.audioExclusive == _self.audioExclusive &&
-          other.audioMediaRole == _self.audioMediaRole &&
-          other.audioBuffer == _self.audioBuffer &&
-          other.audioStreamSilence == _self.audioStreamSilence &&
-          other.audioNullUntimed == _self.audioNullUntimed &&
-          _dataListEq(_self.tracks, other.tracks) &&
-          other.currentAudioTrack == _self.currentAudioTrack &&
-          _dataSetEq(_self.audioSpdif, other.audioSpdif) &&
-          other.volumeMax == _self.volumeMax &&
-          other.audioSampleRate == _self.audioSampleRate &&
-          other.audioFormat == _self.audioFormat &&
-          other.audioChannels == _self.audioChannels &&
-          other.audioClientName == _self.audioClientName &&
-          other.audioDriver == _self.audioDriver &&
-          other.audioOutputState == _self.audioOutputState &&
-          _dataListEq(_self.audioEffects, other.audioEffects) &&
-          other.spectrum == _self.spectrum &&
-          other.coverArt == _self.coverArt &&
-          other.coverArtAuto == _self.coverArtAuto &&
-          other.prefetchPlaylist == _self.prefetchPlaylist &&
-          other.audioPts == _self.audioPts &&
-          other.timeRemaining == _self.timeRemaining &&
-          other.playtimeRemaining == _self.playtimeRemaining &&
-          other.eofReached == _self.eofReached &&
-          other.seekable == _self.seekable &&
-          other.partiallySeekable == _self.partiallySeekable &&
-          other.mediaTitle == _self.mediaTitle &&
-          other.fileFormat == _self.fileFormat &&
-          other.fileSize == _self.fileSize &&
-          other.bufferDuration == _self.bufferDuration &&
-          other.demuxerIdle == _self.demuxerIdle &&
-          other.currentChapter == _self.currentChapter &&
-          _dataListEq(_self.chapters, other.chapters) &&
-          other.path == _self.path &&
-          other.filename == _self.filename &&
-          other.streamPath == _self.streamPath &&
-          other.streamOpenFilename == _self.streamOpenFilename &&
-          other.playlistPath == _self.playlistPath &&
-          other.abLoopA == _self.abLoopA &&
-          other.abLoopB == _self.abLoopB &&
-          other.abLoopCount == _self.abLoopCount &&
-          other.remainingAbLoops == _self.remainingAbLoops &&
-          other.seeking == _self.seeking &&
-          other.percentPos == _self.percentPos &&
-          other.cacheSpeed == _self.cacheSpeed &&
-          other.cacheBufferingState == _self.cacheBufferingState &&
-          other.currentDemuxer == _self.currentDemuxer &&
-          other.currentAo == _self.currentAo &&
-          other.demuxerStartTime == _self.demuxerStartTime &&
-          _dataMapEq(_self.chapterMetadata, other.chapterMetadata) &&
-          other.mpvVersion == _self.mpvVersion &&
-          other.ffmpegVersion == _self.ffmpegVersion &&
-          other.mediaSession == _self.mediaSession);
+          other.playback == _self.playback &&
+          other.network == _self.network &&
+          other.file == _self.file &&
+          other.output == _self.output &&
+          other.settings == _self.settings &&
+          other.versions == _self.versions);
 
   @override
-  int get hashCode => Object.hashAll([
-    _self.playlist,
-    _self.playing,
-    _self.playWhenReady,
-    _self.completed,
-    _self.readError,
-    _self.skippedSegments,
-    _self.position,
-    _self.duration,
-    _self.volume,
-    _self.rate,
-    _self.pitch,
-    _self.buffering,
-    _self.buffer,
-    _self.bufferingPercentage,
-    _self.demuxerCacheState,
-    _self.loop,
-    _self.shuffle,
-    _self.audioParams,
-    _self.audioOutParams,
-    _self.audioBitrate,
-    _self.audioDevice,
-    Object.hashAll(_self.audioDevices),
-    _self.mute,
-    _self.audioDelay,
-    _self.pitchCorrection,
-    Object.hashAllUnordered(
-      _self.metadata.entries.map((e) => Object.hash(e.key, e.value)),
-    ),
-    _self.gapless,
-    _self.replayGain,
-    _self.volumeGain,
-    _self.volumeGainMin,
-    _self.volumeGainMax,
-    _self.systemVolume,
-    _self.systemMute,
-    _self.cache,
-    _self.demuxer,
-    _self.networkTimeout,
-    _self.pausedForCache,
-    _self.demuxerViaNetwork,
-    _self.tlsVerify,
-    _self.tlsCaFile,
-    _self.hlsBitrate,
-    _self.cookies,
-    _self.httpProxy,
-    _self.audioExclusive,
-    _self.audioMediaRole,
-    _self.audioBuffer,
-    _self.audioStreamSilence,
-    _self.audioNullUntimed,
-    Object.hashAll(_self.tracks),
-    _self.currentAudioTrack,
-    Object.hashAllUnordered(_self.audioSpdif),
-    _self.volumeMax,
-    _self.audioSampleRate,
-    _self.audioFormat,
-    _self.audioChannels,
-    _self.audioClientName,
-    _self.audioDriver,
-    _self.audioOutputState,
-    Object.hashAll(_self.audioEffects),
-    _self.spectrum,
-    _self.coverArt,
-    _self.coverArtAuto,
-    _self.prefetchPlaylist,
-    _self.audioPts,
-    _self.timeRemaining,
-    _self.playtimeRemaining,
-    _self.eofReached,
-    _self.seekable,
-    _self.partiallySeekable,
-    _self.mediaTitle,
-    _self.fileFormat,
-    _self.fileSize,
-    _self.bufferDuration,
-    _self.demuxerIdle,
-    _self.currentChapter,
-    Object.hashAll(_self.chapters),
-    _self.path,
-    _self.filename,
-    _self.streamPath,
-    _self.streamOpenFilename,
-    _self.playlistPath,
-    _self.abLoopA,
-    _self.abLoopB,
-    _self.abLoopCount,
-    _self.remainingAbLoops,
-    _self.seeking,
-    _self.percentPos,
-    _self.cacheSpeed,
-    _self.cacheBufferingState,
-    _self.currentDemuxer,
-    _self.currentAo,
-    _self.demuxerStartTime,
-    Object.hashAllUnordered(
-      _self.chapterMetadata.entries.map((e) => Object.hash(e.key, e.value)),
-    ),
-    _self.mpvVersion,
-    _self.ffmpegVersion,
-    _self.mediaSession,
-  ]);
-}
+  int get hashCode => Object.hash(
+    _self.playback,
+    _self.network,
+    _self.file,
+    _self.output,
+    _self.settings,
+    _self.versions,
+  );
 
-bool _dataListEq<T>(List<T> a, List<T> b) {
-  if (identical(a, b)) return true;
-  if (a.length != b.length) return false;
-  for (var i = 0; i < a.length; i++) {
-    if (a[i] != b[i]) return false;
-  }
-  return true;
-}
+  /// Deprecated: [PlaybackState.playlist] of [PlayerState.playback].
+  @Deprecated('Use playback.playlist; the flat fields go in 0.8.0.')
+  Playlist get playlist => _self.playback.playlist;
 
-bool _dataMapEq<K, V>(Map<K, V> a, Map<K, V> b) {
-  if (identical(a, b)) return true;
-  if (a.length != b.length) return false;
-  for (final entry in a.entries) {
-    if (!b.containsKey(entry.key) || b[entry.key] != entry.value) {
-      return false;
-    }
-  }
-  return true;
-}
+  /// Deprecated: [PlaybackState.playing] of [PlayerState.playback].
+  @Deprecated('Use playback.playing; the flat fields go in 0.8.0.')
+  bool get playing => _self.playback.playing;
 
-bool _dataSetEq<T>(Set<T> a, Set<T> b) {
-  if (identical(a, b)) return true;
-  if (a.length != b.length) return false;
-  for (final e in a) {
-    if (!b.contains(e)) return false;
-  }
-  return true;
+  /// Deprecated: [PlaybackState.playWhenReady] of [PlayerState.playback].
+  @Deprecated('Use playback.playWhenReady; the flat fields go in 0.8.0.')
+  bool get playWhenReady => _self.playback.playWhenReady;
+
+  /// Deprecated: [PlaybackState.completed] of [PlayerState.playback].
+  @Deprecated('Use playback.completed; the flat fields go in 0.8.0.')
+  bool get completed => _self.playback.completed;
+
+  /// Deprecated: [PlaybackState.position] of [PlayerState.playback].
+  @Deprecated('Use playback.position; the flat fields go in 0.8.0.')
+  Duration get position => _self.playback.position;
+
+  /// Deprecated: [PlaybackState.duration] of [PlayerState.playback].
+  @Deprecated('Use playback.duration; the flat fields go in 0.8.0.')
+  Duration get duration => _self.playback.duration;
+
+  /// Deprecated: [PlaybackState.seeking] of [PlayerState.playback].
+  @Deprecated('Use playback.seeking; the flat fields go in 0.8.0.')
+  bool get seeking => _self.playback.seeking;
+
+  /// Deprecated: [PlaybackState.seekable] of [PlayerState.playback].
+  @Deprecated('Use playback.seekable; the flat fields go in 0.8.0.')
+  bool get seekable => _self.playback.seekable;
+
+  /// Deprecated: [PlaybackState.partiallySeekable] of [PlayerState.playback].
+  @Deprecated('Use playback.partiallySeekable; the flat fields go in 0.8.0.')
+  bool get partiallySeekable => _self.playback.partiallySeekable;
+
+  /// Deprecated: [PlaybackState.percentPos] of [PlayerState.playback].
+  @Deprecated('Use playback.percentPos; the flat fields go in 0.8.0.')
+  double get percentPos => _self.playback.percentPos;
+
+  /// Deprecated: [PlaybackState.timeRemaining] of [PlayerState.playback].
+  @Deprecated('Use playback.timeRemaining; the flat fields go in 0.8.0.')
+  Duration get timeRemaining => _self.playback.timeRemaining;
+
+  /// Deprecated: [PlaybackState.playtimeRemaining] of [PlayerState.playback].
+  @Deprecated('Use playback.playtimeRemaining; the flat fields go in 0.8.0.')
+  Duration get playtimeRemaining => _self.playback.playtimeRemaining;
+
+  /// Deprecated: [PlaybackState.eofReached] of [PlayerState.playback].
+  @Deprecated('Use playback.eofReached; the flat fields go in 0.8.0.')
+  bool get eofReached => _self.playback.eofReached;
+
+  /// Deprecated: [PlaybackState.audioPts] of [PlayerState.playback].
+  @Deprecated('Use playback.audioPts; the flat fields go in 0.8.0.')
+  Duration get audioPts => _self.playback.audioPts;
+
+  /// Deprecated: [PlaybackState.currentChapter] of [PlayerState.playback].
+  @Deprecated('Use playback.currentChapter; the flat fields go in 0.8.0.')
+  int? get currentChapter => _self.playback.currentChapter;
+
+  /// Deprecated: [PlaybackState.loop] of [PlayerState.playback].
+  @Deprecated('Use playback.loop; the flat fields go in 0.8.0.')
+  Loop get loop => _self.playback.loop;
+
+  /// Deprecated: [PlaybackState.shuffle] of [PlayerState.playback].
+  @Deprecated('Use playback.shuffle; the flat fields go in 0.8.0.')
+  bool get shuffle => _self.playback.shuffle;
+
+  /// Deprecated: [PlaybackState.abLoopA] of [PlayerState.playback].
+  @Deprecated('Use playback.abLoopA; the flat fields go in 0.8.0.')
+  Duration? get abLoopA => _self.playback.abLoopA;
+
+  /// Deprecated: [PlaybackState.abLoopB] of [PlayerState.playback].
+  @Deprecated('Use playback.abLoopB; the flat fields go in 0.8.0.')
+  Duration? get abLoopB => _self.playback.abLoopB;
+
+  /// Deprecated: [PlaybackState.abLoopCount] of [PlayerState.playback].
+  @Deprecated('Use playback.abLoopCount; the flat fields go in 0.8.0.')
+  int? get abLoopCount => _self.playback.abLoopCount;
+
+  /// Deprecated: [PlaybackState.remainingAbLoops] of [PlayerState.playback].
+  @Deprecated('Use playback.remainingAbLoops; the flat fields go in 0.8.0.')
+  int? get remainingAbLoops => _self.playback.remainingAbLoops;
+
+  /// Deprecated: [NetworkState.buffering] of [PlayerState.network].
+  @Deprecated('Use network.buffering; the flat fields go in 0.8.0.')
+  bool get buffering => _self.network.buffering;
+
+  /// Deprecated: [NetworkState.buffer] of [PlayerState.network].
+  @Deprecated('Use network.buffer; the flat fields go in 0.8.0.')
+  Duration get buffer => _self.network.buffer;
+
+  /// Deprecated: [NetworkState.bufferingPercentage] of [PlayerState.network].
+  @Deprecated('Use network.bufferingPercentage; the flat fields go in 0.8.0.')
+  double get bufferingPercentage => _self.network.bufferingPercentage;
+
+  /// Deprecated: [NetworkState.bufferDuration] of [PlayerState.network].
+  @Deprecated('Use network.bufferDuration; the flat fields go in 0.8.0.')
+  Duration get bufferDuration => _self.network.bufferDuration;
+
+  /// Deprecated: [NetworkState.demuxerCacheState] of [PlayerState.network].
+  @Deprecated('Use network.demuxerCacheState; the flat fields go in 0.8.0.')
+  DemuxerCacheState get demuxerCacheState => _self.network.demuxerCacheState;
+
+  /// Deprecated: [NetworkState.pausedForCache] of [PlayerState.network].
+  @Deprecated('Use network.pausedForCache; the flat fields go in 0.8.0.')
+  bool get pausedForCache => _self.network.pausedForCache;
+
+  /// Deprecated: [NetworkState.demuxerViaNetwork] of [PlayerState.network].
+  @Deprecated('Use network.demuxerViaNetwork; the flat fields go in 0.8.0.')
+  bool get demuxerViaNetwork => _self.network.demuxerViaNetwork;
+
+  /// Deprecated: [NetworkState.demuxerIdle] of [PlayerState.network].
+  @Deprecated('Use network.demuxerIdle; the flat fields go in 0.8.0.')
+  bool get demuxerIdle => _self.network.demuxerIdle;
+
+  /// Deprecated: [NetworkState.cacheSpeed] of [PlayerState.network].
+  @Deprecated('Use network.cacheSpeed; the flat fields go in 0.8.0.')
+  double get cacheSpeed => _self.network.cacheSpeed;
+
+  /// Deprecated: [NetworkState.cacheBufferingState] of [PlayerState.network].
+  @Deprecated('Use network.cacheBufferingState; the flat fields go in 0.8.0.')
+  int get cacheBufferingState => _self.network.cacheBufferingState;
+
+  /// Deprecated: [NetworkState.readError] of [PlayerState.network].
+  @Deprecated('Use network.readError; the flat fields go in 0.8.0.')
+  bool? get readError => _self.network.readError;
+
+  /// Deprecated: [NetworkState.skippedSegments] of [PlayerState.network].
+  @Deprecated('Use network.skippedSegments; the flat fields go in 0.8.0.')
+  int? get skippedSegments => _self.network.skippedSegments;
+
+  /// Deprecated: [FileState.metadata] of [PlayerState.file].
+  @Deprecated('Use file.metadata; the flat fields go in 0.8.0.')
+  Map<String, String> get metadata => _self.file.metadata;
+
+  /// Deprecated: [FileState.chapterMetadata] of [PlayerState.file].
+  @Deprecated('Use file.chapterMetadata; the flat fields go in 0.8.0.')
+  Map<String, String> get chapterMetadata => _self.file.chapterMetadata;
+
+  /// Deprecated: [FileState.chapters] of [PlayerState.file].
+  @Deprecated('Use file.chapters; the flat fields go in 0.8.0.')
+  List<Chapter> get chapters => _self.file.chapters;
+
+  /// Deprecated: [FileState.tracks] of [PlayerState.file].
+  @Deprecated('Use file.tracks; the flat fields go in 0.8.0.')
+  List<MpvTrack> get tracks => _self.file.tracks;
+
+  /// Deprecated: [FileState.currentAudioTrack] of [PlayerState.file].
+  @Deprecated('Use file.currentAudioTrack; the flat fields go in 0.8.0.')
+  MpvTrack? get currentAudioTrack => _self.file.currentAudioTrack;
+
+  /// Deprecated: [FileState.audioParams] of [PlayerState.file].
+  @Deprecated('Use file.audioParams; the flat fields go in 0.8.0.')
+  AudioParams get audioParams => _self.file.audioParams;
+
+  /// Deprecated: [FileState.audioBitrate] of [PlayerState.file].
+  @Deprecated('Use file.audioBitrate; the flat fields go in 0.8.0.')
+  double? get audioBitrate => _self.file.audioBitrate;
+
+  /// Deprecated: [FileState.coverArt] of [PlayerState.file].
+  @Deprecated('Use file.coverArt; the flat fields go in 0.8.0.')
+  CoverArt? get coverArt => _self.file.coverArt;
+
+  /// Deprecated: [FileState.mediaTitle] of [PlayerState.file].
+  @Deprecated('Use file.mediaTitle; the flat fields go in 0.8.0.')
+  String get mediaTitle => _self.file.mediaTitle;
+
+  /// Deprecated: [FileState.fileFormat] of [PlayerState.file].
+  @Deprecated('Use file.fileFormat; the flat fields go in 0.8.0.')
+  String get fileFormat => _self.file.fileFormat;
+
+  /// Deprecated: [FileState.fileSize] of [PlayerState.file].
+  @Deprecated('Use file.fileSize; the flat fields go in 0.8.0.')
+  int get fileSize => _self.file.fileSize;
+
+  /// Deprecated: [FileState.path] of [PlayerState.file].
+  @Deprecated('Use file.path; the flat fields go in 0.8.0.')
+  String get path => _self.file.path;
+
+  /// Deprecated: [FileState.filename] of [PlayerState.file].
+  @Deprecated('Use file.filename; the flat fields go in 0.8.0.')
+  String get filename => _self.file.filename;
+
+  /// Deprecated: [FileState.streamPath] of [PlayerState.file].
+  @Deprecated('Use file.streamPath; the flat fields go in 0.8.0.')
+  String get streamPath => _self.file.streamPath;
+
+  /// Deprecated: [FileState.streamOpenFilename] of [PlayerState.file].
+  @Deprecated('Use file.streamOpenFilename; the flat fields go in 0.8.0.')
+  String get streamOpenFilename => _self.file.streamOpenFilename;
+
+  /// Deprecated: [FileState.playlistPath] of [PlayerState.file].
+  @Deprecated('Use file.playlistPath; the flat fields go in 0.8.0.')
+  String get playlistPath => _self.file.playlistPath;
+
+  /// Deprecated: [FileState.currentDemuxer] of [PlayerState.file].
+  @Deprecated('Use file.currentDemuxer; the flat fields go in 0.8.0.')
+  String get currentDemuxer => _self.file.currentDemuxer;
+
+  /// Deprecated: [FileState.demuxerStartTime] of [PlayerState.file].
+  @Deprecated('Use file.demuxerStartTime; the flat fields go in 0.8.0.')
+  Duration get demuxerStartTime => _self.file.demuxerStartTime;
+
+  /// Deprecated: [OutputState.audioOutParams] of [PlayerState.output].
+  @Deprecated('Use output.audioOutParams; the flat fields go in 0.8.0.')
+  AudioParams get audioOutParams => _self.output.audioOutParams;
+
+  /// Deprecated: [OutputState.audioDevice] of [PlayerState.output].
+  @Deprecated('Use output.audioDevice; the flat fields go in 0.8.0.')
+  Device get audioDevice => _self.output.audioDevice;
+
+  /// Deprecated: [OutputState.audioDevices] of [PlayerState.output].
+  @Deprecated('Use output.audioDevices; the flat fields go in 0.8.0.')
+  List<Device> get audioDevices => _self.output.audioDevices;
+
+  /// Deprecated: [OutputState.audioOutputState] of [PlayerState.output].
+  @Deprecated('Use output.audioOutputState; the flat fields go in 0.8.0.')
+  AudioOutputState get audioOutputState => _self.output.audioOutputState;
+
+  /// Deprecated: [OutputState.currentAo] of [PlayerState.output].
+  @Deprecated('Use output.currentAo; the flat fields go in 0.8.0.')
+  String get currentAo => _self.output.currentAo;
+
+  /// Deprecated: [OutputState.systemVolume] of [PlayerState.output].
+  @Deprecated('Use output.systemVolume; the flat fields go in 0.8.0.')
+  double? get systemVolume => _self.output.systemVolume;
+
+  /// Deprecated: [OutputState.systemMute] of [PlayerState.output].
+  @Deprecated('Use output.systemMute; the flat fields go in 0.8.0.')
+  bool? get systemMute => _self.output.systemMute;
+
+  /// Deprecated: [PlayerSettings.volume] of [PlayerState.settings].
+  @Deprecated('Use settings.volume; the flat fields go in 0.8.0.')
+  double get volume => _self.settings.volume;
+
+  /// Deprecated: [PlayerSettings.mute] of [PlayerState.settings].
+  @Deprecated('Use settings.mute; the flat fields go in 0.8.0.')
+  bool get mute => _self.settings.mute;
+
+  /// Deprecated: [PlayerSettings.volumeMax] of [PlayerState.settings].
+  @Deprecated('Use settings.volumeMax; the flat fields go in 0.8.0.')
+  double get volumeMax => _self.settings.volumeMax;
+
+  /// Deprecated: [PlayerSettings.volumeGain] of [PlayerState.settings].
+  @Deprecated('Use settings.volumeGain; the flat fields go in 0.8.0.')
+  double get volumeGain => _self.settings.volumeGain;
+
+  /// Deprecated: [PlayerSettings.volumeGainMin] of [PlayerState.settings].
+  @Deprecated('Use settings.volumeGainMin; the flat fields go in 0.8.0.')
+  double get volumeGainMin => _self.settings.volumeGainMin;
+
+  /// Deprecated: [PlayerSettings.volumeGainMax] of [PlayerState.settings].
+  @Deprecated('Use settings.volumeGainMax; the flat fields go in 0.8.0.')
+  double get volumeGainMax => _self.settings.volumeGainMax;
+
+  /// Deprecated: [PlayerSettings.rate] of [PlayerState.settings].
+  @Deprecated('Use settings.rate; the flat fields go in 0.8.0.')
+  double get rate => _self.settings.rate;
+
+  /// Deprecated: [PlayerSettings.pitch] of [PlayerState.settings].
+  @Deprecated('Use settings.pitch; the flat fields go in 0.8.0.')
+  double get pitch => _self.settings.pitch;
+
+  /// Deprecated: [PlayerSettings.pitchCorrection] of [PlayerState.settings].
+  @Deprecated('Use settings.pitchCorrection; the flat fields go in 0.8.0.')
+  bool get pitchCorrection => _self.settings.pitchCorrection;
+
+  /// Deprecated: [PlayerSettings.audioDelay] of [PlayerState.settings].
+  @Deprecated('Use settings.audioDelay; the flat fields go in 0.8.0.')
+  Duration get audioDelay => _self.settings.audioDelay;
+
+  /// Deprecated: [PlayerSettings.gapless] of [PlayerState.settings].
+  @Deprecated('Use settings.gapless; the flat fields go in 0.8.0.')
+  Gapless get gapless => _self.settings.gapless;
+
+  /// Deprecated: [PlayerSettings.replayGain] of [PlayerState.settings].
+  @Deprecated('Use settings.replayGain; the flat fields go in 0.8.0.')
+  ReplayGainSettings get replayGain => _self.settings.replayGain;
+
+  /// Deprecated: [PlayerSettings.audioEffects] of [PlayerState.settings].
+  @Deprecated('Use settings.audioEffects; the flat fields go in 0.8.0.')
+  List<AudioEffect> get audioEffects => _self.settings.audioEffects;
+
+  /// Deprecated: [PlayerSettings.spectrum] of [PlayerState.settings].
+  @Deprecated('Use settings.spectrum; the flat fields go in 0.8.0.')
+  SpectrumSettings get spectrum => _self.settings.spectrum;
+
+  /// Deprecated: [PlayerSettings.coverArtAuto] of [PlayerState.settings].
+  @Deprecated('Use settings.coverArtAuto; the flat fields go in 0.8.0.')
+  Cover get coverArtAuto => _self.settings.coverArtAuto;
+
+  /// Deprecated: [PlayerSettings.prefetchPlaylist] of [PlayerState.settings].
+  @Deprecated('Use settings.prefetchPlaylist; the flat fields go in 0.8.0.')
+  bool get prefetchPlaylist => _self.settings.prefetchPlaylist;
+
+  /// Deprecated: [PlayerSettings.cache] of [PlayerState.settings].
+  @Deprecated('Use settings.cache; the flat fields go in 0.8.0.')
+  CacheSettings get cache => _self.settings.cache;
+
+  /// Deprecated: [PlayerSettings.demuxer] of [PlayerState.settings].
+  @Deprecated('Use settings.demuxer; the flat fields go in 0.8.0.')
+  DemuxerSettings get demuxer => _self.settings.demuxer;
+
+  /// Deprecated: [PlayerSettings.networkTimeout] of [PlayerState.settings].
+  @Deprecated('Use settings.networkTimeout; the flat fields go in 0.8.0.')
+  Duration get networkTimeout => _self.settings.networkTimeout;
+
+  /// Deprecated: [PlayerSettings.tlsVerify] of [PlayerState.settings].
+  @Deprecated('Use settings.tlsVerify; the flat fields go in 0.8.0.')
+  bool get tlsVerify => _self.settings.tlsVerify;
+
+  /// Deprecated: [PlayerSettings.tlsCaFile] of [PlayerState.settings].
+  @Deprecated('Use settings.tlsCaFile; the flat fields go in 0.8.0.')
+  String get tlsCaFile => _self.settings.tlsCaFile;
+
+  /// Deprecated: [PlayerSettings.hlsBitrate] of [PlayerState.settings].
+  @Deprecated('Use settings.hlsBitrate; the flat fields go in 0.8.0.')
+  HlsBitrate get hlsBitrate => _self.settings.hlsBitrate;
+
+  /// Deprecated: [PlayerSettings.cookies] of [PlayerState.settings].
+  @Deprecated('Use settings.cookies; the flat fields go in 0.8.0.')
+  bool get cookies => _self.settings.cookies;
+
+  /// Deprecated: [PlayerSettings.httpProxy] of [PlayerState.settings].
+  @Deprecated('Use settings.httpProxy; the flat fields go in 0.8.0.')
+  String get httpProxy => _self.settings.httpProxy;
+
+  /// Deprecated: [PlayerSettings.audioExclusive] of [PlayerState.settings].
+  @Deprecated('Use settings.audioExclusive; the flat fields go in 0.8.0.')
+  bool get audioExclusive => _self.settings.audioExclusive;
+
+  /// Deprecated: [PlayerSettings.audioMediaRole] of [PlayerState.settings].
+  @Deprecated('Use settings.audioMediaRole; the flat fields go in 0.8.0.')
+  bool get audioMediaRole => _self.settings.audioMediaRole;
+
+  /// Deprecated: [PlayerSettings.audioBuffer] of [PlayerState.settings].
+  @Deprecated('Use settings.audioBuffer; the flat fields go in 0.8.0.')
+  Duration get audioBuffer => _self.settings.audioBuffer;
+
+  /// Deprecated: [PlayerSettings.audioStreamSilence] of [PlayerState.settings].
+  @Deprecated('Use settings.audioStreamSilence; the flat fields go in 0.8.0.')
+  bool get audioStreamSilence => _self.settings.audioStreamSilence;
+
+  /// Deprecated: [PlayerSettings.audioNullUntimed] of [PlayerState.settings].
+  @Deprecated('Use settings.audioNullUntimed; the flat fields go in 0.8.0.')
+  bool get audioNullUntimed => _self.settings.audioNullUntimed;
+
+  /// Deprecated: [PlayerSettings.audioSpdif] of [PlayerState.settings].
+  @Deprecated('Use settings.audioSpdif; the flat fields go in 0.8.0.')
+  Set<Spdif> get audioSpdif => _self.settings.audioSpdif;
+
+  /// Deprecated: [PlayerSettings.audioSampleRate] of [PlayerState.settings].
+  @Deprecated('Use settings.audioSampleRate; the flat fields go in 0.8.0.')
+  int get audioSampleRate => _self.settings.audioSampleRate;
+
+  /// Deprecated: [PlayerSettings.audioFormat] of [PlayerState.settings].
+  @Deprecated('Use settings.audioFormat; the flat fields go in 0.8.0.')
+  Format get audioFormat => _self.settings.audioFormat;
+
+  /// Deprecated: [PlayerSettings.audioChannels] of [PlayerState.settings].
+  @Deprecated('Use settings.audioChannels; the flat fields go in 0.8.0.')
+  Channels get audioChannels => _self.settings.audioChannels;
+
+  /// Deprecated: [PlayerSettings.audioClientName] of [PlayerState.settings].
+  @Deprecated('Use settings.audioClientName; the flat fields go in 0.8.0.')
+  String get audioClientName => _self.settings.audioClientName;
+
+  /// Deprecated: [PlayerSettings.audioDriver] of [PlayerState.settings].
+  @Deprecated('Use settings.audioDriver; the flat fields go in 0.8.0.')
+  String get audioDriver => _self.settings.audioDriver;
+
+  /// Deprecated: [PlayerSettings.mediaSession] of [PlayerState.settings].
+  @Deprecated('Use settings.mediaSession; the flat fields go in 0.8.0.')
+  MediaSession? get mediaSession => _self.settings.mediaSession;
+
+  /// Deprecated: [LibraryVersions.mpvVersion] of [PlayerState.versions].
+  @Deprecated('Use versions.mpvVersion; the flat fields go in 0.8.0.')
+  String get mpvVersion => _self.versions.mpvVersion;
+
+  /// Deprecated: [LibraryVersions.ffmpegVersion] of [PlayerState.versions].
+  @Deprecated('Use versions.ffmpegVersion; the flat fields go in 0.8.0.')
+  String get ffmpegVersion => _self.versions.ffmpegVersion;
 }

@@ -37,34 +37,34 @@ void main() {
         // play / first audio frame.
         await waitUntil(
           () =>
-              player.state.mediaTitle.isNotEmpty &&
-              player.state.fileFormat.isNotEmpty &&
-              player.state.fileSize > 0 &&
-              player.state.seekable,
+              player.state.file.mediaTitle.isNotEmpty &&
+              player.state.file.fileFormat.isNotEmpty &&
+              player.state.file.fileSize > 0 &&
+              player.state.playback.seekable,
         );
 
         // mediaTitle falls back to the filename (no `title` tag in the
         // fixture).
-        expect(player.state.mediaTitle, isNotEmpty);
+        expect(player.state.file.mediaTitle, isNotEmpty);
 
         // fileFormat populated by the demuxer.
         expect(
-          player.state.fileFormat,
+          player.state.file.fileFormat,
           isNotEmpty,
           reason: 'demuxer must report the container format',
         );
 
         // fileSize is non-zero for a finite file.
         expect(
-          player.state.fileSize,
+          player.state.file.fileSize,
           greaterThan(0),
           reason: 'sine_5s.flac is a finite local file',
         );
 
         // Local files are fully seekable.
-        expect(player.state.seekable, isTrue);
+        expect(player.state.playback.seekable, isTrue);
         expect(
-          player.state.partiallySeekable,
+          player.state.playback.partiallySeekable,
           isFalse,
           reason: 'partial seek is for HLS / DASH only',
         );
@@ -76,7 +76,9 @@ void main() {
         await player.play();
         try {
           await waitUntil(
-            () => player.state.playing && (player.state.audioBitrate ?? 0) > 0,
+            () =>
+                player.state.playback.playing &&
+                (player.state.file.audioBitrate ?? 0) > 0,
             reason:
                 'mpv reports audio-bitrate about once per second during '
                 'playback; FLAC at 44.1 kHz mono yields >50 kbps',
@@ -99,8 +101,8 @@ void main() {
           try {
             await waitUntil(
               () =>
-                  player.state.playing &&
-                  player.state.bufferDuration > Duration.zero,
+                  player.state.playback.playing &&
+                  player.state.network.bufferDuration > Duration.zero,
               reason:
                   'demuxer-cache-duration must show some lookahead '
                   'while audio is producing samples',
@@ -121,12 +123,12 @@ void main() {
 
         // The value after the seek may already be non-zero; what shows
         // audio-pts is live is that it advances while playing.
-        final before = player.state.audioPts;
+        final before = player.state.playback.audioPts;
         await player.play();
         try {
           await waitUntil(
             () =>
-                player.state.audioPts >
+                player.state.playback.audioPts >
                 before + const Duration(milliseconds: 200),
             reason: 'audio-pts must advance during playback',
           );
@@ -150,11 +152,11 @@ void main() {
         await player.play();
         // The 1s file plus AO and observer latency.
         await waitUntil(
-          () => player.state.eofReached,
+          () => player.state.playback.eofReached,
           timeout: const Duration(seconds: 8),
         );
         expect(
-          player.state.eofReached,
+          player.state.playback.eofReached,
           isTrue,
           reason:
               'with keep-open=yes mpv pauses at EOF and emits '

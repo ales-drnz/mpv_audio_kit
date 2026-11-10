@@ -56,7 +56,7 @@ The package is an audio player for Flutter apps that play a media library, from 
 
 ```yaml
 dependencies:
-  mpv_audio_kit: ^0.6.4
+  mpv_audio_kit: ^0.7.0
 ```
 
 The build downloads the libmpv binary for each native target and checks its SHA-256, so the first build needs network access. On the web the module ships with the package.
@@ -67,11 +67,13 @@ The build downloads the libmpv binary for each native target and checks its SHA-
 | iOS | 15.0 | arm64, simulator arm64 and x86_64 | 7.3 MB |
 | macOS | 12.0 | arm64, x86_64 | 15.1 MB universal |
 | tvOS | 15.0 | arm64, simulator arm64 and x86_64 | 7.3 MB |
-| Windows | 10 | arm64, x86_64 | 7.8 MB |
-| Linux | glibc 2.31 | aarch64, x86_64 | 8.4 MB |
+| Tizen | 6.0 | armv7l, emulator x86_64 | 6.0 MB, 8.6 MB on the emulator |
+| webOS | 26 | armv7l | 5.8 MB |
+| Windows | 10 | arm64, x86_64 | 7.5 to 7.8 MB |
+| Linux | glibc 2.31 | aarch64, x86_64 | 8.4 to 8.7 MB |
 | Web | a cross-origin isolated page | wasm32 | 4.3 MB, 2.0 MB zipped |
 
-The package needs Flutter 3.41 or later, and Flutter 3.47.4 to build for iOS. Linux needs ALSA, and uses PipeWire or PulseAudio when they are installed.
+The package needs Flutter 3.38.10 or later, and Flutter 3.47.4 to build for iOS. Linux needs ALSA, and uses PipeWire or PulseAudio when they are installed.
 
 ### Play a file
 
@@ -109,7 +111,7 @@ The player lives on your main isolate and calls libmpv without blocking it. A ba
 
 ```dart
 await player.openAll([track1, track2, track3]);
-await player.insert(player.state.playlist.index + 1, track4); // play next
+await player.insert(player.state.playback.playlist.index + 1, track4); // play next
 await player.next();
 await player.setLoop(Loop.playlist);
 await player.setPrefetchPlaylist(true); // gapless over the network
@@ -221,6 +223,14 @@ Android TV, Fire TV and Google TV run the Android build. The app needs a leanbac
 ### tvOS
 
 Build with [flutter-tvos](https://fluttertv.dev). It installs no code asset, so on tvOS the plugin's `tvos/Package.swift` links libmpv instead of the build hook: Swift Package Manager downloads `libmpv_tvos.xcframework.zip` of the release and checks its checksum. A libmpv of your own goes to `tvos/libmpv.xcframework` in a checkout of the package: the hook's `libmpv` user define does not reach tvOS.
+
+### Tizen
+
+Build with [flutter-tizen](https://github.com/flutter-tizen/flutter-tizen). The build hook bundles the Tizen libmpv for the TVs, and for the TV emulator when the app sets the user define `tizen: true`. See [Tizen](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Tizen-topic.html).
+
+### webOS
+
+Build with [flutter-webos](https://github.com/lg-flutter-webos/flutter-webos), for webOS 26 and later. It runs no build hook, so the package's `webos/CMakeLists.txt` bundles libmpv instead. See [webOS](https://pub.dev/documentation/mpv_audio_kit/latest/topics/webOS-topic.html).
 
 ### macOS
 

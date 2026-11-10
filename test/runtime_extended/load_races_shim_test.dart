@@ -83,7 +83,7 @@ void main() {
         );
         await Future<void>.delayed(const Duration(milliseconds: 300));
         expect(await player.getRawProperty('pause'), 'yes');
-        expect(player.state.playWhenReady, isFalse);
+        expect(player.state.playback.playWhenReady, isFalse);
       });
 
       test('openPlaylistFile', () async {
@@ -98,7 +98,7 @@ void main() {
         );
         await Future<void>.delayed(const Duration(milliseconds: 300));
         expect(await player.getRawProperty('pause'), 'yes');
-        expect(player.state.playWhenReady, isFalse);
+        expect(player.state.playback.playWhenReady, isFalse);
       });
     });
 
@@ -113,8 +113,8 @@ void main() {
       );
       await Future<void>.delayed(const Duration(milliseconds: 300));
       expect(await player.getRawProperty('pause'), 'yes');
-      expect(player.state.playWhenReady, isFalse);
-      expect(player.state.playing, isFalse);
+      expect(player.state.playback.playWhenReady, isFalse);
+      expect(player.state.playback.playing, isFalse);
     });
 
     // openAll at the end of the queue steps through idle, and the intent
@@ -137,8 +137,8 @@ void main() {
       await opening;
       await Future<void>.delayed(const Duration(milliseconds: 300));
       expect(await player.getRawProperty('idle-active'), 'yes');
-      expect(player.state.playlist.items, isEmpty);
-      expect(player.state.playWhenReady, isFalse);
+      expect(player.state.playback.playlist.items, isEmpty);
+      expect(player.state.playback.playWhenReady, isFalse);
     });
 
     // Each append holds one of the 1000 reply slots mpv keeps per client
@@ -151,7 +151,7 @@ void main() {
       await player.openAll([
         for (var i = 0; i < n; i++) Media(fixturePath),
       ], play: false);
-      await waitUntil(() => player.state.playlist.items.length == n);
+      await waitUntil(() => player.state.playback.playlist.items.length == n);
       expect(shim().counter('replies_held'), 1);
     });
 
@@ -186,7 +186,7 @@ void main() {
 
       /// The test entries the playlist lists.
       Set<String> listed() => {
-        for (final m in player.state.playlist.items)
+        for (final m in player.state.playback.playlist.items)
           if (m.uri.startsWith('test://')) m.uri,
       };
 
@@ -228,7 +228,7 @@ void main() {
 
       test('an openAll overtaken after its jump keeps them', () async {
         await player.open(Media(longFixture), play: true);
-        await waitUntil(() => player.state.playing);
+        await waitUntil(() => player.state.playback.playing);
         await overtake(
           'playlist-play-index',
           () => player.openAll(album('b', 3), play: true),
@@ -249,7 +249,7 @@ void main() {
       group('an openAll with a refused append', () {
         test('while a track plays', () async {
           await player.open(Media(longFixture), play: true);
-          await waitUntil(() => player.state.playing);
+          await waitUntil(() => player.state.playback.playing);
           shim().refuseLoadfile('refused');
           await expectLater(
             player.openAll([
@@ -260,9 +260,11 @@ void main() {
             throwsA(isA<MpvCommandException>()),
           );
           await Future<void>.delayed(const Duration(milliseconds: 300));
-          expect(player.state.playlist.items.map((m) => m.uri), [longFixture]);
-          expect(player.state.playWhenReady, isTrue);
-          expect(player.state.playing, isTrue);
+          expect(player.state.playback.playlist.items.map((m) => m.uri), [
+            longFixture,
+          ]);
+          expect(player.state.playback.playWhenReady, isTrue);
+          expect(player.state.playback.playing, isTrue);
           expect(released, contains('test://refused-c1'));
         });
 
@@ -277,8 +279,8 @@ void main() {
             throwsA(isA<MpvCommandException>()),
           );
           await Future<void>.delayed(const Duration(milliseconds: 300));
-          expect(player.state.playlist.items, isEmpty);
-          expect(player.state.playWhenReady, isFalse);
+          expect(player.state.playback.playlist.items, isEmpty);
+          expect(player.state.playback.playWhenReady, isFalse);
           expect(await player.getRawProperty('idle-active'), 'yes');
           expect(released, contains('test://refused-d1'));
         });
@@ -290,7 +292,9 @@ void main() {
           await player.openAll([
             for (var i = 0; i < 4; i++) Media(longFixture),
           ], play: false);
-          await waitUntil(() => player.state.playlist.items.length == 4);
+          await waitUntil(
+            () => player.state.playback.playlist.items.length == 4,
+          );
         }
 
         test('a replace whose index a remove took first', () async {

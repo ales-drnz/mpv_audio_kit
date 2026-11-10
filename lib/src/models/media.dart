@@ -199,8 +199,8 @@ final class Media {
   /// preview, or a section of a long file queued as an entry of its own.
   ///
   /// The entry ends there as at the end of the file: the playlist moves
-  /// on, or the last entry parks and [PlayerState.completed] turns true.
-  /// [PlayerState.duration], `timeRemaining` and `percentPos` still
+  /// on, or the last entry parks and [PlaybackState.completed] turns true.
+  /// [PlaybackState.duration], `timeRemaining` and `percentPos` still
   /// describe the whole file. [Loop.file] and [Player.play] at the end of
   /// the queue start the file again from its beginning, and stop at [end]
   /// again. With [Player.setPrefetchPlaylist] on, an entry with an end is
@@ -225,7 +225,12 @@ final class Media {
   /// The waveform lays out this length. A hint a little off still ends
   /// final: a shorter one leaves the rest of the stream out, a longer one
   /// leaves the bins after the end of the stream unfilled. Any other
-  /// source ignores it. Unlike the other per-entry options it does not
+  /// source ignores it for the analysis.
+  ///
+  /// It is also [PlaybackState.duration] of this entry, whatever its
+  /// source, while mpv only has a duration estimated from the bitrate
+  /// ([PlaybackState.durationEstimated] is then false). An exact duration
+  /// of mpv's always wins. Unlike the other per-entry options it does not
   /// keep the entry from opening ahead with [Player.setPrefetchPlaylist].
   ///
   /// `null` (default) gives none. Must be positive. mpv ignores a hint past

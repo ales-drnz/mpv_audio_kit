@@ -69,7 +69,9 @@ Future<void> engineSessionMain() async {
       test.send('accepted');
     } on StateError {
       test.send(
-        player.state.mediaSession == null ? 'refused' : 'refused, state kept',
+        player.state.settings.mediaSession == null
+            ? 'refused'
+            : 'refused, state kept',
       );
     } catch (e) {
       test.send('failed: $e');

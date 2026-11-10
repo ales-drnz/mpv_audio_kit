@@ -166,10 +166,13 @@ void main() {
         );
         // x with q 2 lasts 4 s, x with q 1 3 s.
         await waitUntil(
-          () => player.state.duration > Duration.zero,
+          () => player.state.playback.duration > Duration.zero,
           reason: 'no duration',
         );
-        expect(player.state.duration.inMilliseconds, closeTo(4000, 50));
+        expect(
+          player.state.playback.duration.inMilliseconds,
+          closeTo(4000, 50),
+        );
       }, timeout: const Timeout(Duration(seconds: 40)));
     });
   });

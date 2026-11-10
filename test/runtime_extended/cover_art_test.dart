@@ -61,12 +61,12 @@ void main() {
         // README contract: state.coverArt mirrors the latest stream emit
         // synchronously. Pin it.
         expect(
-          player.state.coverArt,
+          player.state.file.coverArt,
           isNotNull,
           reason: 'state.coverArt must mirror the latest stream emit',
         );
-        expect(player.state.coverArt!.bytes, equals(cover.bytes));
-        expect(player.state.coverArt!.mimeType, equals(cover.mimeType));
+        expect(player.state.file.coverArt!.bytes, equals(cover.bytes));
+        expect(player.state.file.coverArt!.mimeType, equals(cover.mimeType));
 
         // Now load a fixture WITHOUT attached art. The stream contract says
         // we should observe a `null` emit so consumers can clear the
@@ -91,7 +91,7 @@ void main() {
               'UIs can clear stale artwork on track change',
         );
         expect(
-          player.state.coverArt,
+          player.state.file.coverArt,
           isNull,
           reason: 'state.coverArt must mirror the cleared stream emit',
         );
@@ -124,7 +124,7 @@ void main() {
           await player.open(Media(coverPath), play: false);
           await waitUntil(
             () =>
-                player.state.coverArt != null &&
+                player.state.file.coverArt != null &&
                 wave != null &&
                 !wave!.decoding &&
                 scan != null,
@@ -133,7 +133,9 @@ void main() {
 
           await unload(player);
           await waitUntil(
-            () => player.state.path.isEmpty && player.state.coverArt == null,
+            () =>
+                player.state.file.path.isEmpty &&
+                player.state.file.coverArt == null,
             reason: 'mpv idle with no file after $name',
           );
           // Longer than the pipelines' poll interval.

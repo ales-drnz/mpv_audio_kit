@@ -48,9 +48,9 @@ void main() {
 
       String describe() =>
           '${server.describe()}\nlog:\n  ${log.join('\n  ')}\n'
-          'ended: $ended\nstate: position ${player.state.position}, '
-          'duration ${player.state.duration}, readError '
-          '${player.state.readError}, skipped ${player.state.skippedSegments}';
+          'ended: $ended\nstate: position ${player.state.playback.position}, '
+          'duration ${player.state.playback.duration}, readError '
+          '${player.state.network.readError}, skipped ${player.state.network.skippedSegments}';
 
       setUpAll(() => flac = File(flacPath).readAsBytesSync());
 
@@ -99,8 +99,8 @@ void main() {
         expect(ended, hasLength(1), reason: describe());
         expect(ended.single.readError, patched ? isFalse : isNull);
         expect(ended.single.skippedSegments, patched ? 0 : isNull);
-        expect(player.state.readError, patched ? isFalse : isNull);
-        expect(player.state.skippedSegments, patched ? 0 : isNull);
+        expect(player.state.network.readError, patched ? isFalse : isNull);
+        expect(player.state.network.skippedSegments, patched ? 0 : isNull);
       }, timeout: const Timeout(Duration(seconds: 30)));
 
       libmpvReleaseGroup(20, 'A read error', () {
@@ -114,8 +114,8 @@ void main() {
           expect(first.error, 0);
           expect(first.readError, isTrue, reason: describe());
           expect(first.skippedSegments, 0);
-          expect(player.state.readError, isFalse, reason: describe());
-          expect(player.state.skippedSegments, 0);
+          expect(player.state.network.readError, isFalse, reason: describe());
+          expect(player.state.network.skippedSegments, 0);
         }, timeout: const Timeout(Duration(seconds: 40)));
 
         test('parks the last entry cut short, and its stop tells it '
@@ -123,13 +123,17 @@ void main() {
           server.dropAfterBytes = flac.length ~/ 2;
           await playToEnd([cutOnce(server.url('a.flac'))]);
           expect(ended, isEmpty, reason: 'the park sends no event');
-          expect(player.state.readError, isTrue, reason: describe());
-          expect(player.state.skippedSegments, 0);
+          expect(player.state.network.readError, isTrue, reason: describe());
+          expect(player.state.network.skippedSegments, 0);
           await player.stop();
           await waitUntil(() => ended.isNotEmpty, reason: describe());
           expect(ended.single.reason, MpvEndFileReason.stop);
           expect(ended.single.readError, isTrue, reason: describe());
-          expect(player.state.readError, isNull, reason: 'not completed');
+          expect(
+            player.state.network.readError,
+            isNull,
+            reason: 'not completed',
+          );
         }, timeout: const Timeout(Duration(seconds: 40)));
 
         test('ends a file a server without ranges closed early, with no '
@@ -138,7 +142,7 @@ void main() {
           server.dropAfterBytes = flac.length ~/ 2;
           final clock = Stopwatch()..start();
           await playToEnd([Media(server.url('a.flac'))]);
-          expect(player.state.readError, isTrue, reason: describe());
+          expect(player.state.network.readError, isTrue, reason: describe());
           expect(clock.elapsed, lessThan(const Duration(seconds: 5)));
           expect(server.gets('/a.flac'), hasLength(1), reason: describe());
         }, timeout: const Timeout(Duration(seconds: 40)));
@@ -147,31 +151,33 @@ void main() {
           await playToEnd([Media(server.url('a.flac')), Media(shortPath)]);
           expect(ended, hasLength(1), reason: describe());
           expect(ended.single.readError, isFalse, reason: describe());
-          expect(player.state.readError, isFalse);
+          expect(player.state.network.readError, isFalse);
           await player.stop();
           await waitUntil(
-            () => ended.length == 2 && !player.state.completed,
+            () => ended.length == 2 && !player.state.playback.completed,
             reason: describe(),
           );
           await playToEnd([Media(server.url('a.flac'))]);
-          expect(player.state.readError, isFalse, reason: describe());
-          expect(player.state.skippedSegments, 0);
+          expect(player.state.network.readError, isFalse, reason: describe());
+          expect(player.state.network.skippedSegments, 0);
         }, timeout: const Timeout(Duration(seconds: 40)));
 
         test(
           'tells a file read whole short of an estimated duration',
           () async {
             await openAndWaitForLoad(player, vbrPath);
-            await waitUntil(() => player.state.duration > Duration.zero);
-            final estimated = player.state.duration;
+            await waitUntil(
+              () => player.state.playback.duration > Duration.zero,
+            );
+            final estimated = player.state.playback.duration;
             final completed = player.stream.completed
                 .firstWhere((c) => c)
                 .timeout(const Duration(seconds: 30));
             await player.play();
             await completed;
-            expect(player.state.readError, isFalse, reason: describe());
+            expect(player.state.network.readError, isFalse, reason: describe());
             expect(
-              player.state.position,
+              player.state.playback.position,
               lessThan(estimated - const Duration(seconds: 5)),
               reason:
                   'the duration of an MP3 without a Xing header is an '
@@ -190,7 +196,7 @@ void main() {
             isNotEmpty,
             reason: describe(),
           );
-          expect(player.state.readError, isFalse, reason: describe());
+          expect(player.state.network.readError, isFalse, reason: describe());
         }, timeout: const Timeout(Duration(seconds: 40)));
 
         test('ends a file whose resume the server refuses, after the default '
@@ -220,7 +226,7 @@ void main() {
           /// Parks [media] at the cut, then seeks it to [to].
           Future<void> parkAndSeek(Media media, Duration to) async {
             await playToEnd([media]);
-            expect(player.state.readError, isTrue, reason: describe());
+            expect(player.state.network.readError, isTrue, reason: describe());
             completions = [];
             final sub = player.stream.completed.listen(completions.add);
             addTearDown(sub.cancel);
@@ -244,10 +250,12 @@ void main() {
               reason: 'mpv parked again (${describe()})',
             );
             await waitUntil(
-              () => completions.contains(false) && player.state.completed,
+              () =>
+                  completions.contains(false) &&
+                  player.state.playback.completed,
               reason: 'parked again (${describe()})',
             );
-            expect(player.state.readError, isTrue, reason: describe());
+            expect(player.state.network.readError, isTrue, reason: describe());
           }
 
           /// Brings the server back, seeks to [to] again and waits for the
@@ -261,14 +269,14 @@ void main() {
             await waitUntil(
               () =>
                   completions.contains(false) &&
-                  player.state.completed &&
-                  player.state.readError == false,
+                  player.state.playback.completed &&
+                  player.state.network.readError == false,
               timeout: const Duration(seconds: 20),
               reason: 'parked at the real end (${describe()})',
             );
-            expect(player.state.skippedSegments, 0);
+            expect(player.state.network.skippedSegments, 0);
             expect(
-              player.state.position,
+              player.state.playback.position,
               greaterThan(const Duration(seconds: 4)),
               reason: describe(),
             );
@@ -304,7 +312,7 @@ void main() {
                   : const Duration(seconds: 3);
               if (!cached) {
                 await player.setCache(
-                  player.state.cache.copyWith(mode: Cache.no),
+                  player.state.settings.cache.copyWith(mode: Cache.no),
                 );
               }
               final clock = Stopwatch()..start();
@@ -349,11 +357,13 @@ void main() {
             );
             server.comeBack();
             await waitUntil(
-              () => completions.contains(false) && player.state.completed,
+              () =>
+                  completions.contains(false) &&
+                  player.state.playback.completed,
               timeout: const Duration(seconds: 20),
               reason: 'parked at the real end (${describe()})',
             );
-            expect(player.state.readError, isFalse, reason: describe());
+            expect(player.state.network.readError, isFalse, reason: describe());
           }, timeout: const Timeout(Duration(seconds: 60)));
         });
 
@@ -363,7 +373,7 @@ void main() {
           test('ends one closed between two chunks', () async {
             server.dropAfterBytes = 2 * 16 * 1024;
             await playToEnd([Media(server.url('a.flac'))]);
-            expect(player.state.readError, isTrue, reason: describe());
+            expect(player.state.network.readError, isTrue, reason: describe());
             expect(server.gets('/a.flac'), hasLength(1), reason: describe());
           }, timeout: const Timeout(Duration(seconds: 40)));
 
@@ -371,13 +381,13 @@ void main() {
             server.dropAfterBytes = 2 * 16 * 1024 + 5000;
             server.cutInsideChunk = true;
             await playToEnd([Media(server.url('a.flac'))]);
-            expect(player.state.readError, isTrue, reason: describe());
+            expect(player.state.network.readError, isTrue, reason: describe());
             expect(server.gets('/a.flac'), hasLength(1), reason: describe());
           }, timeout: const Timeout(Duration(seconds: 40)));
 
           test('does not end one closed with its last chunk', () async {
             await playToEnd([Media(server.url('a.flac'))]);
-            expect(player.state.readError, isFalse, reason: describe());
+            expect(player.state.network.readError, isFalse, reason: describe());
             expect(server.gets('/a.flac'), hasLength(1), reason: describe());
           }, timeout: const Timeout(Duration(seconds: 40)));
         });
@@ -409,8 +419,8 @@ void main() {
           test('counts a segment that never opens', () async {
             await serve(missing: {6});
             await playToEnd([Media(server.url('a.m3u8'))]);
-            expect(player.state.skippedSegments, 1, reason: describe());
-            expect(player.state.readError, isFalse, reason: describe());
+            expect(player.state.network.skippedSegments, 1, reason: describe());
+            expect(player.state.network.readError, isFalse, reason: describe());
           }, timeout: const Timeout(Duration(seconds: 40)));
 
           test('counts a segment whose read breaks off', () async {

@@ -109,7 +109,7 @@ void main() {
     );
 
     test('track change clears the result and rescans the new source', () async {
-      final previous = player.state.path;
+      final previous = player.state.file.path;
       final events = <LoudnessScan?>[];
       // skip(1): the replayed value is the previous file's scan.
       final sub = player.stream.loudnessScan.skip(1).listen(events.add);
@@ -124,7 +124,7 @@ void main() {
       final result = await fresh;
       await sub.cancel();
 
-      expect(player.state.path, isNot(previous));
+      expect(player.state.file.path, isNot(previous));
       expect(
         events,
         contains(null),

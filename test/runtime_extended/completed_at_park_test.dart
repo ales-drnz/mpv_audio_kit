@@ -49,11 +49,13 @@ void main() {
       );
       expect(pause, 'yes', reason: 'completed before the keep-open park');
       expect(
-        player.state.position,
-        greaterThan(player.state.duration - const Duration(milliseconds: 300)),
+        player.state.playback.position,
+        greaterThan(
+          player.state.playback.duration - const Duration(milliseconds: 300),
+        ),
       );
-      await waitUntil(() => !player.state.playing);
-      expect(player.state.playWhenReady, isFalse);
+      await waitUntil(() => !player.state.playback.playing);
+      expect(player.state.playback.playWhenReady, isFalse);
     }, timeout: const Timeout(Duration(seconds: 30)));
 
     test('play() in the last buffer does not restart the track', () async {
@@ -66,7 +68,7 @@ void main() {
       // is already false here: the core's own pause tells the drain apart.
       await waitUntil(
         () async =>
-            player.state.eofReached &&
+            player.state.playback.eofReached &&
             await player.getRawProperty('pause') == 'no',
         timeout: const Duration(seconds: 15),
         reason: 'never saw eof-reached while the buffer still played',
@@ -74,8 +76,8 @@ void main() {
       await player.play();
       await Future<void>.delayed(const Duration(milliseconds: 150));
       expect(
-        player.state.position,
-        greaterThan(player.state.duration ~/ 2),
+        player.state.playback.position,
+        greaterThan(player.state.playback.duration ~/ 2),
         reason: 'play() while still playing went back to the start',
       );
       await player.stream.completed

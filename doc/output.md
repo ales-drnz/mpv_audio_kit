@@ -22,7 +22,7 @@ player.stream.audioDevices.listen((devices) {
   for (final d in devices) print('${d.name}: ${d.description}');
 });
 
-await player.setAudioDevice(player.state.audioDevices.first);
+await player.setAudioDevice(player.state.output.audioDevices.first);
 await player.setAudioDevice(Device.auto); // back to the system default
 ```
 
@@ -69,7 +69,7 @@ To downmix without clipping, create the player with `PlayerConfiguration(normali
 
 On the web one rate serves the whole page, and a rate the browser refuses throws `StateError`.
 
-The driver can still change what you ask for, and `state.audioOutParams` shows what the device gets. On Android:
+The driver can still change what you ask for, and `state.output.audioOutParams` shows what the device gets. On Android:
 
 - `audiotrack` plays only 8-bit, 16-bit and float samples, at most at the device's native rate. It turns other integer formats into 16-bit, so use `Format.float32` to keep a 24-bit file intact.
 - `aaudio` takes 32-bit integers from Android 12 (API 31).
@@ -106,7 +106,7 @@ await player.setAudioSpdif(await MpvAudioKit.passthroughCodecs());
 A file can hold several audio tracks, such as one per language.
 
 ```dart
-for (final t in player.state.tracks.where((t) => t.type == 'audio')) {
+for (final t in player.state.file.tracks.where((t) => t.type == 'audio')) {
   print('${t.id}: ${t.title ?? t.lang ?? 'audio'} (${t.codec})');
 }
 

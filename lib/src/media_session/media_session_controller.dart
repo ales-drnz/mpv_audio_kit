@@ -229,7 +229,7 @@ class MediaSessionController {
 
     // Push the initial full state.
     final state = _stateSnapshot();
-    final session = state.mediaSession;
+    final session = state.settings.mediaSession;
     if (session == null) return;
     final metadata = _computeMetadata();
     _lastMetadata = metadata;
@@ -300,13 +300,13 @@ class MediaSessionController {
   /// lockscreen. The end of loading pushes it once.
   Future<void> _flush() async {
     _flushScheduled = false;
-    if (_disposed || _stateSnapshot().mediaSession == null) {
+    if (_disposed || _stateSnapshot().settings.mediaSession == null) {
       _metadataDirty = false;
       _playbackDirty = false;
       _playbackSeek = false;
       return;
     }
-    if (_metadataDirty && !_stateSnapshot().buffering) {
+    if (_metadataDirty && !_stateSnapshot().network.buffering) {
       _metadataDirty = false;
       final snap = _computeMetadata();
       if (_lastMetadata == null || snap != _lastMetadata) {
@@ -326,8 +326,8 @@ class MediaSessionController {
 
   MediaSessionMetadataSnapshot _computeMetadata() {
     final state = _stateSnapshot();
-    final override = state.mediaSession;
-    final mpvMeta = state.metadata;
+    final override = state.settings.mediaSession;
+    final mpvMeta = state.file.metadata;
 
     // The currently-playing queue item. Its consumer-attached
     // [Media.extras] are the metadata fallback for tag-less files, most
@@ -347,7 +347,7 @@ class MediaSessionController {
         override?.title ??
         _firstTagValue(mpvMeta, const ['title']) ??
         _extra(extras, 'title') ??
-        _mediaTitle(state.mediaTitle, remote: remote);
+        _mediaTitle(state.file.mediaTitle, remote: remote);
 
     final artist =
         override?.artist ??
@@ -361,7 +361,9 @@ class MediaSessionController {
 
     final duration =
         override?.duration ??
-        (state.duration == Duration.zero ? null : state.duration);
+        (state.playback.duration == Duration.zero
+            ? null
+            : state.playback.duration);
 
     // Rich tags (mpv-derived, with the extras-attached artist as a final
     // fallback for the album-artist line on tag-less streams).
@@ -385,7 +387,7 @@ class MediaSessionController {
     final url = remote || item == null ? null : _fileUri(item.uri);
 
     final (:cover, :artworkUrl) = _artworkFor(
-      _resolveArtwork(override, state.coverArt, extras),
+      _resolveArtwork(override, state.file.coverArt, extras),
     );
 
     return MediaSessionMetadataSnapshot(
@@ -405,7 +407,7 @@ class MediaSessionController {
 
   /// The item of [state]'s playlist that is current, `null` when none is.
   static Media? _currentItem(PlayerState state) {
-    final playlist = state.playlist;
+    final playlist = state.playback.playlist;
     final index = playlist.index;
     if (index < 0 || index >= playlist.items.length) return null;
     return playlist.items[index];
@@ -551,7 +553,7 @@ class MediaSessionController {
       unawaited(
         _artworkFetcher!(
           uri,
-          _stateSnapshot().tlsCaFile,
+          _stateSnapshot().settings.tlsCaFile,
         ).catchError((Object _) => null).then((cover) {
           if (_disposed || uri != _pendingArtUri) return;
           _pendingArtUri = null;
@@ -610,32 +612,32 @@ class MediaSessionController {
     // Navigability: a real multi-item mpv playlist reflects its bounds
     // (loop=playlist wraps both ways); a single item stays navigable so an
     // external-queue consumer still receives next and previous.
-    final pl = state.playlist;
+    final pl = state.playback.playlist;
     final multi = pl.items.length > 1;
-    final loopPlaylist = state.loop == Loop.playlist;
+    final loopPlaylist = state.playback.loop == Loop.playlist;
     final hasNext = !multi || loopPlaylist || pl.index < pl.items.length - 1;
     final hasPrevious = !multi || loopPlaylist || pl.index > 0;
     // Built only to be pushed, so it records what the OS now shows.
-    final seekable = state.buffering
-        ? _pushedSeekable ?? state.seekable
-        : state.seekable;
+    final seekable = state.network.buffering
+        ? _pushedSeekable ?? state.playback.seekable
+        : state.playback.seekable;
     _pushedSeekable = seekable;
     return MediaSessionPlaybackSnapshot(
-      playing: state.playWhenReady,
-      position: state.position,
-      rate: state.rate,
+      playing: state.playback.playWhenReady,
+      position: state.playback.position,
+      rate: state.settings.rate,
       seekable: seekable,
-      loop: state.loop,
-      shuffle: state.shuffle,
+      loop: state.playback.loop,
+      shuffle: state.playback.shuffle,
       // Terminal end-of-content. The end-of-content settle releases
       // `playWhenReady` at true EOF, which already drives a playback push,
       // so the completed transition is carried on that same snapshot.
-      completed: state.completed,
+      completed: state.playback.completed,
       seek: seek,
       // Actual output + buffering, for extrapolation gating and the loading
       // state. Independent of the intent axis the button binds to.
-      actualPlaying: state.playing,
-      buffering: state.buffering,
+      actualPlaying: state.playback.playing,
+      buffering: state.network.buffering,
       hasNext: hasNext,
       hasPrevious: hasPrevious,
       appPauses: _appPauses,

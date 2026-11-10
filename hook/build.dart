@@ -22,7 +22,14 @@
 // files are bundled as they are, without a checksum.
 //
 // tvOS is the exception: the plugin's tvos/Package.swift links libmpv
-// there, and this hook bundles nothing.
+// there, and this hook bundles nothing. Tizen, through flutter-tizen, is
+// linux here and takes its own libmpv_tizen assets: on arm (the TVs) by
+// itself, on x64 (the TV emulator) with
+//
+//   hooks:
+//     user_defines:
+//       mpv_audio_kit:
+//         tizen: true
 
 import 'dart:io';
 
@@ -40,23 +47,37 @@ const _baseUrl =
 /// SHA-256 of every release asset, from the release's manifest.json.
 const _sha256 = <String, String>{
   'libmpv_android-arm64-v8a.so':
-      'cc2b328fd2b3ae6ece527c9acda048ac3d8ecd8854e4ef6184db3cb62b11553a',
+      'b7437907760f813637e330252f2e6d60744d0c535a6128e1c9967bc0688cb1e5',
   'libmpv_android-armeabi-v7a.so':
-      '0415456779015ad2d62ce7b1549c0adb54821986e88c2b0ac82053e3af31cccb',
+      '8de6e82aa55b29d114b5c6f9c1552e63f04a3c344abd347bc82d046e43aa84a0',
   'libmpv_android-x86_64.so':
-      '0f0bbc952feed353e5bfd4bc0c1af2d4944631574caf953883cfde7755e0a219',
+      '5ef33c4449d47f5de7dec684ab9c1c1a4299780dbbf3f9420054b7fcb4a2e0c0',
   'libmpv_ios.xcframework.zip':
-      'cd5c8700c19b12c7e802410a07e4fd93fb906a245a391330a985d34abdf73cea',
+      '0569c18f6f294fb5fed14a6e54f1ee499dfea1809c511f4c29e267bd8a6e5ff8',
   'libmpv_linux-aarch64.so':
-      '3bc9b3277705686e00303f2a2cebeef6dc9ad22a5b1f71f41de78557d5904789',
+      '174c57a3501fba6a8f276ce1c0a13beec1a16cc16fe9b2ac3788a867980911c9',
   'libmpv_linux-x86_64.so':
-      '13d59f9026d831d8c69fc897b7f120e1d96ed67a8fb0e10e206b1adc44786239',
+      'f357ec2a1fffc4b8b43b287a3d1e3010f928d10f2904dcc53b999faafbcca717',
   'libmpv_macos.xcframework.zip':
-      '55c720db17eaaa20f8928cc53587a06dfcb92c154db8a0a5fe20f2552730898e',
+      'dcfcf54eecc7e58b53ec744e2e2cedaf10302f6b49416325234613092551d8aa',
+  'libmpv_tizen-armv7l.so':
+      '3a2148bdeb5f94ffd79e317f549f5d567647c7f8f94af8b19b925a318e1f9c29',
+  'libmpv_tizen-x86_64.so':
+      '67f133a5a8a05d23ff6cc7206a7f9627ba94ce62bf72c07790147925fc467257',
   'libmpv_windows-arm64.dll':
-      'd72b331061cdbfc61f85595a2879aac06fbea9c4ab966be819ebf870ff94c42a',
+      'b4514a673239483bd08969aefd146af643a82c27de15a753494f9f7be595ed34',
   'libmpv_windows-x86_64.dll':
-      '36928dcaf795385f476c0484077757c91b946436fc0c4954c0f344d093bdd7b1',
+      '0e126fa92c92d903c2b9bce5562cf0ed4a1581dee2a123cf749313db44c63421',
+};
+
+/// The tizen user define, true or false. Anything else fails the build: an
+/// emulator build would bundle the desktop library and fail when it loads.
+bool _tizen(BuildInput input) => switch (input.userDefines['tizen']) {
+  null || false => false,
+  true => true,
+  final other => throw ArgumentError(
+    'mpv_audio_kit: the tizen user define is true or false, not $other',
+  ),
 };
 
 void main(List<String> args) async {
@@ -69,7 +90,11 @@ void main(List<String> args) async {
     // an OS it does not know.
     if (_targetOSName(input) == 'tvos') return;
     final code = input.config.code;
-    final target = _Target.of(code, iOSVersion: _iOSVersion(input));
+    final target = _Target.of(
+      code,
+      iOSVersion: _iOSVersion(input),
+      tizen: _tizen(input),
+    );
     final out = File.fromUri(input.outputDirectory.resolve(target.fileName));
 
     final local = input.userDefines.path('libmpv');
@@ -163,7 +188,7 @@ class _Target {
   /// The xcframework directory holding the slice, on Apple.
   final String? appleSlice;
 
-  static _Target of(CodeConfig code, {int? iOSVersion}) {
+  static _Target of(CodeConfig code, {int? iOSVersion, bool tizen = false}) {
     final arch = code.targetArchitecture;
     Never unsupported() => throw UnsupportedError(
       'mpv_audio_kit: no libmpv for ${code.targetOS} '
@@ -180,14 +205,17 @@ class _Target {
       );
     }
     return switch (code.targetOS) {
-      OS.linux => _Target(
-        'libmpv_linux-${switch (arch) {
-          Architecture.x64 => 'x86_64',
-          Architecture.arm64 => 'aarch64',
-          _ => unsupported(),
-        }}.so',
-        'libmpv_audio_kit.so',
-      ),
+      // flutter-tizen (https://github.com/flutter-tizen/flutter-tizen)
+      // writes linux with the arch of the Tizen build: arm for the TVs,
+      // which Flutter's Linux desktop never builds, and x64 for the TV
+      // emulator, which it does, so there the app sets the tizen user define.
+      OS.linux => _Target(switch ((arch, tizen)) {
+        (Architecture.arm, _) => 'libmpv_tizen-armv7l.so',
+        (Architecture.x64, true) => 'libmpv_tizen-x86_64.so',
+        (Architecture.x64, false) => 'libmpv_linux-x86_64.so',
+        (Architecture.arm64, false) => 'libmpv_linux-aarch64.so',
+        _ => unsupported(),
+      }, 'libmpv_audio_kit.so'),
       OS.android => _Target(
         'libmpv_android-${switch (arch) {
           Architecture.arm64 => 'arm64-v8a',

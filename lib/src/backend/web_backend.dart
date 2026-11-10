@@ -160,6 +160,10 @@ Future<MpvModule> _import(String url) async {
 MpvSession createMpvSession({int? wakeupCounterAddress}) =>
     WebSession(() async => (await _load()).module);
 
+/// The page loads the package's web module when the app gives none.
+@internal
+String? defaultLibmpv() => null;
+
 /// Starts loading the module: from [libmpv], a URL, or else from the
 /// package's web assets ([kWebModuleAsset]); then the page's output. With
 /// [hotRestartCleanup], what a program a Hot Restart replaced left in the

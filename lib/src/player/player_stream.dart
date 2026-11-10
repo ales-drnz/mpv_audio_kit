@@ -105,6 +105,7 @@ class PlayerStream {
        playWhenReady = reactives.playWhenReady.stream,
        position = reactives.position.stream,
        duration = reactives.duration.stream,
+       durationEstimated = reactives.durationEstimated.stream,
        buffer = reactives.buffer.stream,
        volume = reactives.volume.stream,
        rate = reactives.rate.stream,
@@ -239,12 +240,12 @@ class PlayerStream {
   /// [Player.pause], [Player.open] and [Player.stop] (and released at the
   /// natural end of content). Stable across seeks and buffering; this is
   /// the signal to bind a play-pause button to. See
-  /// [PlayerState.playWhenReady].
+  /// [PlaybackState.playWhenReady].
   final Stream<bool> playWhenReady;
 
   /// Emits `true` when playback reaches the end of a single track or of the
   /// last playlist entry, not between entries and not while looping. See
-  /// [PlayerState.completed].
+  /// [PlaybackState.completed].
   final Stream<bool> completed;
 
   /// Emits the current playback position as a [Duration].
@@ -256,8 +257,14 @@ class PlayerStream {
   final Stream<void> seekCompleted;
 
   /// Emits the duration of the current track. Zero when unknown: a live
-  /// stream, nothing loaded, or a track still loading.
+  /// stream, nothing loaded, or a track still loading. The entry's
+  /// [Media.waveformDurationHint] over a duration estimated from the
+  /// bitrate, as [PlaybackState.duration].
   final Stream<Duration> duration;
+
+  /// Emits whether the duration is an estimate from the bitrate, with no
+  /// hint to replace it ([PlaybackState.durationEstimated]).
+  final Stream<bool> durationEstimated;
 
   /// Emits the current soft volume in percent (0 to 1000, 100 is unity).
   final Stream<double> volume;
@@ -276,12 +283,12 @@ class PlayerStream {
 
   /// Emits the absolute timestamp the demuxer has buffered up to
   /// (`demuxer-cache-time`), not a depth: [bufferDuration] is the headroom
-  /// ahead of the playhead. See [PlayerState.buffer].
+  /// ahead of the playhead. See [NetworkState.buffer].
   final Stream<Duration> buffer;
 
   /// Emits the cache fill as a percentage (0.0 to 100.0) of
   /// [CacheSettings.secs]. Near 0 with mpv's default `cache-secs` of 1000
-  /// hours: see [PlayerState.bufferingPercentage] for what to use instead.
+  /// hours: see [NetworkState.bufferingPercentage] for what to use instead.
   final Stream<double> bufferingPercentage;
 
   /// Emits the rich demuxer cache state (buffered ranges + network flags).
@@ -333,15 +340,15 @@ class PlayerStream {
   /// Emits the software volume gain in dB.
   final Stream<double> volumeGain;
 
-  /// Emits mpv's `volume-gain-min` in dB. See [PlayerState.volumeGainMin].
+  /// Emits mpv's `volume-gain-min` in dB. See [PlayerSettings.volumeGainMin].
   final Stream<double> volumeGainMin;
 
-  /// Emits mpv's `volume-gain-max` in dB. See [PlayerState.volumeGainMax].
+  /// Emits mpv's `volume-gain-max` in dB. See [PlayerSettings.volumeGainMax].
   final Stream<double> volumeGainMax;
 
   /// Emits the volume the audio driver exposes (`ao-volume`); `null` when
   /// the active audio output doesn't expose it. See
-  /// [PlayerState.systemVolume].
+  /// [OutputState.systemVolume].
   final Stream<double?> systemVolume;
 
   /// Emits the mute the audio driver exposes (`ao-mute`); `null` when the
@@ -400,7 +407,7 @@ class PlayerStream {
 
   /// All tracks reported by mpv for the current file (audio + embedded
   /// picture + any other type the demuxer surfaced). See
-  /// [PlayerState.tracks] for the filtering pattern.
+  /// [FileState.tracks] for the filtering pattern.
   final Stream<List<MpvTrack>> tracks;
 
   /// Currently-active audio track, or `null` when none is selected.
@@ -410,7 +417,7 @@ class PlayerStream {
   /// passthrough disabled.
   final Stream<Set<Spdif>> audioSpdif;
 
-  /// Emits mpv's `volume-max`. See [PlayerState.volumeMax].
+  /// Emits mpv's `volume-max`. See [PlayerSettings.volumeMax].
   final Stream<double> volumeMax;
 
   /// Emits the target sample rate.
@@ -460,7 +467,7 @@ class PlayerStream {
   /// compare [MpvFileEndedEvent.position] with
   /// [MpvFileEndedEvent.duration], not the state: when the event arrives
   /// the state can already describe the next entry. The last entry parks
-  /// on its end instead ([PlayerState.completed]) and emits here only
+  /// on its end instead ([PlaybackState.completed]) and emits here only
   /// when it is stopped or replaced.
   final Stream<MpvFileEndedEvent> endFile;
 
@@ -702,7 +709,7 @@ class PlayerStream {
   /// together. A player in another isolate replaces it with its own.
   ///
   /// [filter] names the stage's filter and [instance] which of its
-  /// occurrences in [PlayerState.audioEffects] (0, the default, for the
+  /// occurrences in [PlayerSettings.audioEffects] (0, the default, for the
   /// first): with two [EqualizerEffect]s in the list, `instance: 1` taps
   /// the second. Disabled stages count too, and a disabled stage emits
   /// nothing. The tap follows the occurrence, not a particular stage:
@@ -743,8 +750,9 @@ class PlayerStream {
   /// across the full track duration. Use for a static full-track
   /// overview strip with click-to-seek.
   ///
-  /// Emits `null` each time a file loads, the same file loaded again
-  /// included (so renderers can clear stale data), then the envelope. A local file is decoded in the
+  /// Emits `null` each time a file loads (so renderers can clear stale
+  /// data), then the envelope. The same file loaded again keeps a final
+  /// envelope, with no `null`: mpv keeps its analysis. A local file is decoded in the
   /// background: partial envelopes with [WaveformData.decoding] set, then
   /// the final one. An HTTP file that plays from its start is decoded the
   /// same way from mpv's cache as it downloads. Adaptive, non-seekable or
@@ -835,8 +843,9 @@ class PlayerStream {
   /// [LoudnessScan.progress]. Then one terminal [LoudnessScan] per track
   /// (`ready`, `failed`, or `unavailable` for sources that can only be
   /// measured during playback, such as adaptive or live streams; use
-  /// [loudnessMeter] there), and `null` each time a file loads, the same
-  /// file loaded again included, so stale results clear.
+  /// [loudnessMeter] there), and `null` each time a file loads, so stale
+  /// results clear. The same file loaded again keeps a terminal result,
+  /// with no `null`.
   ///
   /// **Lazy**: the native scan runs only while a listener is
   /// attached; with no listener on any player it costs nothing. Like the

@@ -208,7 +208,7 @@ void skipWithoutAudioDevice(String reason) {
 
 /// The single stage of type [T] in [player]'s effects chain.
 T effectOf<T extends AudioEffect>(Player player) =>
-    player.state.audioEffects.whereType<T>().single;
+    player.state.settings.audioEffects.whereType<T>().single;
 
 /// Replaces the stage of [effect]'s type in [player]'s effects chain, or
 /// appends it when the chain has none.

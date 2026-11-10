@@ -41,7 +41,7 @@ void main() {
     }
 
     void expectNear(int ms, {String? reason}) => expect(
-      player.state.position.inMilliseconds,
+      player.state.playback.position.inMilliseconds,
       closeTo(ms, 150),
       reason: reason,
     );
@@ -55,7 +55,9 @@ void main() {
       );
       expectNear(2000);
       // The file keeps its whole length.
-      await waitUntil(() => player.state.duration.inMilliseconds > 4500);
+      await waitUntil(
+        () => player.state.playback.duration.inMilliseconds > 4500,
+      );
     }, timeout: const Timeout(Duration(seconds: 30)));
 
     test('openAll gives each entry its own start, at every load', () async {
@@ -94,7 +96,7 @@ void main() {
       );
       expectNear(4500);
       await waitUntil(
-        () => player.state.position.inMilliseconds < 1000,
+        () => player.state.playback.position.inMilliseconds < 1000,
         timeout: const Duration(seconds: 4),
         reason: 'mpv loops a file from its start time, 0',
       );
@@ -123,7 +125,7 @@ void main() {
         );
         await p.seek(const Duration(milliseconds: 600));
         await landed;
-        expect(p.state.position.inMilliseconds, closeTo(600, 150));
+        expect(p.state.playback.position.inMilliseconds, closeTo(600, 150));
         await p.writeResumeConfig();
         await waitUntil(() => tmp.listSync().isNotEmpty);
       }
@@ -139,7 +141,7 @@ void main() {
       await openAndWaitForLoad(p, a);
       await saveAt600();
       await reopen(Media(a, start: const Duration(seconds: 2)));
-      expect(p.state.position.inMilliseconds, closeTo(2000, 150));
+      expect(p.state.playback.position.inMilliseconds, closeTo(2000, 150));
       // mpv deletes a resume point once a load used it, start or not.
       await waitUntil(
         () => tmp.listSync().isEmpty,
@@ -149,7 +151,7 @@ void main() {
       // Without a start the resume point applies, as before.
       await saveAt600();
       await reopen(Media(a));
-      expect(p.state.position.inMilliseconds, closeTo(600, 150));
+      expect(p.state.playback.position.inMilliseconds, closeTo(600, 150));
     }, timeout: const Timeout(Duration(seconds: 30)));
 
     test('end finishes the last entry there, as its end', () async {
@@ -159,12 +161,12 @@ void main() {
       await player.open(Media(a, end: const Duration(seconds: 2)), play: true);
       await completed;
       expect(
-        player.state.position.inMilliseconds,
+        player.state.playback.position.inMilliseconds,
         inInclusiveRange(1800, 2300),
       );
-      expect(player.state.duration.inMilliseconds, greaterThan(4500));
+      expect(player.state.playback.duration.inMilliseconds, greaterThan(4500));
       expect(await player.getRawProperty('pause'), 'yes');
-      expect(player.state.playWhenReady, isFalse);
+      expect(player.state.playback.playWhenReady, isFalse);
     }, timeout: const Timeout(Duration(seconds: 30)));
 
     test(
@@ -179,7 +181,7 @@ void main() {
         addTearDown(() => player.setRawProperty('ao-null-buffer', '0.2'));
         final at = player.stream.completed
             .firstWhere((c) => c)
-            .then((_) => player.state.position)
+            .then((_) => player.state.playback.position)
             .timeout(const Duration(seconds: 10));
         await player.open(
           Media(a, end: const Duration(seconds: 2)),
@@ -202,7 +204,7 @@ void main() {
         Media(b),
       ], play: true);
       await waitUntil(
-        () => player.state.playlist.index == 1,
+        () => player.state.playback.playlist.index == 1,
         timeout: const Duration(seconds: 4),
         reason: 'the first entry ends at 1 s, not at 5 s',
       );
@@ -223,10 +225,13 @@ void main() {
           play: true,
         ),
       );
-      expect(player.state.position.inMilliseconds, greaterThanOrEqualTo(900));
+      expect(
+        player.state.playback.position.inMilliseconds,
+        greaterThanOrEqualTo(900),
+      );
       await completed;
       expect(
-        player.state.position.inMilliseconds,
+        player.state.playback.position.inMilliseconds,
         inInclusiveRange(1800, 2300),
       );
     }, timeout: const Timeout(Duration(seconds: 30)));
@@ -235,8 +240,8 @@ void main() {
       await restartAfter(
         () => player.openAll([Media(a), Media(b)], play: false),
       );
-      final items = player.state.playlist.items;
-      final intent = player.state.playWhenReady;
+      final items = player.state.playback.playlist.items;
+      final intent = player.state.playback.playWhenReady;
       const bad = [Duration.zero, Duration(milliseconds: -1)];
       for (final end in bad) {
         final m = Media(b, end: end);
@@ -251,8 +256,8 @@ void main() {
         end: const Duration(seconds: 1),
       );
       await expectLater(player.open(late, play: true), throwsArgumentError);
-      expect(player.state.playlist.items, items);
-      expect(player.state.playWhenReady, intent);
+      expect(player.state.playback.playlist.items, items);
+      expect(player.state.playback.playWhenReady, intent);
       expect(await player.getRawProperty('playlist-count'), '2');
     }, timeout: const Timeout(Duration(seconds: 30)));
   });

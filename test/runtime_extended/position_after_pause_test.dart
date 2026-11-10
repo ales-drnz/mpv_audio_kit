@@ -27,19 +27,21 @@ void main() {
       for (var i = 0; i < 12; i++) {
         await player.seek(Duration.zero);
         await player.play();
-        await waitUntil(() => player.state.playing);
+        await waitUntil(() => player.state.playback.playing);
         // Vary the pause point against the throttle window.
         await Future<void>.delayed(Duration(milliseconds: 150 + i * 7));
         await player.pause();
-        await waitUntil(() => !player.state.playing);
+        await waitUntil(() => !player.state.playback.playing);
         // mpv reports the paused playhead up to a few hundred ms later.
         final raw = double.parse((await player.getRawProperty('time-pos'))!);
         final rawUs = (raw * 1e6).round();
         await waitUntil(
-          () => (player.state.position.inMicroseconds - rawUs).abs() <= 1000,
+          () =>
+              (player.state.playback.position.inMicroseconds - rawUs).abs() <=
+              1000,
           timeout: const Duration(seconds: 2),
           reason:
-              'run $i: state stuck at ${player.state.position.inMilliseconds} '
+              'run $i: state stuck at ${player.state.playback.position.inMilliseconds} '
               'ms, mpv paused at ${rawUs ~/ 1000} ms',
         );
       }
