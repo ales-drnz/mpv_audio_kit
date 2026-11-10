@@ -56,7 +56,7 @@ The package is an audio player for Flutter apps that play a media library, from 
 
 ```yaml
 dependencies:
-  mpv_audio_kit: ^0.6.4
+  mpv_audio_kit: ^0.7.0
 ```
 
 The build downloads the libmpv binary for each native target and checks its SHA-256, so the first build needs network access. On the web the module ships with the package.
