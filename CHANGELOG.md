@@ -31,11 +31,11 @@
 
 ### webOS
 **Added**
-- LG webOS TVs through [flutter-webos](https://github.com/lg-flutter-webos/flutter-webos): the package is an FFI plugin there, and `webos/CMakeLists.txt` bundles the webOS libmpv. Checked with the app running on the TVs' system libraries under qemu, not yet on a TV.
+- LG webOS TVs through [flutter-webos](https://github.com/lg-flutter-webos/flutter-webos): the package is an FFI plugin there, and `webos/CMakeLists.txt` bundles the webOS libmpv. An arm64 build fails: the TVs' libmpv is 32-bit ARM. Checked with the app running on the TVs' system libraries under qemu, not yet on a TV.
 
 ### Web
 **Changed**
-- A pause of the media session's `<audio>` element from outside the page follows `MediaSession.interruptionPolicy`, as on iOS and Android. 0.6 played on, as `keepPlaying` still does.
+- A pause of the media session's `<audio>` element from outside the page follows `MediaSession.interruptionPolicy`, as on iOS and Android. With `pauseAndResume` it plays again when the browser plays the element, or when an interruption ends. 0.6 played on, as `keepPlaying` still does.
 
 ## [0.6.4] - 8-11-2026
 

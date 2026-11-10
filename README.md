@@ -69,8 +69,8 @@ The build downloads the libmpv binary for each native target and checks its SHA-
 | tvOS | 15.0 | arm64, simulator arm64 and x86_64 | 7.3 MB |
 | Tizen | 6.0 | armv7l, emulator x86_64 | 6.0 MB, 8.6 MB on the emulator |
 | webOS | 26 | armv7l | 5.8 MB |
-| Windows | 10 | arm64, x86_64 | 7.8 MB |
-| Linux | glibc 2.31 | aarch64, x86_64 | 8.4 MB |
+| Windows | 10 | arm64, x86_64 | 7.5 to 7.8 MB |
+| Linux | glibc 2.31 | aarch64, x86_64 | 8.4 to 8.7 MB |
 | Web | a cross-origin isolated page | wasm32 | 4.3 MB, 2.0 MB zipped |
 
 The package needs Flutter 3.38.10 or later, and Flutter 3.47.4 to build for iOS. Linux needs ALSA, and uses PipeWire or PulseAudio when they are installed.
