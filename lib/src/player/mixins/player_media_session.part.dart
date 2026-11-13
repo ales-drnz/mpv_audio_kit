@@ -269,7 +269,9 @@ mixin _MediaSessionModule on _PlayerBase {
   /// AudioUnit the system stopped for an interruption or a media services
   /// reset stays silent, while mpv keeps reporting playback.
   void _reloadAudioOutput() {
-    _applySessionCommand(_calls.commandChecked(const ['ao-reload']));
+    // Through the gate: the session can exist before the core runs, and
+    // stays when the core could not start.
+    _applySessionCommand((this as Player).reloadAudio());
   }
 
   /// Fires an inbound-command action without awaiting it (the command-stream
