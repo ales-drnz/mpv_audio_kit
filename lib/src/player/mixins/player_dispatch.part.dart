@@ -75,7 +75,7 @@ mixin _DispatchModule on _PlayerBase {
       case final MpvEventEndFile ended:
         _onEndFile(ended);
       case MpvEventShutdown():
-        _updateLifecycle(playing: false, buffering: false);
+        _onCoreShutdown();
       case MpvEventLog(:final prefix, :final level, :final text):
         _onLog(prefix, LogLevel.fromMpv(level), text);
       case MpvEventInternalLog(:final level, :final text):
@@ -87,6 +87,22 @@ mixin _DispatchModule on _PlayerBase {
       case MpvReplyEvent():
         break;
     }
+  }
+
+  /// The core shut down and dispose did not ask for it (the dispose fence
+  /// stops the event otherwise): mpv ran out of things to play without
+  /// `idle`, or a script or key binding quit it. The event isolate left its
+  /// loop on the event, so no reply comes any more: the session closes,
+  /// which settles the calls in flight and turns the later ones into
+  /// no-ops, until [dispose] frees the core.
+  void _onCoreShutdown() {
+    _updateLifecycle(playing: false, buffering: false);
+    _session.close();
+    _internalLog(
+      'The mpv core shut down without dispose: the player no longer '
+      'reaches it, dispose it',
+      level: LogLevel.warn,
+    );
   }
 
   /// The property events of [_dispatchEvent]. The replies were completed
