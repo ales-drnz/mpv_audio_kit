@@ -258,9 +258,19 @@ final class MpvModule implements CoreMemory {
     _m.wakeupDetach(bridge);
   }
 
-  // The memory can grow, which replaces the buffer: a view is made for
-  // each use, never kept.
-  _View _view() => _View(_m.wasmMemory['buffer'] as JSObject);
+  // The memory can grow, which replaces the buffer: the view is kept for
+  // as long as the memory hands out the buffer it was made on, and made
+  // again on the new one. Decoding a node reads thousands of fields.
+  _View _view() {
+    final buffer = _m.wasmMemory['buffer'] as JSObject;
+    final view = _viewCache;
+    if (view != null && buffer.strictEquals(_viewBuffer).toDart) return view;
+    _viewBuffer = buffer;
+    return _viewCache = _View(buffer);
+  }
+
+  JSObject? _viewBuffer;
+  _View? _viewCache;
 
   @override
   int get pointerSize => 4;
