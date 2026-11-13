@@ -59,9 +59,12 @@ void main() {
     test('the same path loaded again keeps it, with no null', () async {
       final (player, got) = await ready();
       got.clear();
+      // The path as mpv reports it: on Windows it is not the one given to
+      // open(), whose separators mpv rewrites.
+      final loaded = await player.getRawProperty('path') ?? a;
       player
-        ..debugDispatchProperty('path', a)
-        ..debugDispatchEvent(MpvEventFileLoaded(path: a));
+        ..debugDispatchProperty('path', loaded)
+        ..debugDispatchEvent(MpvEventFileLoaded(path: loaded));
       await Future<void>.delayed(const Duration(milliseconds: 500));
       expect(got.contains(null), isFalse, reason: '$got');
     });

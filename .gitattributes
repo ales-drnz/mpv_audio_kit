@@ -1,3 +1,8 @@
 # Shell scripts keep LF on every checkout: bash, Git for Windows' one
 # included, reads a CR as part of each line.
 *.sh text eol=lf
+
+# Every text file is LF on every checkout. The tests read sources of the
+# package (pubspec.yaml, hook/build.dart, the generated state) and match
+# them line by line: a CRLF checkout on Windows failed three of them.
+* text=auto eol=lf
