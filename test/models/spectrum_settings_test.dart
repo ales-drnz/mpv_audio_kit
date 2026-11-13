@@ -173,4 +173,43 @@ void main() {
       }, timeout: const Timeout(Duration(minutes: 2)));
     },
   );
+
+  group('validate and the asserts share their limits', () {
+    // validate is what holds in a release build.
+    SpectrumSettings fft(int v) => SpectrumSettings(fftSize: v);
+    SpectrumSettings overlap(int v) => SpectrumSettings(overlapFactor: v);
+    SpectrumSettings attack(double v) => SpectrumSettings(attackSmoothing: v);
+    SpectrumSettings release(double v) => SpectrumSettings(releaseSmoothing: v);
+
+    test('a value at a limit passes both', () {
+      for (final build in [
+        () => fft(256),
+        () => fft(4096),
+        () => overlap(1),
+        () => overlap(16),
+        () => attack(0),
+        () => attack(1),
+        () => release(0),
+        () => release(1),
+      ]) {
+        build().validate();
+      }
+    });
+
+    test('a value past a limit fails the assert', () {
+      // validate cannot be reached with such a value while the asserts
+      // run: test/_helpers/probes/spectrum_settings_probe.dart runs it
+      // without them.
+      for (final build in [
+        () => fft(128),
+        () => fft(8192),
+        () => overlap(32),
+        () => attack(1.5),
+        () => attack(-0.5),
+        () => release(1.5),
+      ]) {
+        expect(build, throwsA(isA<AssertionError>()));
+      }
+    });
+  });
 }

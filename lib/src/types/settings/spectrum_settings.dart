@@ -114,8 +114,8 @@ final class SpectrumSettings {
     this.maxDb = -30.0,
     this.overlapFactor = 4,
   }) : assert(
-         fftSize >= 256 && fftSize <= 4096,
-         'fftSize must be in [256, 4096]',
+         fftSize >= _fftSizeMin && fftSize <= _fftSizeMax,
+         'fftSize must be in [$_fftSizeMin, $_fftSizeMax]',
        ),
        assert((fftSize & (fftSize - 1)) == 0, 'fftSize must be a power of two'),
        assert(bandCount > 0, 'bandCount must be positive'),
@@ -125,17 +125,18 @@ final class SpectrumSettings {
          'bandHighHz must be strictly greater than bandLowHz',
        ),
        assert(
-         attackSmoothing >= 0 && attackSmoothing <= 1,
-         'attackSmoothing must be in [0, 1]',
+         attackSmoothing >= _smoothingMin && attackSmoothing <= _smoothingMax,
+         'attackSmoothing must be in [$_smoothingMin, $_smoothingMax]',
        ),
        assert(
-         releaseSmoothing >= 0 && releaseSmoothing <= 1,
-         'releaseSmoothing must be in [0, 1]',
+         releaseSmoothing >= _smoothingMin && releaseSmoothing <= _smoothingMax,
+         'releaseSmoothing must be in [$_smoothingMin, $_smoothingMax]',
        ),
        assert(maxDb > minDb, 'maxDb must be strictly greater than minDb'),
        assert(
-         overlapFactor >= 1 && overlapFactor <= 16,
-         'overlapFactor must be in [1, 16]',
+         overlapFactor >= _overlapFactorMin &&
+             overlapFactor <= _overlapFactorMax,
+         'overlapFactor must be in [$_overlapFactorMin, $_overlapFactorMax]',
        ),
        assert(
          (overlapFactor & (overlapFactor - 1)) == 0,
@@ -151,7 +152,12 @@ final class SpectrumSettings {
   /// is `const`, so release builds skip its asserts.
   @internal
   void validate() {
-    RangeError.checkValueInInterval(fftSize, 256, 4096, 'fftSize');
+    RangeError.checkValueInInterval(
+      fftSize,
+      _fftSizeMin,
+      _fftSizeMax,
+      'fftSize',
+    );
     if ((fftSize & (fftSize - 1)) != 0) {
       throw ArgumentError.value(fftSize, 'fftSize', 'must be a power of two');
     }
@@ -173,7 +179,9 @@ final class SpectrumSettings {
       ('attackSmoothing', attackSmoothing),
       ('releaseSmoothing', releaseSmoothing),
     ]) {
-      if (!(v >= 0 && v <= 1)) throw RangeError.range(v, 0, 1, name);
+      if (!(v >= _smoothingMin && v <= _smoothingMax)) {
+        throw RangeError.range(v, _smoothingMin, _smoothingMax, name);
+      }
     }
     if (!(maxDb > minDb)) {
       throw ArgumentError.value(
@@ -182,7 +190,12 @@ final class SpectrumSettings {
         'must be greater than minDb ($minDb)',
       );
     }
-    RangeError.checkValueInInterval(overlapFactor, 1, 16, 'overlapFactor');
+    RangeError.checkValueInInterval(
+      overlapFactor,
+      _overlapFactorMin,
+      _overlapFactorMax,
+      'overlapFactor',
+    );
     if ((overlapFactor & (overlapFactor - 1)) != 0) {
       throw ArgumentError.value(
         overlapFactor,
@@ -259,3 +272,12 @@ final class SpectrumSettings {
       'attackSmoothing: $attackSmoothing, releaseSmoothing: $releaseSmoothing, '
       'minDb: $minDb, maxDb: $maxDb, overlapFactor: $overlapFactor)';
 }
+
+// The limits of the fields, read by the asserts of the constructor and by
+// [SpectrumSettings.validate], which holds in a release build.
+const int _fftSizeMin = 256;
+const int _fftSizeMax = 4096;
+const int _smoothingMin = 0;
+const int _smoothingMax = 1;
+const int _overlapFactorMin = 1;
+const int _overlapFactorMax = 16;
