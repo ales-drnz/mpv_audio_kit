@@ -270,6 +270,10 @@ MediaSessionChannelWin::MediaSessionChannelWin(
 }
 
 MediaSessionChannelWin::~MediaSessionChannelWin() {
+  // The handlers capture this, and the messenger keeps them past the
+  // channels: off first, so no message reaches a plugin that is gone.
+  method_channel_->SetMethodCallHandler(nullptr);
+  event_channel_->SetStreamHandler(nullptr);
   // The engine is going, and its Dart may never have disabled (an engine
   // destroyed while it plays): the session goes with its owner, and the
   // sink leaves the hub before the messenger it sends on (F221). Another
