@@ -734,8 +734,11 @@ void MprisServer::ParseConfig(FlValue* config) {
   FlValue* rates =
       config ? fl_value_lookup_string(config, "supportedPlaybackRates")
              : nullptr;
-  if (rates && fl_value_get_length(rates) > 0) {
-    FlValueType rt = fl_value_get_type(rates);
+  // The type before the length: fl_value_get_length of a value that is no
+  // list logs a GLib critical.
+  const FlValueType rt =
+      rates ? fl_value_get_type(rates) : FL_VALUE_TYPE_NULL;
+  if (rt == FL_VALUE_TYPE_LIST || rt == FL_VALUE_TYPE_FLOAT_LIST) {
     size_t n = fl_value_get_length(rates);
     double mn = 0, mx = 0;
     bool first = true;
@@ -743,7 +746,7 @@ void MprisServer::ParseConfig(FlValue* config) {
       double r;
       if (rt == FL_VALUE_TYPE_FLOAT_LIST) {
         r = fl_value_get_float_list(rates)[i];
-      } else if (rt == FL_VALUE_TYPE_LIST) {
+      } else {
         FlValue* e = fl_value_get_list_value(rates, i);
         FlValueType et = fl_value_get_type(e);
         if (et == FL_VALUE_TYPE_FLOAT) {
@@ -753,8 +756,6 @@ void MprisServer::ParseConfig(FlValue* config) {
         } else {
           continue;
         }
-      } else {
-        break;
       }
       if (first) {
         mn = mx = r;
@@ -772,6 +773,14 @@ void MprisServer::ParseConfig(FlValue* config) {
 }
 
 void MprisServer::Enable(FlValue* config, FlValue* metadata, FlValue* playback) {
+  // A sub-value that is no map reads as absent: fl_value_lookup_string of
+  // one logs a GLib critical.
+  auto map_or_null = [](FlValue* v) {
+    return v && fl_value_get_type(v) == FL_VALUE_TYPE_MAP ? v : nullptr;
+  };
+  config = map_or_null(config);
+  metadata = map_or_null(metadata);
+  playback = map_or_null(playback);
   ParseConfig(config);
 
   UpdateMetadata(metadata);  // parses metadata + writes artwork
