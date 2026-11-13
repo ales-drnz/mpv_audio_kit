@@ -57,6 +57,9 @@ extension _Lifecycle on _PlayerBase {
   /// at ~30Hz during playback. The remaining fields are handled by
   /// custom paths that do not depend on mpv's observer dedup.
   void _clearPerFileState() {
+    // A load that resumes while dispose runs: the streams are closed, or
+    // about to be.
+    if (_disposed) return;
     final r = _reactives;
     r.position.update(Duration.zero);
     r.currentChapter.update(null);
