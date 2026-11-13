@@ -174,10 +174,21 @@ jobs:
             git diff -- lib/src/generated test/generated | head -200
             exit 1
           fi
-      # The scripts of the changes job, against a fake gh (test/ci).
+      # The scripts of CI against a fake gh and made-up trees, and the
+      # workflows themselves (test/ci).
       - name: CI script tests
         if: matrix.flutter == 'stable'
         run: for t in test/ci/*_test.sh; do bash "$t"; done
+      # tvos/ holds copies of the darwin sources: the script that writes
+      # them says whether they are current.
+      - name: tvOS sources in sync
+        if: matrix.flutter == 'stable'
+        run: |
+          if [[ ! -f scripts/sync_tvos_sources.sh ]]; then
+            echo "::warning::No scripts/sync_tvos_sources.sh: the tvOS sources are not checked against the darwin ones."
+            exit 0
+          fi
+          bash scripts/sync_tvos_sources.sh --check
 
   # The quality ratchet: the metrics of tool/metrics against their
   # baseline, the API against the version on pub.dev, and the red and
