@@ -24,7 +24,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
+import 'package:mpv_audio_kit/src/media_session/artwork_cancel.dart';
 import 'package:mpv_audio_kit/src/media_session/artwork_fetcher.dart';
+import 'package:mpv_audio_kit/src/media_session/artwork_loader.dart';
 import 'package:mpv_audio_kit/src/media_session/media_session_channel.dart';
 import 'package:mpv_audio_kit/src/media_session/media_session_controller.dart';
 import 'package:mpv_audio_kit/src/media_session/media_session_inputs.dart';
@@ -176,6 +178,7 @@ Future<MediaSessionController> _buildController({
   void Function(MediaSessionCommand)? onCommand,
   void Function()? onAudioOutputReset,
   ArtworkFetcher? artworkFetcher,
+  ArtworkLoader? artworkLoader,
   Duration artworkRetryAfter = const Duration(seconds: 30),
 }) => MediaSessionController.create(
   stateSnapshot: () => rig.state,
@@ -184,6 +187,7 @@ Future<MediaSessionController> _buildController({
   onAudioOutputReset: onAudioOutputReset,
   channel: channel,
   artworkFetcher: artworkFetcher,
+  artworkLoader: artworkLoader,
   artworkRetryAfter: artworkRetryAfter,
 );
 
@@ -1324,6 +1328,89 @@ void main() {
         expect(fetched, hasLength(1));
       },
     );
+
+    PlayerState track(String art) => PlayerState(
+      playback: PlaybackState(
+        playlist: Playlist([
+          Media('https://nd.example/rest/stream.view', extras: {'art': art}),
+        ]),
+      ),
+      file: const FileState(metadata: {'title': 'Song'}),
+      settings: const PlayerSettings(mediaSession: MediaSession()),
+    );
+
+    test('going back to the track before loads its cover from the kept '
+        'ones, not from the network', () async {
+      final rig = _Rig();
+      final ch = _RecordingChannel();
+      addTearDown(rig.dispose);
+      addTearDown(ch.close);
+
+      final covers = <String, CoverArt>{};
+      final fetched = <String>[];
+      final controller = await _buildController(
+        rig: rig,
+        channel: ch,
+        artworkFetcher: (url, _) async {
+          fetched.add(url);
+          return covers[url] = CoverArt(
+            bytes: Uint8List.fromList([fetched.length]),
+            mimeType: 'image/png',
+          );
+        },
+      );
+      addTearDown(controller.dispose);
+
+      Future<void> play(String art) async {
+        rig.state = track(art);
+        rig.metadata.add(const {'title': 'Song'});
+        await _settle();
+      }
+
+      const a = 'https://nd.example/a.jpg?t=tok';
+      const b = 'https://nd.example/b.jpg?t=tok';
+      await play(a);
+      await play(b);
+      expect(lastSnap(ch).artwork, same(covers[b]));
+      await play(a);
+
+      expect(fetched, [a, b], reason: 'the cover of a was kept');
+      expect(lastSnap(ch).artwork, same(covers[a]));
+    });
+
+    test('a track change cancels the cover download in flight, and so does '
+        'dispose', () async {
+      final rig = _Rig();
+      final ch = _RecordingChannel();
+      addTearDown(rig.dispose);
+      addTearDown(ch.close);
+
+      final tokens = <String, ArtworkCancel>{};
+      final controller = await _buildController(
+        rig: rig,
+        channel: ch,
+        artworkLoader: ArtworkLoader((url, _, cancel) {
+          tokens[url] = cancel;
+          return Completer<CoverArt?>().future;
+        }),
+      );
+
+      const a = 'https://nd.example/a.jpg';
+      const b = 'https://nd.example/b.jpg';
+      rig.state = track(a);
+      rig.metadata.add(const {'title': 'Song'});
+      await _settle();
+      expect(tokens[a]!.isCancelled, isFalse);
+
+      rig.state = track(b);
+      rig.metadata.add(const {'title': 'Song'});
+      await _settle();
+      expect(tokens[a]!.isCancelled, isTrue, reason: 'a was skipped past');
+      expect(tokens[b]!.isCancelled, isFalse);
+
+      await controller.dispose();
+      expect(tokens[b]!.isCancelled, isTrue);
+    });
 
     test('a failed cover is fetched again, a few times at most', () async {
       final rig = _Rig();
