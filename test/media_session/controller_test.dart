@@ -24,7 +24,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
+import 'package:mpv_audio_kit/src/media_session/artwork_cancel.dart';
 import 'package:mpv_audio_kit/src/media_session/artwork_fetcher.dart';
+import 'package:mpv_audio_kit/src/media_session/artwork_loader.dart';
 import 'package:mpv_audio_kit/src/media_session/media_session_channel.dart';
 import 'package:mpv_audio_kit/src/media_session/media_session_controller.dart';
 import 'package:mpv_audio_kit/src/media_session/media_session_inputs.dart';
@@ -47,12 +49,13 @@ class _RecordingChannel extends MediaSessionChannel {
   Stream<void> get audioOutputResets => resets.stream;
 
   @override
-  Future<void> enable({
+  Future<bool> enable({
     required MediaSession session,
     required MediaSessionMetadataSnapshot metadata,
     required MediaSessionPlaybackSnapshot playback,
   }) async {
     calls.add(_Call('enable', {'playing': playback.playing}));
+    return true;
   }
 
   @override
@@ -90,6 +93,18 @@ class _RecordingChannel extends MediaSessionChannel {
 
   List<_Call> callsOfType(String method) =>
       calls.where((c) => c.method == method).toList();
+}
+
+/// A native side that answers a metadata push (a cover of several MB)
+/// only when [answered] completes.
+class _SlowMetadataChannel extends _RecordingChannel {
+  final answered = Completer<void>();
+
+  @override
+  Future<void> updateMetadata(MediaSessionMetadataSnapshot metadata) async {
+    await super.updateMetadata(metadata);
+    await answered.future;
+  }
 }
 
 class _Call {
@@ -163,6 +178,7 @@ Future<MediaSessionController> _buildController({
   void Function(MediaSessionCommand)? onCommand,
   void Function()? onAudioOutputReset,
   ArtworkFetcher? artworkFetcher,
+  ArtworkLoader? artworkLoader,
   Duration artworkRetryAfter = const Duration(seconds: 30),
 }) => MediaSessionController.create(
   stateSnapshot: () => rig.state,
@@ -171,6 +187,7 @@ Future<MediaSessionController> _buildController({
   onAudioOutputReset: onAudioOutputReset,
   channel: channel,
   artworkFetcher: artworkFetcher,
+  artworkLoader: artworkLoader,
   artworkRetryAfter: artworkRetryAfter,
 );
 
@@ -472,6 +489,57 @@ void main() {
       final snap =
           metaCalls.single.args['metadata'] as MediaSessionMetadataSnapshot;
       expect(snap.title, 'Custom Title');
+    });
+  });
+
+  group('MediaSessionController — flush', () {
+    const next = PlayerState(
+      playback: PlaybackState(playWhenReady: true),
+      file: FileState(metadata: {'title': 'Next'}),
+      settings: PlayerSettings(mediaSession: MediaSession()),
+    );
+
+    test('the play state does not wait for the native side to answer the '
+        'metadata push', () async {
+      final rig = _Rig();
+      final ch = _SlowMetadataChannel();
+      addTearDown(rig.dispose);
+      addTearDown(ch.close);
+      final controller = await _buildController(rig: rig, channel: ch);
+      addTearDown(controller.dispose);
+      await _settle();
+      ch.calls.clear();
+
+      // The end of a track's loading marks both in one flush.
+      rig.state = next;
+      rig.buffering.add(false);
+      await _settle();
+
+      expect(ch.calls.map((c) => c.method), [
+        'updateMetadata',
+        'updatePlayback',
+      ], reason: 'both sent, metadata first, with its answer still pending');
+      ch.answered.complete();
+    });
+
+    test('nothing is pushed after the disable of a dispose that arrives '
+        'while a push is unanswered', () async {
+      final rig = _Rig();
+      final ch = _SlowMetadataChannel();
+      addTearDown(rig.dispose);
+      addTearDown(ch.close);
+      final controller = await _buildController(rig: rig, channel: ch);
+      await _settle();
+      ch.calls.clear();
+
+      rig.state = next;
+      rig.buffering.add(false);
+      await _settle();
+      await controller.dispose();
+      ch.answered.complete();
+      await _settle();
+
+      expect(ch.calls.last.method, 'disable');
     });
   });
 
@@ -1260,6 +1328,89 @@ void main() {
         expect(fetched, hasLength(1));
       },
     );
+
+    PlayerState track(String art) => PlayerState(
+      playback: PlaybackState(
+        playlist: Playlist([
+          Media('https://nd.example/rest/stream.view', extras: {'art': art}),
+        ]),
+      ),
+      file: const FileState(metadata: {'title': 'Song'}),
+      settings: const PlayerSettings(mediaSession: MediaSession()),
+    );
+
+    test('going back to the track before loads its cover from the kept '
+        'ones, not from the network', () async {
+      final rig = _Rig();
+      final ch = _RecordingChannel();
+      addTearDown(rig.dispose);
+      addTearDown(ch.close);
+
+      final covers = <String, CoverArt>{};
+      final fetched = <String>[];
+      final controller = await _buildController(
+        rig: rig,
+        channel: ch,
+        artworkFetcher: (url, _) async {
+          fetched.add(url);
+          return covers[url] = CoverArt(
+            bytes: Uint8List.fromList([fetched.length]),
+            mimeType: 'image/png',
+          );
+        },
+      );
+      addTearDown(controller.dispose);
+
+      Future<void> play(String art) async {
+        rig.state = track(art);
+        rig.metadata.add(const {'title': 'Song'});
+        await _settle();
+      }
+
+      const a = 'https://nd.example/a.jpg?t=tok';
+      const b = 'https://nd.example/b.jpg?t=tok';
+      await play(a);
+      await play(b);
+      expect(lastSnap(ch).artwork, same(covers[b]));
+      await play(a);
+
+      expect(fetched, [a, b], reason: 'the cover of a was kept');
+      expect(lastSnap(ch).artwork, same(covers[a]));
+    });
+
+    test('a track change cancels the cover download in flight, and so does '
+        'dispose', () async {
+      final rig = _Rig();
+      final ch = _RecordingChannel();
+      addTearDown(rig.dispose);
+      addTearDown(ch.close);
+
+      final tokens = <String, ArtworkCancel>{};
+      final controller = await _buildController(
+        rig: rig,
+        channel: ch,
+        artworkLoader: ArtworkLoader((url, _, cancel) {
+          tokens[url] = cancel;
+          return Completer<CoverArt?>().future;
+        }),
+      );
+
+      const a = 'https://nd.example/a.jpg';
+      const b = 'https://nd.example/b.jpg';
+      rig.state = track(a);
+      rig.metadata.add(const {'title': 'Song'});
+      await _settle();
+      expect(tokens[a]!.isCancelled, isFalse);
+
+      rig.state = track(b);
+      rig.metadata.add(const {'title': 'Song'});
+      await _settle();
+      expect(tokens[a]!.isCancelled, isTrue, reason: 'a was skipped past');
+      expect(tokens[b]!.isCancelled, isFalse);
+
+      await controller.dispose();
+      expect(tokens[b]!.isCancelled, isTrue);
+    });
 
     test('a failed cover is fetched again, a few times at most', () async {
       final rig = _Rig();

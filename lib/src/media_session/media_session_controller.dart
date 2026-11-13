@@ -15,6 +15,7 @@ import '../types/enums/loop.dart';
 import '../types/sealed/media_session_artwork.dart';
 import '../types/sealed/media_session_command.dart';
 import 'artwork_fetcher.dart';
+import 'artwork_loader.dart';
 import 'media_session_channel.dart';
 import 'media_session_inputs.dart';
 
@@ -56,13 +57,19 @@ class MediaSessionController {
 
   /// Loads artwork URLs ([_fetches]) so the OS gets the image
   /// bytes, never the URL (see [downloadsArtworkOn]). Without one, artwork
-  /// URLs show no artwork.
-  final ArtworkFetcher? _artworkFetcher;
+  /// URLs show no artwork. It runs one load at a time, cancels the one a
+  /// track change leaves behind and keeps the last few covers.
+  final ArtworkLoader? _artworkLoader;
 
   final List<StreamSubscription<dynamic>> _subscriptions = [];
   StreamSubscription<MediaSessionCommand>? _commandSub;
   StreamSubscription<void>? _audioOutputResetSub;
   bool _disposed = false;
+
+  // Whether a native side answered `enable`. Until it has, and for good on
+  // a platform without one (Tizen, webOS), nothing listens to the event
+  // channel, no artwork is loaded and nothing is pushed.
+  bool _native = false;
 
   // ── Coalescing ──────────────────────────────────────────────────────
   // One mpv file-load fans out across up to 4 metadata streams + several
@@ -75,10 +82,10 @@ class MediaSessionController {
   bool _flushScheduled = false;
   MediaSessionMetadataSnapshot? _lastMetadata;
 
-  // ── Artwork download (only with an [_artworkFetcher]) ───────────────
+  // ── Artwork download (only with an [_artworkLoader]) ────────────────
   // The last downloaded URL and its result (`null` on failure), plus the
   // URL whose download is in flight. One cover at a time: a track change
-  // simply supersedes the pending one.
+  // cancels the pending one.
   String? _fetchedArtUri;
   CoverArt? _fetchedArt;
   String? _pendingArtUri;
@@ -107,7 +114,7 @@ class MediaSessionController {
     required void Function(MediaSessionCommand) onCommand,
     void Function()? onAudioOutputReset,
     MediaSessionChannel? channel,
-    ArtworkFetcher? artworkFetcher,
+    ArtworkLoader? artworkLoader,
     Duration artworkRetryAfter = const Duration(seconds: 30),
   }) : _artworkRetryAfter = artworkRetryAfter,
        _stateSnapshot = stateSnapshot,
@@ -115,7 +122,7 @@ class MediaSessionController {
        _onCommand = onCommand,
        _onAudioOutputReset = onAudioOutputReset,
        _channel = channel ?? MediaSessionChannel(),
-       _artworkFetcher = artworkFetcher;
+       _artworkLoader = artworkLoader;
 
   /// Wires the controller up and pushes the initial full state to the
   /// native side. Returns once the initial `enable` call has been
@@ -128,8 +135,9 @@ class MediaSessionController {
   /// [MediaSessionInputs] from raw [StreamController]s and drive
   /// arbitrary event sequences.
   ///
-  /// [artworkFetcher] defaults to [loadArtwork] (see
+  /// [artworkLoader] defaults to one over [loadArtwork] (see
   /// [downloadsArtworkOn]). It gets the artwork URLs [_fetches] names.
+  /// [artworkFetcher] is a plain fetcher for it to run instead.
   static Future<MediaSessionController> create({
     required PlayerState Function() stateSnapshot,
     required MediaSessionInputs inputs,
@@ -137,6 +145,7 @@ class MediaSessionController {
     void Function()? onAudioOutputReset,
     @visibleForTesting MediaSessionChannel? channel,
     @visibleForTesting ArtworkFetcher? artworkFetcher,
+    @visibleForTesting ArtworkLoader? artworkLoader,
     @visibleForTesting Duration artworkRetryAfter = const Duration(seconds: 30),
   }) async {
     final c = MediaSessionController._(
@@ -145,9 +154,13 @@ class MediaSessionController {
       onCommand: onCommand,
       onAudioOutputReset: onAudioOutputReset,
       channel: channel,
-      artworkFetcher:
-          artworkFetcher ??
-          (downloadsArtworkOn(defaultTargetPlatform) ? loadArtwork : null),
+      artworkLoader:
+          artworkLoader ??
+          (artworkFetcher != null
+              ? ArtworkLoader.uncancellable(artworkFetcher)
+              : downloadsArtworkOn(defaultTargetPlatform)
+              ? ArtworkLoader.platform()
+              : null),
       artworkRetryAfter: artworkRetryAfter,
     );
     try {
@@ -218,7 +231,29 @@ class MediaSessionController {
       }),
     );
 
-    // Inbound commands from the OS event channel.
+    // Push the initial full state. An artwork URL is not loaded yet: the
+    // platform may have no session to show it on.
+    final state = _stateSnapshot();
+    final session = state.settings.mediaSession;
+    if (session == null) return;
+    final metadata = _computeMetadata();
+    _lastMetadata = metadata;
+    final native = await _channel.enable(
+      session: session,
+      metadata: metadata,
+      playback: _computePlayback(),
+    );
+    if (_disposed) return;
+    if (!native) {
+      // No plugin on this platform: the session is a no-op. Listening to
+      // the event channel would make Flutter report an error.
+      await _cancelInputs();
+      return;
+    }
+    _native = true;
+
+    // Inbound commands from the OS event channel. The native side keeps
+    // the sink of each engine whatever the order of `listen` and `enable`.
     _commandSub = _channel.commandStream.listen(_onCommand);
     final onReset = _onAudioOutputReset;
     if (onReset != null) {
@@ -226,29 +261,25 @@ class MediaSessionController {
         (_) => onReset(),
       );
     }
+    // What changed while `enable` was in flight, and the artwork URL the
+    // first snapshot left out.
+    _markMetadata();
+  }
 
-    // Push the initial full state.
-    final state = _stateSnapshot();
-    final session = state.settings.mediaSession;
-    if (session == null) return;
-    final metadata = _computeMetadata();
-    _lastMetadata = metadata;
-    await _channel.enable(
-      session: session,
-      metadata: metadata,
-      playback: _computePlayback(),
-    );
+  Future<void> _cancelInputs() async {
+    for (final s in _subscriptions) {
+      await s.cancel();
+    }
+    _subscriptions.clear();
   }
 
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
     _artRetry?.cancel();
+    _artworkLoader?.cancel();
 
-    for (final s in _subscriptions) {
-      await s.cancel();
-    }
-    _subscriptions.clear();
+    await _cancelInputs();
     await _commandSub?.cancel();
     _commandSub = null;
     await _audioOutputResetSub?.cancel();
@@ -285,7 +316,7 @@ class MediaSessionController {
   }
 
   void _scheduleFlush() {
-    if (_flushScheduled || _disposed) return;
+    if (_flushScheduled || _disposed || !_native) return;
     _flushScheduled = true;
     scheduleMicrotask(_flush);
   }
@@ -298,7 +329,12 @@ class MediaSessionController {
   /// previous file's title, tags and duration unavailable before the new
   /// ones arrive, and pushing that gap would flash an empty entry on the
   /// lockscreen. The end of loading pushes it once.
-  Future<void> _flush() async {
+  ///
+  /// Both pushes are sent in this turn, metadata first: the channel keeps
+  /// the order of the sends, and the play state of a track change does not
+  /// wait for the native side to answer a message with a cover in it.
+  /// Nothing is sent after an await, so nothing follows a `disable`.
+  void _flush() {
     _flushScheduled = false;
     if (_disposed || _stateSnapshot().settings.mediaSession == null) {
       _metadataDirty = false;
@@ -311,14 +347,14 @@ class MediaSessionController {
       final snap = _computeMetadata();
       if (_lastMetadata == null || snap != _lastMetadata) {
         _lastMetadata = snap;
-        await _channel.updateMetadata(snap);
+        unawaited(_channel.updateMetadata(snap));
       }
     }
     if (_playbackDirty) {
       final seek = _playbackSeek;
       _playbackDirty = false;
       _playbackSeek = false;
-      await _channel.updatePlayback(_computePlayback(seek: seek));
+      unawaited(_channel.updatePlayback(_computePlayback(seek: seek)));
     }
   }
 
@@ -431,7 +467,7 @@ class MediaSessionController {
   ) {
     final uri = artwork.uri;
     if (uri == null) return (cover: artwork.bytes, artworkUrl: null);
-    final cover = _artworkFetcher != null && _fetches(uri)
+    final cover = _native && _artworkLoader != null && _fetches(uri)
         ? _downloadedArtwork(uri)
         : null;
     final showUrl = passesArtworkUrl && cover == null && _isHttp(uri);
@@ -506,7 +542,7 @@ class MediaSessionController {
     return scheme == 'http' || scheme == 'https';
   }
 
-  /// Whether the artwork [uri] goes through [_artworkFetcher]: an
+  /// Whether the artwork [uri] goes through [_artworkLoader]: an
   /// `http(s)://`, `file://` or `asset://` URL, a `content://` or
   /// `android.resource://` one on Android and a `blob:` one in the browser.
   /// Any other scheme shows no artwork.
@@ -538,10 +574,24 @@ class MediaSessionController {
   }
 
   /// The cover loaded from the artwork [uri], or `null` while the load is
-  /// in flight or after it failed. Starts the load on first sight of [uri];
-  /// its completion re-pushes metadata.
+  /// in flight or after it failed. Starts the load on first sight of [uri],
+  /// which cancels the one in flight; its completion re-pushes metadata. A
+  /// cover the loader still keeps (the track before, most often) comes
+  /// back at once.
   CoverArt? _downloadedArtwork(String uri) {
     if (uri == _fetchedArtUri) return _fetchedArt;
+    final loader = _artworkLoader!;
+    final caFile = _stateSnapshot().settings.tlsCaFile;
+    final kept = loader.cached(uri, caFile);
+    if (kept != null) {
+      // The load of the track skipped past is not worth finishing.
+      if (_pendingArtUri != null) loader.cancel();
+      _pendingArtUri = null;
+      _artRetry?.cancel();
+      _fetchedArtUri = uri;
+      _fetchedArt = kept;
+      return kept;
+    }
     if (uri != _pendingArtUri) {
       _pendingArtUri = uri;
       _artRetry?.cancel();
@@ -551,10 +601,7 @@ class MediaSessionController {
       }
       _artAttempts++;
       unawaited(
-        _artworkFetcher!(
-          uri,
-          _stateSnapshot().settings.tlsCaFile,
-        ).catchError((Object _) => null).then((cover) {
+        loader.load(uri, caFile).then((cover) {
           if (_disposed || uri != _pendingArtUri) return;
           _pendingArtUri = null;
           _fetchedArtUri = uri;

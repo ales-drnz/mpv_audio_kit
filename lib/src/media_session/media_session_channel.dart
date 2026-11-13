@@ -108,12 +108,17 @@ class MediaSessionPlaybackSnapshot {
   final bool shuffle;
 
   /// End-of-content reached ([PlaybackState.completed]: `eof-reached` on the
-  /// last playlist entry with no loop on). The native side maps this to a
-  /// terminal state (Android `STATE_ENDED`, Linux MPRIS
-  /// `PlaybackStatus=Stopped` with empty `Metadata`) instead of leaving a
-  /// finished track parked as "Paused at full length" on the OS surface.
-  /// Apple has no distinct "ended" playback state and parks acceptably as
-  /// paused, so it ignores it.
+  /// last playlist entry with no loop on). Two native sides map it to a
+  /// terminal state instead of leaving a finished track parked as "Paused
+  /// at full length" on the OS surface:
+  ///
+  /// | Platform | What it does with `completed` |
+  /// | :--- | :--- |
+  /// | Android | `STATE_ENDED` |
+  /// | Linux | MPRIS `PlaybackStatus=Stopped` with empty `Metadata` |
+  /// | Apple | not read: no "ended" state, the entry parks as paused |
+  /// | Windows | not read: the SMTC entry stays `Paused` |
+  /// | Web | not read: `playbackState` stays `paused` |
   final bool completed;
 
   /// This snapshot originates from a seek landing (PLAYBACK_RESTART), as
@@ -124,13 +129,33 @@ class MediaSessionPlaybackSnapshot {
   final bool seek;
 
   /// Actual audio output (`core-idle` inverted), distinct from [playing]
-  /// (which is the intent the OS button binds to). The native side advances
-  /// the scrub bar by extrapolation ONLY while this is true, so the slider
-  /// doesn't keep moving during a buffer stall or a seek transient.
+  /// (which is the intent the OS button binds to). Where a native side
+  /// reads it, the scrub bar advances by extrapolation only while this is
+  /// true, so the slider doesn't keep moving during a buffer stall or a
+  /// seek transient. Where none does, the position the OS shows follows
+  /// [playing] and [rate] alone: on Apple and the web the slider keeps
+  /// moving through a stall, until the next push (a seek landing, a pause)
+  /// sets it right.
+  ///
+  /// | Platform | What it does with `actualPlaying` |
+  /// | :--- | :--- |
+  /// | Android | the position advances only while it is true |
+  /// | Linux | the MPRIS `Position` advances only while it is true |
+  /// | Apple | not read: the published rate follows [playing] |
+  /// | Windows | not read: the SMTC timeline carries the pushed position |
+  /// | Web | not read: `setPositionState` follows [playing] and [rate] |
   final bool actualPlaying;
 
-  /// Buffering or loading. Mapped to a loading state where the OS supports one
-  /// (Android `STATE_BUFFERING`).
+  /// Buffering or loading. Mapped to a loading state where the OS has one
+  /// and the native side reads it:
+  ///
+  /// | Platform | What it does with `buffering` |
+  /// | :--- | :--- |
+  /// | Android | `STATE_BUFFERING` |
+  /// | Windows | SMTC `PlaybackStatus` `Changing` |
+  /// | Apple | not read |
+  /// | Linux | not read: MPRIS has no such status |
+  /// | Web | not read |
   final bool buffering;
 
   /// Whether next or previous navigation is available right now. For a real
@@ -170,7 +195,13 @@ class MediaSessionPlaybackSnapshot {
 /// swallow [MissingPluginException] and [PlatformException] so an unwired
 /// platform is a no-op, not a crash; Dart-side state stays correct. The
 /// one exception is an `enable` refused because another Flutter engine of
-/// the process owns the session: it throws [StateError].
+/// the process owns the session: it throws [StateError]. Only `enable`
+/// does: an update or a `disable` is sent without anyone awaiting it.
+///
+/// The event channel has no such net: Flutter reports a listen on a
+/// channel without a native side as a [FlutterError]. So [enable] says
+/// whether a native side answered, and the controller listens to
+/// [commandStream] only when one did (Tizen and webOS have none).
 @internal
 class MediaSessionChannel {
   static const String _methodName = 'mpv_audio_kit/media_session';
@@ -205,17 +236,19 @@ class MediaSessionChannel {
 
   /// Enable the OS media session with the full state up front. Called
   /// once on `setMediaSession(non-null)` to bootstrap the native side.
-  Future<void> enable({
+  ///
+  /// Completes with whether the platform has a native side at all: `false`
+  /// where no plugin answers the channel (Tizen, webOS), `true` anywhere
+  /// else, a native side that reported a failure included.
+  Future<bool> enable({
     required MediaSession session,
     required MediaSessionMetadataSnapshot metadata,
     required MediaSessionPlaybackSnapshot playback,
-  }) async {
-    await _invoke('enable', <String, Object?>{
-      'config': _encodeConfig(session),
-      'metadata': _encodeMetadata(metadata),
-      'playback': _encodePlayback(playback),
-    });
-  }
+  }) => _invoke('enable', <String, Object?>{
+    'config': _encodeConfig(session),
+    'metadata': _encodeMetadata(metadata),
+    'playback': _encodePlayback(playback),
+  }, throwsAlreadyOwned: true);
 
   /// Push a new configuration to the native side: actions, artwork
   /// source, audio-interruption flags. Called when the consumer
@@ -246,14 +279,20 @@ class MediaSessionChannel {
   /// disables or detaches.
   static const String _alreadyOwned = 'already_owned';
 
-  Future<void> _invoke(String method, Object? args) async {
+  /// Whether a native side answered [method], with a result or an error.
+  Future<bool> _invoke(
+    String method,
+    Object? args, {
+    bool throwsAlreadyOwned = false,
+  }) async {
     try {
       await _method.invokeMethod<void>(method, args);
     } on MissingPluginException {
       // Native side not yet wired on this platform; Dart-side state
       // is still consistent, only the OS lockscreen entry is absent.
+      return false;
     } on PlatformException catch (e) {
-      if (e.code == _alreadyOwned) {
+      if (throwsAlreadyOwned && e.code == _alreadyOwned) {
         throw StateError(
           'Another Flutter engine of this process owns the OS media '
           'session. It is one per process: it stays with the engine that '
@@ -266,6 +305,7 @@ class MediaSessionChannel {
       // next state-change push re-syncs: pushes are event-driven, so a
       // dropped one self-heals on the following change.
     }
+    return true;
   }
 
   /// Serialises [MediaSession] config fields (everything that is
@@ -277,7 +317,9 @@ class MediaSessionChannel {
       'interruptionPolicy': s.interruptionPolicy.name,
       'fastForwardIntervalMs': s.fastForwardInterval.inMilliseconds,
       'rewindIntervalMs': s.rewindInterval.inMilliseconds,
-      'supportedPlaybackRates': s.supportedPlaybackRates,
+      // A plain list: the codec writes a Float64List as typed data, which
+      // the native sides do not read as a list of doubles.
+      'supportedPlaybackRates': List<double>.of(s.supportedPlaybackRates),
     };
     // `appName` is consumed by Windows SMTC (the process AUMID) and Linux MPRIS
     // (Identity and bus name); macOS, iOS and Android use the system app
@@ -312,6 +354,9 @@ class MediaSessionChannel {
         if (m.artworkUrl != null) 'artworkUrl': m.artworkUrl,
       };
 
+  // The keys of the three maps are the contract with every native side,
+  // which reads them by name: channel_encode_test pins the set. Not every
+  // side reads every key (see [MediaSessionPlaybackSnapshot]).
   Map<String, Object?> _encodePlayback(MediaSessionPlaybackSnapshot p) =>
       <String, Object?>{
         'playing': p.playing,

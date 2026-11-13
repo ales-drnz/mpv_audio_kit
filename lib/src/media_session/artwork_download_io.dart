@@ -12,6 +12,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import '../models/cover_art.dart';
+import 'artwork_cancel.dart';
 import 'artwork_fetcher.dart' show ArtworkFetcher, downloadsArtworkOn;
 import 'artwork_sources.dart';
 
@@ -35,8 +36,19 @@ const int _maxRedirects = 5;
 ///
 /// A `file://` URL is read from disk instead, with the same 20 MB limit,
 /// and its MIME type comes from the extension.
+///
+/// A [cancel] that fires closes the connection, whatever the download was
+/// waiting for, and the result is `null`. The timeouts here are between
+/// two steps (the connection, the headers, a piece of the body): the limit
+/// on the whole download is the one of whoever holds [cancel]
+/// (ArtworkLoader).
 @internal
-Future<CoverArt?> downloadArtwork(Uri uri, [String caFile = '']) async {
+Future<CoverArt?> downloadArtwork(
+  Uri uri, [
+  String caFile = '',
+  ArtworkCancel? cancel,
+]) async {
+  if (cancel?.isCancelled ?? false) return null;
   if (uri.scheme == 'file') return _readArtworkFile(uri);
   if (uri.scheme != 'http' && uri.scheme != 'https') return null;
   HttpClient? client;
@@ -48,9 +60,14 @@ Future<CoverArt?> downloadArtwork(Uri uri, [String caFile = '']) async {
               ..setTrustedCertificates(caFile),
           );
     client.connectionTimeout = _timeout;
+    final connection = client;
+    // What awaits the connection then fails, and the catch ends the load.
+    unawaited(cancel?.whenCancelled.then((_) => connection.close(force: true)));
     final response = await _getFollowing(client, uri);
     if (response == null) return null;
-    return await _readArtworkBody(response);
+    final cover = await _readArtworkBody(response);
+    // A body cut short by the close is no cover.
+    return (cancel?.isCancelled ?? false) ? null : cover;
   } catch (_) {
     return null;
   } finally {
@@ -119,9 +136,13 @@ Future<CoverArt?> _readArtworkFile(Uri uri) async {
 /// Default [ArtworkFetcher] where [downloadsArtworkOn] holds: an
 /// `asset://` [url] from the app's bundle and, on Android, a `content://`
 /// or `android.resource://` one through the ContentResolver, as the app
-/// wrote it; the rest through [downloadArtwork].
+/// wrote it; the rest through [downloadArtwork], which [cancel] stops.
 @internal
-Future<CoverArt?> loadArtwork(String url, [String caFile = '']) async {
+Future<CoverArt?> loadArtwork(
+  String url, [
+  String caFile = '',
+  ArtworkCancel? cancel,
+]) async {
   switch (artworkScheme(url)) {
     case 'asset':
       return readArtworkAsset(url);
@@ -131,7 +152,7 @@ Future<CoverArt?> loadArtwork(String url, [String caFile = '']) async {
           : null;
   }
   final uri = Uri.tryParse(url);
-  return uri == null ? null : downloadArtwork(uri, caFile);
+  return uri == null ? null : downloadArtwork(uri, caFile, cancel);
 }
 
 /// A provider that never answers gives up like an HTTP server does.

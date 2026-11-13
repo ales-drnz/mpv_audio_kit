@@ -80,6 +80,19 @@ void main() {
       );
     });
 
+    test('only enable throws for already_owned: an update or a disable '
+        'nobody awaits swallows it', () async {
+      _mockNative(
+        [],
+        (call) => Future.error(PlatformException(code: 'already_owned')),
+      );
+      final channel = MediaSessionChannel();
+      await channel.updateConfig(const MediaSession());
+      await channel.updateMetadata(metadata);
+      await channel.updatePlayback(playback);
+      await channel.disable();
+    });
+
     test('any other platform error is still swallowed', () async {
       _mockNative(
         [],
