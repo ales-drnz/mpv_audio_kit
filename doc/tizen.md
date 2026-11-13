@@ -22,7 +22,7 @@ The define holds for every build of the app: with it `flutter build linux` on x6
 
 ## Audio
 
-The library plays through `ao_tizen`, an output on Tizen's `audio_out` with the media stream type. The playback focus is the app's to take with Tizen's sound manager. The media session has no Tizen side: turning it on does nothing there.
+The library plays through `ao_tizen`, an output on Tizen's `audio_out` with the media stream type. The playback focus is the app's to take with Tizen's sound manager. The media session has no Tizen side. `setMediaSession` keeps its value in the player's state and does nothing else there: no entry in the TV's interface, no command from the remote, no artwork URL loaded, and no error.
 
 ## A libmpv of your own
 

@@ -171,6 +171,11 @@ class MediaSessionPlaybackSnapshot {
 /// platform is a no-op, not a crash; Dart-side state stays correct. The
 /// one exception is an `enable` refused because another Flutter engine of
 /// the process owns the session: it throws [StateError].
+///
+/// The event channel has no such net: Flutter reports a listen on a
+/// channel without a native side as a [FlutterError]. So [enable] says
+/// whether a native side answered, and the controller listens to
+/// [commandStream] only when one did (Tizen and webOS have none).
 @internal
 class MediaSessionChannel {
   static const String _methodName = 'mpv_audio_kit/media_session';
@@ -205,17 +210,19 @@ class MediaSessionChannel {
 
   /// Enable the OS media session with the full state up front. Called
   /// once on `setMediaSession(non-null)` to bootstrap the native side.
-  Future<void> enable({
+  ///
+  /// Completes with whether the platform has a native side at all: `false`
+  /// where no plugin answers the channel (Tizen, webOS), `true` anywhere
+  /// else, a native side that reported a failure included.
+  Future<bool> enable({
     required MediaSession session,
     required MediaSessionMetadataSnapshot metadata,
     required MediaSessionPlaybackSnapshot playback,
-  }) async {
-    await _invoke('enable', <String, Object?>{
-      'config': _encodeConfig(session),
-      'metadata': _encodeMetadata(metadata),
-      'playback': _encodePlayback(playback),
-    });
-  }
+  }) => _invoke('enable', <String, Object?>{
+    'config': _encodeConfig(session),
+    'metadata': _encodeMetadata(metadata),
+    'playback': _encodePlayback(playback),
+  });
 
   /// Push a new configuration to the native side: actions, artwork
   /// source, audio-interruption flags. Called when the consumer
@@ -246,12 +253,14 @@ class MediaSessionChannel {
   /// disables or detaches.
   static const String _alreadyOwned = 'already_owned';
 
-  Future<void> _invoke(String method, Object? args) async {
+  /// Whether a native side answered [method], with a result or an error.
+  Future<bool> _invoke(String method, Object? args) async {
     try {
       await _method.invokeMethod<void>(method, args);
     } on MissingPluginException {
       // Native side not yet wired on this platform; Dart-side state
       // is still consistent, only the OS lockscreen entry is absent.
+      return false;
     } on PlatformException catch (e) {
       if (e.code == _alreadyOwned) {
         throw StateError(
@@ -266,6 +275,7 @@ class MediaSessionChannel {
       // next state-change push re-syncs: pushes are event-driven, so a
       // dropped one self-heals on the following change.
     }
+    return true;
   }
 
   /// Serialises [MediaSession] config fields (everything that is

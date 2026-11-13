@@ -47,12 +47,13 @@ class _RecordingChannel extends MediaSessionChannel {
   Stream<void> get audioOutputResets => resets.stream;
 
   @override
-  Future<void> enable({
+  Future<bool> enable({
     required MediaSession session,
     required MediaSessionMetadataSnapshot metadata,
     required MediaSessionPlaybackSnapshot playback,
   }) async {
     calls.add(_Call('enable', {'playing': playback.playing}));
+    return true;
   }
 
   @override

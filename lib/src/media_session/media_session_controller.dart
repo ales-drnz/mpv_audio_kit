@@ -64,6 +64,11 @@ class MediaSessionController {
   StreamSubscription<void>? _audioOutputResetSub;
   bool _disposed = false;
 
+  // Whether a native side answered `enable`. Until it has, and for good on
+  // a platform without one (Tizen, webOS), nothing listens to the event
+  // channel, no artwork is loaded and nothing is pushed.
+  bool _native = false;
+
   // ── Coalescing ──────────────────────────────────────────────────────
   // One mpv file-load fans out across up to 4 metadata streams + several
   // playback streams in the same microtask turn. Collapse them into at most
@@ -218,7 +223,29 @@ class MediaSessionController {
       }),
     );
 
-    // Inbound commands from the OS event channel.
+    // Push the initial full state. An artwork URL is not loaded yet: the
+    // platform may have no session to show it on.
+    final state = _stateSnapshot();
+    final session = state.settings.mediaSession;
+    if (session == null) return;
+    final metadata = _computeMetadata();
+    _lastMetadata = metadata;
+    final native = await _channel.enable(
+      session: session,
+      metadata: metadata,
+      playback: _computePlayback(),
+    );
+    if (_disposed) return;
+    if (!native) {
+      // No plugin on this platform: the session is a no-op. Listening to
+      // the event channel would make Flutter report an error.
+      await _cancelInputs();
+      return;
+    }
+    _native = true;
+
+    // Inbound commands from the OS event channel. The native side keeps
+    // the sink of each engine whatever the order of `listen` and `enable`.
     _commandSub = _channel.commandStream.listen(_onCommand);
     final onReset = _onAudioOutputReset;
     if (onReset != null) {
@@ -226,18 +253,16 @@ class MediaSessionController {
         (_) => onReset(),
       );
     }
+    // What changed while `enable` was in flight, and the artwork URL the
+    // first snapshot left out.
+    _markMetadata();
+  }
 
-    // Push the initial full state.
-    final state = _stateSnapshot();
-    final session = state.settings.mediaSession;
-    if (session == null) return;
-    final metadata = _computeMetadata();
-    _lastMetadata = metadata;
-    await _channel.enable(
-      session: session,
-      metadata: metadata,
-      playback: _computePlayback(),
-    );
+  Future<void> _cancelInputs() async {
+    for (final s in _subscriptions) {
+      await s.cancel();
+    }
+    _subscriptions.clear();
   }
 
   Future<void> dispose() async {
@@ -245,10 +270,7 @@ class MediaSessionController {
     _disposed = true;
     _artRetry?.cancel();
 
-    for (final s in _subscriptions) {
-      await s.cancel();
-    }
-    _subscriptions.clear();
+    await _cancelInputs();
     await _commandSub?.cancel();
     _commandSub = null;
     await _audioOutputResetSub?.cancel();
@@ -285,7 +307,7 @@ class MediaSessionController {
   }
 
   void _scheduleFlush() {
-    if (_flushScheduled || _disposed) return;
+    if (_flushScheduled || _disposed || !_native) return;
     _flushScheduled = true;
     scheduleMicrotask(_flush);
   }
@@ -431,7 +453,7 @@ class MediaSessionController {
   ) {
     final uri = artwork.uri;
     if (uri == null) return (cover: artwork.bytes, artworkUrl: null);
-    final cover = _artworkFetcher != null && _fetches(uri)
+    final cover = _native && _artworkFetcher != null && _fetches(uri)
         ? _downloadedArtwork(uri)
         : null;
     final showUrl = passesArtworkUrl && cover == null && _isHttp(uri);
