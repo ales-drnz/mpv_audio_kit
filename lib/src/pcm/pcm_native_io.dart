@@ -8,6 +8,7 @@
 library;
 
 import 'dart:ffi';
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:ffi/ffi.dart';
@@ -121,17 +122,29 @@ final class _LookupPcmNative implements PcmNative {
   int create(int capacityBytes) => _c(capacityBytes);
 
   // The typed-data address only reaches @Native leaf calls, so this path
-  // copies through a native buffer for the call.
+  // copies through a native buffer: one block, allocated at the first
+  // write and used again by every write of every source. A chunk longer
+  // than the block goes in several calls, in order.
+  static const int _blockBytes = 64 * 1024;
+  Pointer<Uint8> _block = nullptr;
+
   @override
   int write(int id, Uint8List data) {
     if (data.isEmpty) return 0;
-    final buffer = malloc<Uint8>(data.length);
-    try {
-      buffer.asTypedList(data.length).setAll(0, data);
-      return _w(id, buffer, data.length);
-    } finally {
-      malloc.free(buffer);
+    if (_block == nullptr) _block = malloc<Uint8>(_blockBytes);
+    final block = _block.asTypedList(_blockBytes);
+    var taken = 0;
+    while (taken < data.length) {
+      final n = math.min(_blockBytes, data.length - taken);
+      block.setRange(0, n, data, taken);
+      final rc = _w(id, _block, n);
+      // An error after a part was taken: the part counts, and the next
+      // write gets the error.
+      if (rc < 0) return taken > 0 ? taken : rc;
+      taken += rc;
+      if (rc < n) break;
     }
+    return taken;
   }
 
   @override
@@ -153,7 +166,11 @@ final class _LookupPcmNative implements PcmNative {
   int release(int id) => _r(id);
 
   @override
-  void releaseAll() => _all();
+  void releaseAll() {
+    _all();
+    if (_block != nullptr) malloc.free(_block);
+    _block = nullptr;
+  }
 }
 
 @Native<Int64 Function(Int64)>(symbol: 'mak_pcm_create', isLeaf: true)
