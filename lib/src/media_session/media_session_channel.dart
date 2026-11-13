@@ -292,7 +292,9 @@ class MediaSessionChannel {
       'interruptionPolicy': s.interruptionPolicy.name,
       'fastForwardIntervalMs': s.fastForwardInterval.inMilliseconds,
       'rewindIntervalMs': s.rewindInterval.inMilliseconds,
-      'supportedPlaybackRates': s.supportedPlaybackRates,
+      // A plain list: the codec writes a Float64List as typed data, which
+      // the native sides do not read as a list of doubles.
+      'supportedPlaybackRates': List<double>.of(s.supportedPlaybackRates),
     };
     // `appName` is consumed by Windows SMTC (the process AUMID) and Linux MPRIS
     // (Identity and bus name); macOS, iOS and Android use the system app
