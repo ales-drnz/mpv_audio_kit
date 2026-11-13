@@ -76,7 +76,7 @@ void main() {
   test('the tvOS sources are the darwin ones', () {
     // SwiftPM takes no target outside the package root, so tvos/ holds
     // copies; a change to darwin/ goes to tvos/ too:
-    //   cp darwin/mpv_audio_kit/Sources/mpv_audio_kit/* tvos/Sources/mpv_audio_kit/
+    //   scripts/sync_tvos_sources.sh
     const darwin = 'darwin/mpv_audio_kit/Sources/mpv_audio_kit';
     const tvos = 'tvos/Sources/mpv_audio_kit';
     Set<String> names(String dir) => Directory(
@@ -89,6 +89,21 @@ void main() {
       expect(read(tvos), read(darwin), reason: '$tvos/$name differs');
     }
   });
+
+  test(
+    'sync_tvos_sources.sh --check agrees that the copies are in sync',
+    () {
+      // The script's own check, the one to run by hand after an edit: it
+      // must say what the test above says.
+      final check = Process.runSync('bash', [
+        'scripts/sync_tvos_sources.sh',
+        '--check',
+      ]);
+      expect(check.exitCode, 0, reason: '${check.stdout}${check.stderr}');
+    },
+    // No bash on a plain Windows runner; the test above covers it there.
+    skip: Platform.isWindows,
+  );
 
   group('update_libmpv.sh pins the tvOS libmpv in tvos/Package.swift', () {
     final root = Directory.current.path;
