@@ -370,15 +370,26 @@ final class Media {
   );
 
   /// Prints the names of [httpHeaders], [streamLavfOptions] and
-  /// [demuxerLavfOptions] only, and the [uri] without its user info:
-  /// they often carry credentials (an `Authorization` token, a proxy
-  /// password, a `decryption_key`) that must not reach a log.
+  /// [demuxerLavfOptions] only, and the [uri] without its user info and
+  /// with the names of its query only, as any value of [extras] that is a
+  /// URL: they often carry credentials (an `Authorization` token, a proxy
+  /// password, a `decryption_key`, the `api_key` of a music server) that
+  /// must not reach a log.
   @override
   String toString() {
     String? names(Map<String, String>? map) => map == null
         ? null
         : '{${map.keys.map((k) => '$k: <redacted>').join(', ')}}';
-    return 'Media(uri: ${redactUserInfo(uri)}, extras: $extras, '
+    Object? printed(Object? value) => switch (value) {
+      Uri() => redactUrl(value.toString()),
+      String() when _hasAuthority.hasMatch(value) => redactUrl(value),
+      _ => value,
+    };
+    final extras = this.extras;
+    final shownExtras = extras == null
+        ? null
+        : '{${extras.entries.map((e) => '${e.key}: ${printed(e.value)}').join(', ')}}';
+    return 'Media(uri: ${redactUrl(uri)}, extras: $shownExtras, '
         'httpHeaders: ${names(httpHeaders)}, httpChunkSize: $httpChunkSize, '
         'streamLavfOptions: ${names(streamLavfOptions)}, '
         'demuxerLavfOptions: ${names(demuxerLavfOptions)}, start: $start, '
@@ -393,3 +404,30 @@ final RegExp _userInfo = RegExp(r'^([A-Za-z][A-Za-z0-9+.-]*://)[^/?#]*@');
 @internal
 String redactUserInfo(String uri) =>
     uri.replaceFirstMapped(_userInfo, (m) => '${m[1]}<redacted>@');
+
+final RegExp _scheme = RegExp(r'^[A-Za-z][A-Za-z0-9+.-]*:');
+final RegExp _hasAuthority = RegExp(r'^[A-Za-z][A-Za-z0-9+.-]*://');
+
+/// [uri] for a log: without the user info of its authority, as
+/// [redactUserInfo] gives it, and with each value of its query replaced
+/// by `<redacted>`. The names of the query stay, since they tell what
+/// the URL asks for, and the values are where a music server's
+/// credentials sit (`api_key`, `X-Plex-Token`, Subsonic's `u`, `t` and
+/// `s`). A string with no scheme, a path, is kept as it is.
+@internal
+String redactUrl(String uri) {
+  final url = redactUserInfo(uri);
+  final query = url.indexOf('?') + 1;
+  if (query == 0 || !_scheme.hasMatch(url)) return url;
+  final fragment = url.indexOf('#', query);
+  final end = fragment < 0 ? url.length : fragment;
+  final redacted = url
+      .substring(query, end)
+      .split('&')
+      .map((pair) {
+        final equals = pair.indexOf('=');
+        return equals < 0 ? pair : '${pair.substring(0, equals)}=<redacted>';
+      })
+      .join('&');
+  return '${url.substring(0, query)}$redacted${url.substring(end)}';
+}

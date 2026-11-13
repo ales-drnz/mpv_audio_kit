@@ -346,6 +346,85 @@ void main() {
       }
     });
 
+    test('the query values of the uri are not printed, the names are', () {
+      // Where a music server's credentials sit: Subsonic u, t and s,
+      // Jellyfin api_key, Plex X-Plex-Token.
+      for (final (uri, printed) in [
+        (
+          'https://srv/rest/stream?u=joe&t=26719a1196d2a940&s=c19b2d&id=7',
+          'https://srv/rest/stream?u=<redacted>&t=<redacted>&s=<redacted>'
+              '&id=<redacted>',
+        ),
+        (
+          'https://joe:pa55@srv/a.mp3?api_key=deadbeef#t=10',
+          'https://<redacted>@srv/a.mp3?api_key=<redacted>#t=10',
+        ),
+        (
+          'http://srv:32400/lib/7/file.flac?X-Plex-Token=xyzzy&download',
+          'http://srv:32400/lib/7/file.flac?X-Plex-Token=<redacted>&download',
+        ),
+        ('https://srv/a.mp3?sig=', 'https://srv/a.mp3?sig=<redacted>'),
+      ]) {
+        final out = Media(uri).toString();
+        expect(out, contains('uri: $printed,'), reason: uri);
+        final request = SourceResolveRequest(
+          media: const Media('a.mp3'),
+          uri: uri,
+          isRetry: true,
+        ).toString();
+        expect(request, contains('uri: $printed,'), reason: uri);
+        for (final secret in ['joe', '26719a', 'c19b2d', 'deadbeef', 'xyzzy']) {
+          expect(out, isNot(contains(secret)), reason: uri);
+          expect(request, isNot(contains(secret)), reason: uri);
+        }
+      }
+      // No query, or no URL: printed as it is.
+      for (final uri in [
+        'https://example.com/a.mp3',
+        'https://example.com/a.mp3#frag',
+        '/music/what?=really.flac',
+        'what?a=b.mp3',
+      ]) {
+        expect(Media(uri).toString(), contains('uri: $uri,'), reason: uri);
+      }
+    });
+
+    test('an extra that is a URL is printed without its secrets', () {
+      final out = Media(
+        'a.mp3',
+        extras: {
+          'title': 'Episode 42',
+          'trackId': 7,
+          'art': 'https://joe:pa55@srv/rest/getCoverArt?id=al-1&t=26719a',
+          'page': Uri.parse('https://srv/album?token=xyzzy'),
+          'note': 'see ?a=b',
+        },
+      ).toString();
+      expect(
+        out,
+        contains(
+          'extras: {title: Episode 42, trackId: 7, '
+          'art: https://<redacted>@srv/rest/getCoverArt?id=<redacted>'
+          '&t=<redacted>, page: https://srv/album?token=<redacted>, '
+          'note: see ?a=b}, ',
+        ),
+      );
+      expect(const Media('a.mp3').toString(), contains('extras: null,'));
+    });
+
+    test('a playlist and an end-file event print their media the same', () {
+      const media = Media('https://srv/stream?api_key=deadbeef');
+      expect(const Playlist([media]).toString(), isNot(contains('deadbeef')));
+      expect(
+        const MpvFileEndedEvent(
+          reason: MpvEndFileReason.eof,
+          error: 0,
+          media: media,
+        ).toString(),
+        isNot(contains('deadbeef')),
+      );
+    });
+
     test('no stream options prints null', () {
       expect(
         const Media('a.mp3').toString(),
