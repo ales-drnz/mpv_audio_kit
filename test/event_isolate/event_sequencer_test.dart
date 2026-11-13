@@ -26,7 +26,10 @@ final class _Queue {
   EventSequencer get sequencer => sequencerOverride ?? _sequencer;
   late final EventSequencer _sequencer = EventSequencer(
     take: take,
-    flushTrailing: () => log.add('flush'),
+    idle: () {
+      log.add('flush');
+      return null;
+    },
     waitSeconds: () => holdSeconds,
     onError: (e, _) => log.add('error $e'),
   );
@@ -61,7 +64,6 @@ void main() {
           log.add('take ${events.removeFirst()}');
           return (true, null, false);
         },
-        flushTrailing: () => log.add('flush'),
         waitSeconds: () => null,
         onError: (e, _) => log.add('error $e'),
         idle: () {
@@ -95,7 +97,6 @@ void main() {
         log.add('take ${events.removeFirst()}');
         return (true, null, false);
       },
-      flushTrailing: () => log.add('flush'),
       waitSeconds: () => null,
       onError: (e, _) => log.add('error $e'),
       idle: () {
@@ -119,7 +120,6 @@ void main() {
         log.add('take ${events.removeFirst()}');
         return (true, null, false);
       },
-      flushTrailing: () => log.add('flush'),
       waitSeconds: () => null,
       onError: (e, _) => log.add('error $e'),
       idle: () {
@@ -247,7 +247,10 @@ void main() {
           depth--;
         }
       },
-      flushTrailing: () => q.log.add('flush'),
+      idle: () {
+        q.log.add('flush');
+        return null;
+      },
       waitSeconds: () => null,
       onError: (e, _) => q.log.add('error $e'),
     );

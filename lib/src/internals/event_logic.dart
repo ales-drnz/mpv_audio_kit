@@ -108,12 +108,9 @@ final class EventLogic {
       _cache.group.isNotEmpty ||
       _cache.endOfContentAgainAt != null;
 
-  /// Sends the held values whose window has closed.
-  void flushTrailing() => _flushTrailing(_send, _cache);
-
   /// What the pump does after every event and whenever its wait ends with
-  /// no event: [flushTrailing], then the read of the end of content once
-  /// it is due. Returns the future of that read; the pump waits for it
+  /// no event: it sends the held values whose window has closed, then
+  /// reads the end of content once that is due. Returns the future of that read; the pump waits for it
   /// before the next event.
   Future<void>? idle() {
     _flushTrailing(_send, _cache);

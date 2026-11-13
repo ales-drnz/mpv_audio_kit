@@ -135,7 +135,7 @@ Future<List<String>> _runWeb(Map<String, Object?> values) async {
       if (queue.isEmpty) return (false, null, false);
       return (true, queue.removeFirst()(logic), false);
     },
-    flushTrailing: logic.flushTrailing,
+    idle: logic.idle,
     waitSeconds: () => null,
     onError: (e, _) => out.add('error $e'),
   );
@@ -506,7 +506,7 @@ void main() {
       await logic.property('time-pos', MpvFormat.mpvFormatDouble, 0.2);
       expect(logic.holdsValues, isTrue);
       await logic.dispatch(MpvEventPlaybackRestart());
-      logic.flushTrailing();
+      await logic.idle();
       expect(out, ['time-pos=0.1', 'restart 0.5']);
     },
   );
