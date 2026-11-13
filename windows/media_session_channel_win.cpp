@@ -12,6 +12,7 @@
 
 #include <atomic>
 #include <cwctype>
+#include <exception>
 #include <optional>
 #include <string>
 #include <variant>
@@ -278,6 +279,7 @@ MediaSessionChannelWin::~MediaSessionChannelWin() {
     try {
       hub.controller().Disable();
     } catch (const winrt::hresult_error&) {
+    } catch (const std::exception&) {
     }
   }
 }
@@ -290,8 +292,8 @@ void MediaSessionChannelWin::HandleMethodCall(
   auto& hub = MediaSessionHub::Get();
   SmtcController& controller = hub.controller();
 
-  // Backstop: any WinRT failure inside the controller surfaces as a channel
-  // error instead of an uncaught hresult_error that would crash the engine.
+  // Backstop: any failure inside the controller surfaces as a channel error
+  // instead of an uncaught exception that would crash the engine.
   try {
     if (method == "enable") {
       if (!args) {
@@ -361,6 +363,10 @@ void MediaSessionChannelWin::HandleMethodCall(
     }
   } catch (const winrt::hresult_error& e) {
     result->Error("smtc_error", winrt::to_string(e.message()));
+  } catch (const std::exception& e) {
+    // What is no WinRT failure: no memory, or the thread of the thumbnail
+    // that could not start (std::system_error).
+    result->Error("smtc_error", e.what());
   }
 }
 
