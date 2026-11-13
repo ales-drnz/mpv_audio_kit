@@ -376,6 +376,43 @@ jobs:
       - name: flutter test -x network (files that touch the host)
         run: flutter test -x network $(scripts/ci/platform_tests.sh)
 
+  # The whole suite on the oldest Flutter pubspec.yaml declares, where
+  # Analyze alone ran, and then the hook on the oldest version of each
+  # dependency the constraints allow: code_assets and hooks, which the
+  # build hook runs on, differ between versions.
+  test-floor:
+    name: Test (Flutter floor)
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/flutter
+        with:
+          version: floor
+          cache: true
+      - uses: ./.github/actions/libmpv-from-run
+        with:
+          run-id: ${{ needs.changes.outputs.libmpv_run }}
+          token: ${{ secrets.LIBMPV_SCRIPTS_TOKEN }}
+          pubspecs: pubspec.yaml
+      # As in Test (Linux): ALSA for libmpv, and a null sink as an output.
+      - name: Install libmpv runtime dependencies
+        run: sudo apt-get update && sudo apt-get install -y libasound2t64 pulseaudio pulseaudio-utils
+      - name: PulseAudio null sink
+        run: |
+          pulseaudio --start --exit-idle-time=-1
+          pactl load-module module-null-sink sink_name=ci_null norewinds=1
+          pactl set-default-sink ci_null
+      - name: flutter test -x network
+        run: flutter test -x network
+      - name: The hook on the oldest dependencies
+        run: |
+          flutter pub downgrade
+          flutter analyze lib hook
+          flutter test test/packaging/hook_*_test.dart
+
   # The web backend in Chrome, on libmpv built as WebAssembly. The module
   # is the web build of the libmpv the other jobs bundle, the run's when
   # the changes job found or was given one and the pinned release's
