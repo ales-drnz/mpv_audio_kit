@@ -101,6 +101,8 @@ String? get unsupportedReason {
 }
 
 Future<_Loaded> _start() async {
+  // Of a start that did not load, which this one replaces.
+  _failure = null;
   final reason = unsupportedReason;
   if (reason != null) {
     _failure = StateError(reason);
@@ -133,6 +135,12 @@ Future<_Loaded> _start() async {
     // The start goes on: the next Player waits for it again.
     _loading = null;
     rethrow;
+  } on _NotLoaded catch (e) {
+    // A fetch the network lost may pass later: the next Player starts
+    // the module again, and until then a PCM source names this failure.
+    _loading = null;
+    _failure = e;
+    rethrow;
   } catch (e) {
     _failure = e;
     rethrow;
@@ -145,13 +153,19 @@ Future<MpvModule> _import(String url) async {
   } on StateError {
     rethrow;
   } catch (e) {
-    throw StateError(
+    throw _NotLoaded(
       'mpv_audio_kit: the web module did not load from $url ($e). The '
       'package from pub.dev ships it; a checkout from git gets it with '
       'scripts/update_libmpv.sh. The page must be cross-origin isolated '
       '(COOP and COEP) for its threads.',
     );
   }
+}
+
+/// The module's import or its factory failed: nothing of it is left in
+/// the page, unlike a module that loaded and was refused (another ABI).
+final class _NotLoaded extends StateError {
+  _NotLoaded(super.message);
 }
 
 /// A session over the module in WebAssembly, on the main thread.
@@ -167,7 +181,9 @@ String? defaultLibmpv() => null;
 /// Starts loading the module: from [libmpv], a URL, or else from the
 /// package's web assets ([kWebModuleAsset]); then the page's output. With
 /// [hotRestartCleanup], what a program a Hot Restart replaced left in the
-/// page is torn down first. A failure reaches the first player's bring-up.
+/// page is torn down first. A failure reaches the first player's bring-up,
+/// and every later one's, but for a module that did not load or did not
+/// start in time: the next player tries again.
 @internal
 void startBackend({String? libmpv, required bool hotRestartCleanup}) {
   _url = libmpv;
