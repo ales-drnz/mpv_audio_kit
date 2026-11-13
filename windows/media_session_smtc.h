@@ -73,10 +73,11 @@ class SmtcController {
   SmtcController(const SmtcController&) = delete;
   SmtcController& operator=(const SmtcController&) = delete;
 
-  void Enable(const SmtcConfig& config, const SmtcMetadata& metadata,
+  // The metadata is taken by value and moved in: its cover can be 20 MB.
+  void Enable(const SmtcConfig& config, SmtcMetadata metadata,
               const SmtcPlayback& playback);
   void UpdateConfig(const SmtcConfig& config);
-  void UpdateMetadata(const SmtcMetadata& metadata);
+  void UpdateMetadata(SmtcMetadata metadata);
   void UpdatePlayback(const SmtcPlayback& playback);
   void Disable();
 
@@ -121,8 +122,9 @@ class SmtcController {
   SmtcMetadata metadata_{};
   SmtcPlayback playback_{};
 
-  // Thumbnail cache keyed by byte identity — skip rebuilding when unchanged.
-  std::vector<uint8_t> artwork_cache_key_{};
+  // Whether metadata_.artwork differs from the cover the thumbnail was made
+  // of: an unchanged cover is not rebuilt.
+  bool artwork_changed_ = false;
 };
 
 }  // namespace mpv_audio_kit

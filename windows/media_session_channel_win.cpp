@@ -15,6 +15,7 @@
 #include <exception>
 #include <optional>
 #include <string>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -86,6 +87,7 @@ SmtcMetadata ParseMetadata(const EncodableMap& m) {
   md.genre = GetString(m, "genre");
   md.track_number = GetInt64(m, "trackNumber");
   if (auto* v = Find(m, "artworkBytes"))
+    // The one copy of the cover: the codec's value is const.
     if (auto* b = std::get_if<std::vector<uint8_t>>(v)) md.artwork = *b;
   md.duration_ms = GetInt64(m, "durationMs");
   return md;
@@ -324,7 +326,7 @@ void MediaSessionChannelWin::HandleMethodCall(
         // Set the process AUMID (from app_name) before the SMTC is created
         // inside Enable() → EnsureCreated(); no-op after the first call.
         EnsureProcessIdentity(parsed.app_name);
-        controller.Enable(parsed, metadata, playback);
+        controller.Enable(parsed, std::move(metadata), playback);
       } catch (...) {
         // Dart hears the error below and keeps its state off: an engine
         // that took the session with this enable gives it back, or every
