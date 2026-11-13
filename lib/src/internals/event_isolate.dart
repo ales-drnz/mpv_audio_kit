@@ -56,18 +56,49 @@ const Duration _kIsolateExitTimeout = Duration(seconds: 2);
 
 // ── Isolate entry point ───────────────────────────────────────────────────────
 
+/// The calls of the bring-up that mpv refused, as `what: rc=code`. The
+/// player still starts, with mpv's default in place of each: they go out
+/// as one warning once the main isolate listens. An option this build of
+/// mpv does not have goes to [unknown] instead, reported at debug level:
+/// the recipe switches off features (the scripts, the OSC) that an audio
+/// build leaves out.
+final class _Refusals {
+  final refused = <String>[];
+  final unknown = <String>[];
+
+  /// The internal log lines for what was collected.
+  Iterable<MpvEventInternalLog> get logs => [
+    if (refused.isNotEmpty)
+      MpvEventInternalLog(
+        'warn',
+        'mpv refused at bring-up, its defaults apply: ${refused.join('; ')}',
+      ),
+    if (unknown.isNotEmpty)
+      MpvEventInternalLog(
+        'debug',
+        'options this libmpv does not have: ${unknown.join(', ')}',
+      ),
+  ];
+}
+
 void _applyOptionStrings(
   mpv.MpvLibrary lib,
   Pointer<mpv.MpvHandle> handle,
   Map<String, String> opts,
+  _Refusals refused,
 ) {
   for (final entry in opts.entries) {
     using((arena) {
-      lib.mpvSetOptionString(
+      final rc = lib.mpvSetOptionString(
         handle,
         entry.key.toNativeUtf8(allocator: arena),
         entry.value.toNativeUtf8(allocator: arena),
       );
+      if (rc == mpv.MpvError.mpvErrorOptionNotFound) {
+        refused.unknown.add(entry.key);
+      } else if (rc < 0) {
+        refused.refused.add('option ${entry.key}=${entry.value}: rc=$rc');
+      }
     });
   }
 }
@@ -76,14 +107,18 @@ void _applyPropertyStrings(
   mpv.MpvLibrary lib,
   Pointer<mpv.MpvHandle> handle,
   Map<String, String> props,
+  _Refusals refused,
 ) {
   for (final entry in props.entries) {
     using((arena) {
-      lib.mpvSetPropertyString(
+      final rc = lib.mpvSetPropertyString(
         handle,
         entry.key.toNativeUtf8(allocator: arena),
         entry.value.toNativeUtf8(allocator: arena),
       );
+      if (rc < 0) {
+        refused.refused.add('property ${entry.key}=${entry.value}: rc=$rc');
+      }
     });
   }
 }
@@ -92,15 +127,17 @@ void _applyObserves(
   mpv.MpvLibrary lib,
   Pointer<mpv.MpvHandle> handle,
   List<MpvObserveSpec> observes,
+  _Refusals refused,
 ) {
   for (final spec in observes) {
     using((arena) {
-      lib.mpvObserveProperty(
+      final rc = lib.mpvObserveProperty(
         handle,
         spec.replyId,
         spec.name.toNativeUtf8(allocator: arena),
         spec.format,
       );
+      if (rc < 0) refused.refused.add('observe ${spec.name}: rc=$rc');
     });
   }
 }
@@ -121,6 +158,7 @@ void _isolateEntry(SendPort initialReplyPort) {
           : null;
       final stopFlag = Pointer<Int32>.fromAddress(message.stopFlagAddress);
       final ownerGone = Pointer<Int32>.fromAddress(message.ownerGoneAddress);
+      final refused = _Refusals();
       try {
         // The heavy FFI sequence runs here: off the main isolate so
         // the host UI keeps rendering during cold start.
@@ -132,13 +170,16 @@ void _isolateEntry(SendPort initialReplyPort) {
           return;
         }
         handle = h;
-        _applyOptionStrings(lib!, h, message.preInitOptions);
+        _applyOptionStrings(lib!, h, message.preInitOptions, refused);
         if (message.logLevel != null) {
           using((arena) {
-            lib!.mpvRequestLogMessages(
+            final rc = lib!.mpvRequestLogMessages(
               h,
               message.logLevel!.toNativeUtf8(allocator: arena),
             );
+            if (rc < 0) {
+              refused.refused.add('log level ${message.logLevel}: rc=$rc');
+            }
           });
         }
         final failed = _initFailure(lib!, h, lib!.mpvInitialize(h));
@@ -148,8 +189,8 @@ void _isolateEntry(SendPort initialReplyPort) {
           fromMain.close();
           return;
         }
-        _applyPropertyStrings(lib!, h, message.postInitOptions);
-        _applyObserves(lib!, h, message.observes);
+        _applyPropertyStrings(lib!, h, message.postInitOptions, refused);
+        _applyObserves(lib!, h, message.observes, refused);
         // Not registered with the logic: `pause` and `keep-open-parked`
         // never reach the main isolate, the logic reads them for the end
         // of content only.
@@ -164,8 +205,9 @@ void _isolateEntry(SendPort initialReplyPort) {
             mpv.MpvFormat.mpvFormatFlag,
             _kParkObserverReplyId,
           ),
-        ]);
+        ], refused);
         toMain!.send(_InitDone(h.address));
+        refused.logs.forEach(toMain!.send);
       } catch (e, st) {
         // The main isolate gets no handle from a failed init, so the core
         // created above is destroyed here or never.
