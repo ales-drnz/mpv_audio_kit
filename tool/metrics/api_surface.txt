@@ -1937,6 +1937,8 @@ ChannelmapEffect.final String? channelLayout
 ChannelmapEffect.final bool enabled
 ChannelmapEffect.new const ({this.enabled = true, this.channelLayout, required this.map})
 ChannelmapEffect: final class ChannelmapEffect extends AudioEffect
+Channels.@override bool operator ==(Object other)
+Channels.@override int get hashCode
 Channels.String get mpvValue
 Channels.new custom const factory (String mpvLayout)
 Channels.static Channels fromMpv(String raw)
@@ -1986,8 +1988,6 @@ Channels.static const Channels twoZero = _StdChannels(_Named.twoZero)
 Channels: sealed class Channels
 ChannelsCustom.@override String get mpvValue
 ChannelsCustom.@override String toString()
-ChannelsCustom.@override bool operator ==(Object other)
-ChannelsCustom.@override int get hashCode
 ChannelsCustom.final String mpvLayout
 ChannelsCustom: final class ChannelsCustom extends Channels
 Chapter.@override String toString()
@@ -2414,6 +2414,9 @@ Ebur128Scaletype: enum Ebur128Scaletype
 EndFileError.@override String toString()
 EndFileError.@override bool operator ==(Object other)
 EndFileError.@override int get hashCode
+EndFileError.bool get isAudioOutputError
+EndFileError.bool get isFormatError
+EndFileError.bool get isLoadingError
 EndFileError.final MpvEndFileReason reason
 EndFileError.final String message
 EndFileError.final int code
@@ -3337,6 +3340,7 @@ MpvError: abstract final class MpvError
 MpvFileEndedEvent.@override String toString()
 MpvFileEndedEvent.@override bool operator ==(Object other)
 MpvFileEndedEvent.@override int get hashCode
+MpvFileEndedEvent.bool get reachedNaturalEnd
 MpvFileEndedEvent.final Duration? duration
 MpvFileEndedEvent.final Duration? position
 MpvFileEndedEvent.final Media? media
@@ -3730,8 +3734,9 @@ PlayerError: sealed class PlayerError
 PlayerException.new const ()
 PlayerException: sealed class PlayerException implements Exception
 PlayerInitException.@override String toString()
+PlayerInitException.final Object? cause
 PlayerInitException.final String message
-PlayerInitException.new const (this.message)
+PlayerInitException.new const (this.message, {this.cause})
 PlayerInitException: final class PlayerInitException extends PlayerException
 PlayerSettings.@override bool operator ==(Object other)
 PlayerSettings.@override int get hashCode
@@ -3997,6 +4002,7 @@ PlayerStream: class PlayerStream
 Playlist.@override String toString()
 Playlist.@override bool operator ==(Object other)
 Playlist.@override int get hashCode
+Playlist.Media? get current
 Playlist.Playlist copyWith({List<Media>? items, int? index})
 Playlist.final List<Media> items
 Playlist.final int index
@@ -4601,12 +4607,14 @@ Track.new id const factory (int trackId)
 Track.static const Track auto = TrackAuto._()
 Track.static const Track off = TrackOff._()
 Track: sealed class Track
+TrackAuto.@override String toString()
 TrackAuto: final class TrackAuto extends Track
 TrackId.@override String toString()
 TrackId.@override bool operator ==(Object other)
 TrackId.@override int get hashCode
 TrackId.final int trackId
 TrackId: final class TrackId extends Track
+TrackOff.@override String toString()
 TrackOff: final class TrackOff extends Track
 TrebleEffect.@override AudioFilter get filter
 TrebleEffect.@override String get filterName
