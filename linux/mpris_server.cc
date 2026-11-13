@@ -1004,11 +1004,10 @@ void MprisServer::Disable() {
   seekable_ = false;
   loop_ = "off";
   shuffle_ = false;
-  // Reset rate bounds / volume so a later Enable() without supportedPlaybackRates
+  // Reset the rate bounds so a later Enable() without supportedPlaybackRates
   // doesn't advertise stale bounds from the previous session.
   min_rate_ = 0.5;
   max_rate_ = 2.0;
-  volume_ = 1.0;
   ++publish_count_;
 }
 

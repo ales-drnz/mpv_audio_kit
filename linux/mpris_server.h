@@ -145,7 +145,6 @@ class MprisServer {
   bool has_prev_ = true;
   std::string loop_ = "off";
   bool shuffle_ = false;
-  double volume_ = 1.0;
   double min_rate_ = 0.5;
   double max_rate_ = 2.0;
 

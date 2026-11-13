@@ -70,20 +70,8 @@ SmtcConfig ParseConfig(const EncodableMap& m) {
     if (auto* list = std::get_if<EncodableList>(v))
       for (const auto& e : *list)
         if (auto* s = std::get_if<std::string>(&e)) c.actions.insert(*s);
-  if (auto s = GetString(m, "interruptionPolicy")) c.interruption_policy = *s;
   if (auto i = GetInt64(m, "fastForwardIntervalMs")) c.fast_forward_ms = *i;
   if (auto i = GetInt64(m, "rewindIntervalMs")) c.rewind_ms = *i;
-  if (auto* v = Find(m, "supportedPlaybackRates"))
-    if (auto* list = std::get_if<EncodableList>(v))
-      for (const auto& e : *list) {
-        if (auto* d = std::get_if<double>(&e)) {
-          c.supported_rates.push_back(*d);
-        } else if (auto* i32 = std::get_if<int32_t>(&e)) {
-          c.supported_rates.push_back(static_cast<double>(*i32));
-        } else if (auto* i64 = std::get_if<int64_t>(&e)) {
-          c.supported_rates.push_back(static_cast<double>(*i64));
-        }
-      }
   if (auto s = GetString(m, "appName")) c.app_name = *s;
   return c;
 }

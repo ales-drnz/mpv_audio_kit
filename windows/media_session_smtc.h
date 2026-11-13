@@ -24,10 +24,8 @@ namespace mpv_audio_kit {
 // only on win/linux).
 struct SmtcConfig {
   std::set<std::string> actions;
-  std::string interruption_policy = "pauseAndResume";
   int64_t fast_forward_ms = 15000;
   int64_t rewind_ms = 15000;
-  std::vector<double> supported_rates;
   std::string app_name;
 };
 
