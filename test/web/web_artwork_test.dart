@@ -18,6 +18,7 @@ import 'dart:js_interop_unsafe';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mpv_audio_kit/src/media_session/artwork_cancel.dart';
 import 'package:mpv_audio_kit/src/media_session/artwork_fetcher.dart';
 import 'package:mpv_audio_kit/src/media_session/artwork_sources.dart';
 
@@ -99,6 +100,29 @@ void main() {
     await tester.pump(const Duration(seconds: 2));
     expect(cover, isNull);
     expect(_aborted(inits.single), isTrue);
+  });
+
+  test('a cancel that fires aborts the fetch in flight', () async {
+    final inits = _replaceFetch(() => _Promise(((JSAny a, JSAny b) {}).toJS));
+    // The stand-in never settles: the abort of its signal is what shows.
+    // The browser's own fetch rejects on it, which ends the download.
+    final cancel = ArtworkCancel();
+    unawaited(loadArtwork('https://example.invalid/cover.png', '', cancel));
+    await Future<void>.delayed(Duration.zero);
+    expect(_aborted(inits.single), isFalse);
+    cancel.cancel();
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(_aborted(inits.single), isTrue);
+  });
+
+  test('a cancel that fired before the load starts no fetch', () async {
+    final inits = _replaceFetch(() => _Promise(((JSAny a, JSAny b) {}).toJS));
+    final cancel = ArtworkCancel()..cancel();
+    expect(
+      await loadArtwork('https://example.invalid/cover.png', '', cancel),
+      isNull,
+    );
+    expect(inits, isEmpty);
   });
 
   test('a body without a content-length stops at the limit', () async {

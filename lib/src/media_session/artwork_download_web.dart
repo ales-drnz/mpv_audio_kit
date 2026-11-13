@@ -15,6 +15,7 @@ import 'dart:typed_data';
 import 'package:meta/meta.dart';
 
 import '../models/cover_art.dart';
+import 'artwork_cancel.dart';
 import 'artwork_sources.dart';
 
 const Duration _timeout = Duration(seconds: 15);
@@ -58,15 +59,22 @@ extension type _Chunk._(JSObject _) implements JSObject {
 ///
 /// The fetch is aborted when the download ends any other way than with
 /// the image: no answer within 15 s, a body that takes longer than that,
-/// or one past 20 MB, which is not read to its end.
+/// or one past 20 MB, which is not read to its end. A [cancel] that fires
+/// aborts it too.
 @internal
-Future<CoverArt?> downloadArtwork(Uri uri, [String caFile = '']) async {
+Future<CoverArt?> downloadArtwork(
+  Uri uri, [
+  String caFile = '',
+  ArtworkCancel? cancel,
+]) async {
   if (uri.scheme != 'http' && uri.scheme != 'https' && uri.scheme != 'blob') {
     return null;
   }
+  if (cancel?.isCancelled ?? false) return null;
   // Aborting it rejects the fetch and the read in flight, which end the
   // download below with `null`: all that stopping it from outside takes.
   final abort = _AbortController();
+  unawaited(cancel?.whenCancelled.then((_) => abort.abort()));
   try {
     final init = JSObject()
       ..['mode'] = 'cors'.toJS
@@ -121,12 +129,17 @@ Future<Uint8List?> _readBody(_Response response) async {
 }
 
 /// Default `ArtworkFetcher` in the browser: an `asset://` [url] from the
-/// app's bundle, as the app wrote it; the rest through [downloadArtwork].
+/// app's bundle, as the app wrote it; the rest through [downloadArtwork],
+/// which [cancel] stops.
 @internal
-Future<CoverArt?> loadArtwork(String url, [String caFile = '']) async {
+Future<CoverArt?> loadArtwork(
+  String url, [
+  String caFile = '',
+  ArtworkCancel? cancel,
+]) async {
   if (artworkScheme(url) == 'asset') return readArtworkAsset(url);
   final uri = Uri.tryParse(url);
-  return uri == null ? null : downloadArtwork(uri, caFile);
+  return uri == null ? null : downloadArtwork(uri, caFile, cancel);
 }
 
 String? _header(_Response response, String name) {

@@ -46,8 +46,8 @@ class ArtworkLoader {
        );
 
   /// A loader over the platform's `loadArtwork`. The one of dart:io takes
-  /// the [ArtworkCancel] and closes its connection. The one of the browser
-  /// does not take it yet, and is picked up here the day it does.
+  /// the [ArtworkCancel] and closes its connection, the one of the browser
+  /// aborts its fetch.
   factory ArtworkLoader.platform({
     Duration timeLimit = const Duration(seconds: 60),
   }) {
