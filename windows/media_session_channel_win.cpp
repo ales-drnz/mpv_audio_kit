@@ -12,8 +12,10 @@
 
 #include <atomic>
 #include <cwctype>
+#include <exception>
 #include <optional>
 #include <string>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -70,20 +72,8 @@ SmtcConfig ParseConfig(const EncodableMap& m) {
     if (auto* list = std::get_if<EncodableList>(v))
       for (const auto& e : *list)
         if (auto* s = std::get_if<std::string>(&e)) c.actions.insert(*s);
-  if (auto s = GetString(m, "interruptionPolicy")) c.interruption_policy = *s;
   if (auto i = GetInt64(m, "fastForwardIntervalMs")) c.fast_forward_ms = *i;
   if (auto i = GetInt64(m, "rewindIntervalMs")) c.rewind_ms = *i;
-  if (auto* v = Find(m, "supportedPlaybackRates"))
-    if (auto* list = std::get_if<EncodableList>(v))
-      for (const auto& e : *list) {
-        if (auto* d = std::get_if<double>(&e)) {
-          c.supported_rates.push_back(*d);
-        } else if (auto* i32 = std::get_if<int32_t>(&e)) {
-          c.supported_rates.push_back(static_cast<double>(*i32));
-        } else if (auto* i64 = std::get_if<int64_t>(&e)) {
-          c.supported_rates.push_back(static_cast<double>(*i64));
-        }
-      }
   if (auto s = GetString(m, "appName")) c.app_name = *s;
   return c;
 }
@@ -97,6 +87,7 @@ SmtcMetadata ParseMetadata(const EncodableMap& m) {
   md.genre = GetString(m, "genre");
   md.track_number = GetInt64(m, "trackNumber");
   if (auto* v = Find(m, "artworkBytes"))
+    // The one copy of the cover: the codec's value is const.
     if (auto* b = std::get_if<std::vector<uint8_t>>(v)) md.artwork = *b;
   md.duration_ms = GetInt64(m, "durationMs");
   return md;
@@ -281,6 +272,10 @@ MediaSessionChannelWin::MediaSessionChannelWin(
 }
 
 MediaSessionChannelWin::~MediaSessionChannelWin() {
+  // The handlers capture this, and the messenger keeps them past the
+  // channels: off first, so no message reaches a plugin that is gone.
+  method_channel_->SetMethodCallHandler(nullptr);
+  event_channel_->SetStreamHandler(nullptr);
   // The engine is going, and its Dart may never have disabled (an engine
   // destroyed while it plays): the session goes with its owner, and the
   // sink leaves the hub before the messenger it sends on (F221). Another
@@ -290,6 +285,7 @@ MediaSessionChannelWin::~MediaSessionChannelWin() {
     try {
       hub.controller().Disable();
     } catch (const winrt::hresult_error&) {
+    } catch (const std::exception&) {
     }
   }
 }
@@ -302,14 +298,23 @@ void MediaSessionChannelWin::HandleMethodCall(
   auto& hub = MediaSessionHub::Get();
   SmtcController& controller = hub.controller();
 
-  // Backstop: any WinRT failure inside the controller surfaces as a channel
-  // error instead of an uncaught hresult_error that would crash the engine.
+  // Backstop: any failure inside the controller surfaces as a channel error
+  // instead of an uncaught exception that would crash the engine.
   try {
     if (method == "enable") {
       if (!args) {
         result->Error("bad_args", "enable expects a map");
         return;
       }
+      // The arguments first: nothing below reads them once the session is
+      // taken.
+      const EncodableMap* cfg = SubMap(*args, "config");
+      const EncodableMap* meta = SubMap(*args, "metadata");
+      const EncodableMap* pb = SubMap(*args, "playback");
+      SmtcConfig parsed = cfg ? ParseConfig(*cfg) : SmtcConfig{};
+      SmtcMetadata metadata = meta ? ParseMetadata(*meta) : SmtcMetadata{};
+      SmtcPlayback playback = pb ? ParsePlayback(*pb) : SmtcPlayback{};
+      const bool owned_before = hub.engines().MayUpdate(this);
       if (!hub.engines().TryEnable(this)) {
         // Dart throws a StateError and leaves its state off.
         result->Error("already_owned",
@@ -317,15 +322,23 @@ void MediaSessionChannelWin::HandleMethodCall(
                       "session.");
         return;
       }
-      const EncodableMap* cfg = SubMap(*args, "config");
-      const EncodableMap* meta = SubMap(*args, "metadata");
-      const EncodableMap* pb = SubMap(*args, "playback");
-      SmtcConfig parsed = cfg ? ParseConfig(*cfg) : SmtcConfig{};
-      // Set the process AUMID (from app_name) before the SMTC is created inside
-      // Enable() → EnsureCreated(); no-op after the first call.
-      EnsureProcessIdentity(parsed.app_name);
-      controller.Enable(parsed, meta ? ParseMetadata(*meta) : SmtcMetadata{},
-                        pb ? ParsePlayback(*pb) : SmtcPlayback{});
+      try {
+        // Set the process AUMID (from app_name) before the SMTC is created
+        // inside Enable() → EnsureCreated(); no-op after the first call.
+        EnsureProcessIdentity(parsed.app_name);
+        controller.Enable(parsed, std::move(metadata), playback);
+      } catch (...) {
+        // Dart hears the error below and keeps its state off: an engine
+        // that took the session with this enable gives it back, or every
+        // other engine would be refused for a session nobody has.
+        if (hub.engines().OnEnableFailed(this, owned_before)) {
+          try {
+            controller.Disable();
+          } catch (...) {
+          }
+        }
+        throw;
+      }
       result->Success();
     } else if (method == "updateConfig") {
       // Only the owner's: another engine's Player never had the session.
@@ -356,6 +369,10 @@ void MediaSessionChannelWin::HandleMethodCall(
     }
   } catch (const winrt::hresult_error& e) {
     result->Error("smtc_error", winrt::to_string(e.message()));
+  } catch (const std::exception& e) {
+    // What is no WinRT failure: no memory, or the thread of the thumbnail
+    // that could not start (std::system_error).
+    result->Error("smtc_error", e.what());
   }
 }
 

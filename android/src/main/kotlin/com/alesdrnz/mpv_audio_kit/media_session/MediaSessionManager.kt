@@ -60,12 +60,11 @@ internal object MediaSessionManager {
         val interruptionPolicy: String,
         val fastForwardIntervalMs: Long,
         val rewindIntervalMs: Long,
-        val supportedPlaybackRates: List<Double>,
         val isFavorite: Boolean,
     ) {
         companion object {
             val EMPTY =
-                ConfigSnapshot(emptySet(), "pauseAndResume", 15_000, 15_000, emptyList(), false)
+                ConfigSnapshot(emptySet(), "pauseAndResume", 15_000, 15_000, false)
         }
     }
 
@@ -223,7 +222,13 @@ internal object MediaSessionManager {
         try {
             when (call.method) {
                 "enable" -> {
+                    // The arguments first: a call that cannot be read must
+                    // not take the session.
                     val a = call.arguments as Map<*, *>
+                    val config = a["config"] as Map<*, *>
+                    val metadata = a["metadata"] as Map<*, *>
+                    val playback = a["playback"] as Map<*, *>
+                    val ownedBefore = engines.mayUpdate(engine)
                     if (!engines.tryEnable(engine)) {
                         // Dart throws a StateError and leaves its state off.
                         result.error(
@@ -233,11 +238,18 @@ internal object MediaSessionManager {
                         )
                         return
                     }
-                    enable(
-                        a["config"] as Map<*, *>,
-                        a["metadata"] as Map<*, *>,
-                        a["playback"] as Map<*, *>,
-                    )
+                    try {
+                        enable(config, metadata, playback)
+                    } catch (e: Exception) {
+                        // Dart hears the error below and keeps its state
+                        // off: an engine that took the session with this
+                        // enable gives it back, or every other engine
+                        // would be refused for a session nobody has.
+                        if (engines.onEnableFailed(engine, ownedBefore)) {
+                            runCatching { disable() }
+                        }
+                        throw e
+                    }
                     result.success(null)
                 }
                 // Only the owner's: another engine's Player never had the session.
@@ -532,8 +544,6 @@ internal object MediaSessionManager {
         interruptionPolicy = map["interruptionPolicy"] as? String ?: "pauseAndResume",
         fastForwardIntervalMs = (map["fastForwardIntervalMs"] as? Number)?.toLong() ?: 15_000,
         rewindIntervalMs = (map["rewindIntervalMs"] as? Number)?.toLong() ?: 15_000,
-        supportedPlaybackRates = (map["supportedPlaybackRates"] as? List<*>)
-            ?.mapNotNull { (it as? Number)?.toDouble() } ?: emptyList(),
         isFavorite = map["isFavorite"] as? Boolean ?: false,
     )
 

@@ -225,6 +225,57 @@ void main() {
       expect(player.state.playback.position.inMilliseconds, lessThan(1000));
     }, skip: !Platform.isLinux);
 
+    testWidgets('a command outside the declared actions stops at the bus', (
+      _,
+    ) async {
+      final fixture = await materializeFixture('with_chapters.mka');
+      await player.open(Media(fixture), play: false);
+      await player.stream.duration
+          .firstWhere((d) => d.inMilliseconds > 2500)
+          .timeout(const Duration(seconds: 10));
+      // Seek alone: no transport, no repeat, no shuffle, no rate.
+      await player.setMediaSession(
+        const MediaSession(appName: _appName, actions: {MediaAction.seek}),
+      );
+      await eventually(
+        () => bus.property(MprisBus.playerIface, 'CanSeek'),
+        (v) => v == true,
+      );
+      final loaded = await metadataWhere((m) => m['mpris:trackid'] != null);
+      final track = loaded['mpris:trackid'] as String;
+      expect(await bus.property(MprisBus.playerIface, 'CanPlay'), isFalse);
+      expect(await bus.property(MprisBus.playerIface, 'CanPause'), isFalse);
+
+      final commands = <MediaSessionCommand>[];
+      final sub = player.stream.mediaSessionCommands.listen(commands.add);
+      addTearDown(sub.cancel);
+
+      // The methods are acknowledged and dropped, the property writes are
+      // refused with an error.
+      for (final method in ['Play', 'Pause', 'PlayPause', 'Stop']) {
+        await bus.call(method);
+      }
+      for (final (name, value) in [
+        ('LoopStatus', "<'Track'>"),
+        ('Shuffle', '<true>'),
+        ('Rate', '<1.5>'),
+      ]) {
+        await expectLater(
+          bus.setProperty(MprisBus.playerIface, name, value),
+          throwsA(isA<ProcessException>()),
+          reason: name,
+        );
+      }
+
+      // The declared seek goes through the same channel after them: once
+      // it lands, anything sent before it would have arrived.
+      final landed = player.stream.seekCompleted.first;
+      await bus.call('SetPosition', ["objectpath '$track'", 'int64 1500000']);
+      await landed.timeout(const Duration(seconds: 5));
+      expect(commands, [isA<MediaSessionCommandSeekTo>()]);
+      expect(player.state.playback.playWhenReady, isFalse);
+    }, skip: !Platform.isLinux);
+
     testWidgets('disable takes the name off the bus', (_) async {
       final fixture = await materializeFixture('with_chapters.mka');
       await player.open(Media(fixture), play: false);

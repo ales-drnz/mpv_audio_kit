@@ -287,13 +287,21 @@ void MprisServer::PlayerMethodCall(GDBusConnection*, const gchar*, const gchar*,
   } else if (!strcmp(method, "Previous")) {
     if (self->actions_.count("previous") > 0) self->Emit("previous");
   } else if (!strcmp(method, "Pause")) {
-    self->Emit("pause");
+    if (self->CanPauseAction()) self->Emit("pause");
   } else if (!strcmp(method, "Play")) {
-    self->Emit("play");
+    if (self->CanPlayAction()) self->Emit("play");
   } else if (!strcmp(method, "PlayPause")) {
-    self->Emit("playPause");
+    // The toggle itself when it is declared. With play or pause alone, the
+    // one of the two this state calls for, if it is declared.
+    if (self->HasAction("playPause")) {
+      self->Emit("playPause");
+    } else if (self->playing_) {
+      if (self->HasAction("pause")) self->Emit("pause");
+    } else if (self->HasAction("play")) {
+      self->Emit("play");
+    }
   } else if (!strcmp(method, "Stop")) {
-    self->Emit("stop");
+    if (self->HasAction("stop")) self->Emit("stop");
   } else if (!strcmp(method, "Seek")) {
     // Ignore (but still ack) when not seekable — CanSeek is advertised false.
     if (can_seek) {
@@ -320,8 +328,26 @@ void MprisServer::PlayerMethodCall(GDBusConnection*, const gchar*, const gchar*,
       self->EmitWith(m);
     }
   }
-  // Anything else: acknowledged, no-op.
+  // Anything else, and a method whose action is not declared: acknowledged,
+  // no-op.
   g_dbus_method_invocation_return_value(invocation, nullptr);
+}
+
+// The actions the app declared (MediaSession.actions). A command of the bus
+// reaches Dart only when its action is one of them, as on the other
+// platforms.
+bool MprisServer::HasAction(const char* action) const {
+  return actions_.count(action) > 0;
+}
+
+// Play and Pause, the two methods and the two halves of PlayPause: the
+// toggle declares both.
+bool MprisServer::CanPlayAction() const {
+  return HasAction("play") || HasAction("playPause");
+}
+
+bool MprisServer::CanPauseAction() const {
+  return HasAction("pause") || HasAction("playPause");
 }
 
 GVariant* MprisServer::PlayerPropertyValue(const char* property) {
@@ -352,12 +378,12 @@ GVariant* MprisServer::PlayerPropertyValue(const char* property) {
                                  has_prev_);
   }
   // CanPlay/CanPause require real content, not just an enabled session, so a
-  // pre-load shell doesn't advertise actionable transport.
+  // pre-load shell doesn't advertise actionable transport. And the action.
   if (!strcmp(property, "CanPlay")) {
-    return g_variant_new_boolean(enabled_ && has_title_);
+    return g_variant_new_boolean(enabled_ && has_title_ && CanPlayAction());
   }
   if (!strcmp(property, "CanPause")) {
-    return g_variant_new_boolean(enabled_ && has_title_);
+    return g_variant_new_boolean(enabled_ && has_title_ && CanPauseAction());
   }
   if (!strcmp(property, "CanSeek")) {
     return g_variant_new_boolean(enabled_ && seekable_ &&
@@ -383,9 +409,18 @@ GVariant* MprisServer::PlayerGetProperty(GDBusConnection*, const gchar*,
 gboolean MprisServer::PlayerSetProperty(GDBusConnection*, const gchar*,
                                         const gchar*, const gchar*,
                                         const gchar* property, GVariant* value,
-                                        GError**, gpointer user_data) {
+                                        GError** error, gpointer user_data) {
   auto* self = static_cast<MprisServer*>(user_data);
+  // GDBus wants the error set with every FALSE. A write whose action is not
+  // declared is refused, so the client hears that nothing changed.
+  auto refuse = [&](const char* action) {
+    g_set_error(error, G_DBUS_ERROR, G_DBUS_ERROR_NOT_SUPPORTED,
+                "%s cannot be set: the app does not declare %s", property,
+                action);
+    return FALSE;
+  };
   if (!strcmp(property, "LoopStatus")) {
+    if (!self->HasAction("setRepeatMode")) return refuse("setRepeatMode");
     const gchar* s = g_variant_get_string(value, nullptr);
     FlValue* m = fl_value_new_map();
     fl_value_set_string_take(m, "type", fl_value_new_string("setRepeatMode"));
@@ -395,22 +430,24 @@ gboolean MprisServer::PlayerSetProperty(GDBusConnection*, const gchar*,
     return TRUE;
   }
   if (!strcmp(property, "Rate")) {
+    if (!self->HasAction("setPlaybackRate")) return refuse("setPlaybackRate");
     double r = g_variant_get_double(value);
-    FlValue* m = fl_value_new_map();
     if (r <= 0.0) {
       // MPRIS: a Rate of 0.0 is equivalent to pausing.
-      fl_value_set_string_take(m, "type", fl_value_new_string("pause"));
-    } else {
-      if (r < self->min_rate_) r = self->min_rate_;
-      if (r > self->max_rate_) r = self->max_rate_;
-      fl_value_set_string_take(m, "type",
-                               fl_value_new_string("setPlaybackRate"));
-      fl_value_set_string_take(m, "rate", fl_value_new_float(r));
+      if (!self->CanPauseAction()) return refuse("pause");
+      self->Emit("pause");
+      return TRUE;
     }
+    if (r < self->min_rate_) r = self->min_rate_;
+    if (r > self->max_rate_) r = self->max_rate_;
+    FlValue* m = fl_value_new_map();
+    fl_value_set_string_take(m, "type", fl_value_new_string("setPlaybackRate"));
+    fl_value_set_string_take(m, "rate", fl_value_new_float(r));
     self->EmitWith(m);
     return TRUE;
   }
   if (!strcmp(property, "Shuffle")) {
+    if (!self->HasAction("setShuffle")) return refuse("setShuffle");
     FlValue* m = fl_value_new_map();
     fl_value_set_string_take(m, "type", fl_value_new_string("setShuffle"));
     fl_value_set_string_take(
@@ -421,6 +458,8 @@ gboolean MprisServer::PlayerSetProperty(GDBusConnection*, const gchar*,
   // No volume command exists in the wire protocol, so Volume is not advertised
   // at all (removed from the introspection XML) rather than exposed as a dead
   // read-only slider. Reject any other write defensively.
+  g_set_error(error, G_DBUS_ERROR, G_DBUS_ERROR_NOT_SUPPORTED,
+              "%s cannot be set", property);
   return FALSE;
 }
 
@@ -571,9 +610,9 @@ void MprisServer::AnchorPosition() {
 
 // ── Artwork temp files ──────────────────────────────────────────────────────
 
-void MprisServer::WriteArtwork(const std::vector<uint8_t>& bytes,
+void MprisServer::WriteArtwork(const uint8_t* data, size_t size,
                                const std::string& mime) {
-  if (bytes.empty()) {
+  if (data == nullptr || size == 0) {
     // Switching to no-art: remove the previous temp file too, or it leaks
     // on disk until disable/SweepArtwork.
     if (!prev_art_path_.empty()) {
@@ -585,7 +624,12 @@ void MprisServer::WriteArtwork(const std::vector<uint8_t>& bytes,
     art_cache_key_.clear();
     return;
   }
-  if (bytes == art_cache_key_) return;  // unchanged
+  // Unchanged: compared in the codec's buffer, so the cover of a push that
+  // only changes the title is not copied.
+  if (size == art_cache_key_.size() &&
+      memcmp(data, art_cache_key_.data(), size) == 0) {
+    return;
+  }
 
   if (art_dir_.empty()) {
     // One directory per process: two apps on the kit would otherwise
@@ -613,8 +657,8 @@ void MprisServer::WriteArtwork(const std::vector<uint8_t>& bytes,
 
   GError* err = nullptr;
   if (g_file_set_contents(path.c_str(),
-                          reinterpret_cast<const char*>(bytes.data()),
-                          static_cast<gssize>(bytes.size()), &err)) {
+                          reinterpret_cast<const char*>(data),
+                          static_cast<gssize>(size), &err)) {
     if (!prev_art_path_.empty()) g_remove(prev_art_path_.c_str());
     prev_art_path_ = path;
     // Build a correct percent-encoded file:// URI rather than concatenating.
@@ -622,7 +666,7 @@ void MprisServer::WriteArtwork(const std::vector<uint8_t>& bytes,
     art_url_ = uri ? uri : ("file://" + path);
     if (uri) g_free(uri);
     has_artwork_ = true;
-    art_cache_key_ = bytes;
+    art_cache_key_.assign(data, data + size);
   } else if (err) {
     g_error_free(err);
   }
@@ -690,8 +734,11 @@ void MprisServer::ParseConfig(FlValue* config) {
   FlValue* rates =
       config ? fl_value_lookup_string(config, "supportedPlaybackRates")
              : nullptr;
-  if (rates && fl_value_get_length(rates) > 0) {
-    FlValueType rt = fl_value_get_type(rates);
+  // The type before the length: fl_value_get_length of a value that is no
+  // list logs a GLib critical.
+  const FlValueType rt =
+      rates ? fl_value_get_type(rates) : FL_VALUE_TYPE_NULL;
+  if (rt == FL_VALUE_TYPE_LIST || rt == FL_VALUE_TYPE_FLOAT_LIST) {
     size_t n = fl_value_get_length(rates);
     double mn = 0, mx = 0;
     bool first = true;
@@ -699,7 +746,7 @@ void MprisServer::ParseConfig(FlValue* config) {
       double r;
       if (rt == FL_VALUE_TYPE_FLOAT_LIST) {
         r = fl_value_get_float_list(rates)[i];
-      } else if (rt == FL_VALUE_TYPE_LIST) {
+      } else {
         FlValue* e = fl_value_get_list_value(rates, i);
         FlValueType et = fl_value_get_type(e);
         if (et == FL_VALUE_TYPE_FLOAT) {
@@ -709,8 +756,6 @@ void MprisServer::ParseConfig(FlValue* config) {
         } else {
           continue;
         }
-      } else {
-        break;
       }
       if (first) {
         mn = mx = r;
@@ -728,6 +773,14 @@ void MprisServer::ParseConfig(FlValue* config) {
 }
 
 void MprisServer::Enable(FlValue* config, FlValue* metadata, FlValue* playback) {
+  // A sub-value that is no map reads as absent: fl_value_lookup_string of
+  // one logs a GLib critical.
+  auto map_or_null = [](FlValue* v) {
+    return v && fl_value_get_type(v) == FL_VALUE_TYPE_MAP ? v : nullptr;
+  };
+  config = map_or_null(config);
+  metadata = map_or_null(metadata);
+  playback = map_or_null(playback);
   ParseConfig(config);
 
   UpdateMetadata(metadata);  // parses metadata + writes artwork
@@ -848,11 +901,9 @@ void MprisServer::UpdateMetadata(FlValue* metadata) {
       metadata ? fl_value_lookup_string(metadata, "artworkBytes") : nullptr;
   std::string mime = FlString(metadata, "artworkMime");
   if (art && fl_value_get_type(art) == FL_VALUE_TYPE_UINT8_LIST) {
-    size_t n = fl_value_get_length(art);
-    const uint8_t* d = fl_value_get_uint8_list(art);
-    WriteArtwork(std::vector<uint8_t>(d, d + n), mime);
+    WriteArtwork(fl_value_get_uint8_list(art), fl_value_get_length(art), mime);
   } else {
-    WriteArtwork({}, "");
+    WriteArtwork(nullptr, 0, "");
   }
 
   if (enabled_) {
@@ -876,9 +927,14 @@ void MprisServer::UpdatePlayback(FlValue* playback) {
   // sub-second scrub (which otherwise snaps the OS slider back).
   bool is_seek = FlBool(playback, "seek", false);
 
-  bool was_completed = completed_;
-  bool was_next = has_next_;
-  bool was_prev = has_prev_;
+  const bool was_completed = completed_;
+  const bool was_next = has_next_;
+  const bool was_prev = has_prev_;
+  const bool was_playing = playing_;
+  const double was_rate = rate_;
+  const bool was_seekable = seekable_;
+  const std::string was_loop = loop_;
+  const bool was_shuffle = shuffle_;
   playing_ = FlBool(playback, "playing", false);
   actual_playing_ = FlBool(playback, "actualPlaying", false);
   completed_ = FlBool(playback, "completed", false);
@@ -893,11 +949,15 @@ void MprisServer::UpdatePlayback(FlValue* playback) {
   AnchorPosition();
 
   if (enabled_) {
-    MarkChanged("PlaybackStatus");
-    MarkChanged("Rate");
-    MarkChanged("LoopStatus");
-    MarkChanged("Shuffle");
-    MarkChanged("CanSeek");
+    // Only what changed: most pushes carry a new position and nothing
+    // else, and Position is not a property MPRIS signals.
+    if (playing_ != was_playing || completed_ != was_completed) {
+      MarkChanged("PlaybackStatus");
+    }
+    if (rate_ != was_rate) MarkChanged("Rate");
+    if (loop_ != was_loop) MarkChanged("LoopStatus");
+    if (shuffle_ != was_shuffle) MarkChanged("Shuffle");
+    if (seekable_ != was_seekable) MarkChanged("CanSeek");
     if (has_next_ != was_next) MarkChanged("CanGoNext");
     if (has_prev_ != was_prev) MarkChanged("CanGoPrevious");
     // A completed transition flips Metadata visibility (full ↔ empty).
@@ -944,11 +1004,10 @@ void MprisServer::Disable() {
   seekable_ = false;
   loop_ = "off";
   shuffle_ = false;
-  // Reset rate bounds / volume so a later Enable() without supportedPlaybackRates
+  // Reset the rate bounds so a later Enable() without supportedPlaybackRates
   // doesn't advertise stale bounds from the previous session.
   min_rate_ = 0.5;
   max_rate_ = 2.0;
-  volume_ = 1.0;
   ++publish_count_;
 }
 

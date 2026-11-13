@@ -539,7 +539,10 @@ public class MediaSessionPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
     // title exists.
     guard let resolvedTitle = (currentMetadata["title"] as? String)
       .flatMap({ $0.isEmpty ? nil : $0 })
-    else { return }
+    else {
+      pausePublishedEntryWithoutTitle()
+      return
+    }
 
     var info: [String: Any] = [:]
 
@@ -650,6 +653,29 @@ public class MediaSessionPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
     center.playbackState = nextPlaybackState
     lastPublishedInfo = info
     lastPublishedPlaybackState = nextPlaybackState
+    publishCount += 1
+  }
+
+  /// A push without a title once an entry is published: a stop emptied
+  /// the playlist. The guard of `publishNowPlaying` keeps the last entry
+  /// rather than publish an empty one, so the entry would keep its rate and
+  /// its playing state too, and the slider of the lock screen would go on.
+  /// Not playing, the entry stays as it is but paused and at rate 0. A
+  /// push that still plays changes nothing, as before.
+  private func pausePublishedEntryWithoutTitle() {
+    guard var info = lastPublishedInfo else { return }
+    let playing = (currentPlayback["playing"] as? Bool) ?? false
+    if playing { return }
+    let rate =
+      (info[MPNowPlayingInfoPropertyPlaybackRate] as? NSNumber)?.doubleValue
+      ?? 0.0
+    if rate == 0.0 && lastPublishedPlaybackState == .paused { return }
+    info[MPNowPlayingInfoPropertyPlaybackRate] = NSNumber(value: 0.0)
+    let center = MPNowPlayingInfoCenter.default()
+    center.nowPlayingInfo = info
+    center.playbackState = .paused
+    lastPublishedInfo = info
+    lastPublishedPlaybackState = .paused
     publishCount += 1
   }
 

@@ -13,33 +13,14 @@ import FlutterMacOS
 /// Apple (iOS, tvOS and macOS) entry point of the mpv_audio_kit Flutter plugin.
 ///
 /// Most of the package's surface is delivered via direct FFI calls to
-/// `libmpv`; this class only exists to:
-///
-/// - register the `mpv_audio_kit` method channel (unused on Apple — its
-///   methods, `openFileDescriptor` and `closeFileDescriptor` for
-///   `content://` URIs, are Android-only), and
-/// - hand control off to `MediaSessionPlugin.register(with:)` so the
-///   OS Now Playing widget / Control Center / lockscreen integration
-///   gets wired up alongside the core plugin.
+/// `libmpv`; this class only hands control off to
+/// `MediaSessionPlugin.register(with:)` so the OS Now Playing widget /
+/// Control Center / lockscreen integration gets wired up. The
+/// `mpv_audio_kit` method channel (`openFileDescriptor` and
+/// `closeFileDescriptor` for `content://` URIs) is Android's alone: Dart
+/// calls it nowhere else, so it is not registered here.
 public class MpvAudioKitPlugin: NSObject, FlutterPlugin {
   public static func register(with registrar: FlutterPluginRegistrar) {
-    #if os(iOS) || os(tvOS)
-    let messenger = registrar.messenger()
-    #elseif os(macOS)
-    let messenger = registrar.messenger
-    #endif
-
-    let channel = FlutterMethodChannel(
-      name: "mpv_audio_kit", binaryMessenger: messenger)
-    let instance = MpvAudioKitPlugin()
-    registrar.addMethodCallDelegate(instance, channel: channel)
-
     MediaSessionPlugin.register(with: registrar)
-  }
-
-  public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
-    // The `mpv_audio_kit` channel carries no methods on Apple; libmpv is
-    // driven via FFI from Dart.
-    result(FlutterMethodNotImplemented)
   }
 }

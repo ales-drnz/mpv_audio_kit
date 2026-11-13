@@ -123,4 +123,30 @@ class EngineOwnershipTest {
         assertTrue(o.tryEnable(main))
         assertTrue(o.mayDisable(main))
     }
+
+    @Test
+    fun `an enable that fails gives the session back to the other engines`() {
+        val o = EngineOwnership<String>()
+        val ownedBefore = o.mayUpdate(background)
+        assertTrue(o.tryEnable(background))
+
+        assertTrue(o.onEnableFailed(background, ownedBefore), "the caller turns it off")
+        assertFalse(o.mayUpdate(background))
+        assertTrue(o.tryEnable(main), "nobody owns the session")
+    }
+
+    @Test
+    fun `an owner whose new enable fails keeps the session it had`() {
+        val o = EngineOwnership<String>()
+        o.onListen(main, mainSink)
+        o.tryEnable(main)
+        // A Hot Restart: the same engine enables again, and that one fails.
+        val ownedBefore = o.mayUpdate(main)
+        assertTrue(o.tryEnable(main))
+
+        assertFalse(o.onEnableFailed(main, ownedBefore))
+        assertTrue(o.mayUpdate(main))
+        assertFalse(o.tryEnable(background))
+        assertSame(mainSink, o.commandSink())
+    }
 }

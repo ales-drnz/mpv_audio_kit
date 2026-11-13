@@ -24,10 +24,8 @@ namespace mpv_audio_kit {
 // only on win/linux).
 struct SmtcConfig {
   std::set<std::string> actions;
-  std::string interruption_policy = "pauseAndResume";
   int64_t fast_forward_ms = 15000;
   int64_t rewind_ms = 15000;
-  std::vector<double> supported_rates;
   std::string app_name;
 };
 
@@ -68,17 +66,20 @@ struct SmtcPlayback {
 // platform thread before touching the Flutter event channel.
 class SmtcController {
  public:
+  // Never destroyed: the one controller of the process belongs to a hub
+  // that lives until the process ends (media_session_channel_win.cpp), so
+  // the OS handlers, which capture this, are never revoked.
   explicit SmtcController(
       std::function<void(flutter::EncodableValue)> command_sink);
-  ~SmtcController();
 
   SmtcController(const SmtcController&) = delete;
   SmtcController& operator=(const SmtcController&) = delete;
 
-  void Enable(const SmtcConfig& config, const SmtcMetadata& metadata,
+  // The metadata is taken by value and moved in: its cover can be 20 MB.
+  void Enable(const SmtcConfig& config, SmtcMetadata metadata,
               const SmtcPlayback& playback);
   void UpdateConfig(const SmtcConfig& config);
-  void UpdateMetadata(const SmtcMetadata& metadata);
+  void UpdateMetadata(SmtcMetadata metadata);
   void UpdatePlayback(const SmtcPlayback& playback);
   void Disable();
 
@@ -98,6 +99,7 @@ class SmtcController {
   winrt::Windows::Media::Playback::MediaPlayer player_{nullptr};
   winrt::Windows::Media::SystemMediaTransportControls smtc_{nullptr};
 
+  // The registrations of the five OS handlers, kept for the record.
   winrt::event_token button_token_{};
   winrt::event_token position_token_{};
   winrt::event_token repeat_token_{};
@@ -108,12 +110,6 @@ class SmtcController {
   bool enabled_ = false;
   int64_t publish_count_ = 0;
 
-  // Cleared at the top of the destructor. OS event handlers fire on WinRT pool
-  // threads and capture `this`; revoking their tokens does not join an already-
-  // running handler, so each handler checks this flag before touching
-  // command_sink_ to avoid a use-after-free across teardown.
-  std::atomic<bool> alive_{true};
-
   // Seek intervals are read on WinRT pool threads (button handlers) while the
   // platform thread mutates config_ — keep them as atomics to avoid a race.
   std::atomic<int64_t> ff_ms_{15000};
@@ -123,8 +119,9 @@ class SmtcController {
   SmtcMetadata metadata_{};
   SmtcPlayback playback_{};
 
-  // Thumbnail cache keyed by byte identity — skip rebuilding when unchanged.
-  std::vector<uint8_t> artwork_cache_key_{};
+  // Whether metadata_.artwork differs from the cover the thumbnail was made
+  // of: an unchanged cover is not rebuilt.
+  bool artwork_changed_ = false;
 };
 
 }  // namespace mpv_audio_kit

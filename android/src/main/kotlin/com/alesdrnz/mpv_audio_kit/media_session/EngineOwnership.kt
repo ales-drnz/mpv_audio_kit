@@ -44,6 +44,17 @@ internal class EngineOwnership<S : Any> {
         return true
     }
 
+    /** The enable [tryEnable] accepted for [engine] failed. [ownedBefore] is
+     *  whether [engine] owned the session before that enable ([mayUpdate],
+     *  read before [tryEnable]). An engine that took the session with this
+     *  enable gives it back, and the caller turns off what it built: true.
+     *  An owner whose new enable failed keeps the session it had: false. */
+    fun onEnableFailed(engine: Any, ownedBefore: Boolean): Boolean {
+        if (ownedBefore || owner !== engine) return false
+        owner = null
+        return true
+    }
+
     /** Whether an update from [engine] reaches the session: only the owner's. */
     fun mayUpdate(engine: Any): Boolean = owner === engine
 

@@ -6,6 +6,10 @@ cmake_minimum_required(VERSION 3.10)
 set(PROJECT_NAME "mpv_audio_kit")
 project(${PROJECT_NAME} LANGUAGES CXX)
 
+# pkg-config for GIO below, and for the PkgConfig::GTK target the app's
+# CMakeLists.txt defines: found here, before either is used.
+find_package(PkgConfig REQUIRED)
+
 # Flutter derives the registrant name from PLUGIN_NAME; keep it.
 set(PLUGIN_NAME "mpv_audio_kit_plugin")
 
@@ -47,6 +51,5 @@ target_link_libraries(${PLUGIN_NAME} PRIVATE PkgConfig::GTK)
 # GDBus / GLib (GIO) for the MPRIS2 media-session server. GIO ships with the
 # GTK stack — GTK pulls it transitively — but link it explicitly so the
 # g_bus_own_name / g_dbus_connection_* symbols are guaranteed resolved.
-find_package(PkgConfig REQUIRED)
 pkg_check_modules(GIO REQUIRED IMPORTED_TARGET gio-2.0)
 target_link_libraries(${PLUGIN_NAME} PRIVATE PkgConfig::GIO)

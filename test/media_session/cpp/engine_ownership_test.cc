@@ -133,6 +133,29 @@ void HotRestartKeepsTheEngine() {
   CHECK(o.MayDisable(A));
 }
 
+void FailedEnableGivesTheSessionBack() {
+  Ownership o;
+  const bool owned_before = o.MayUpdate(B);
+  CHECK(o.TryEnable(B));
+  // The caller turns off what the enable built.
+  CHECK(o.OnEnableFailed(B, owned_before));
+  CHECK(!o.MayUpdate(B));
+  CHECK(o.TryEnable(A));
+}
+
+void FailedEnableOfTheOwnerKeepsItsSession() {
+  Ownership o;
+  o.OnListen(A, &a_sink);
+  o.TryEnable(A);
+  // A Hot Restart: the same engine enables again, and that one fails.
+  const bool owned_before = o.MayUpdate(A);
+  CHECK(o.TryEnable(A));
+  CHECK(!o.OnEnableFailed(A, owned_before));
+  CHECK(o.MayUpdate(A));
+  CHECK(!o.TryEnable(B));
+  CHECK(o.CommandSink() == &a_sink);
+}
+
 }  // namespace
 
 int main() {
@@ -148,6 +171,10 @@ int main() {
   Run("8 an OS command goes to the owner's sink, B listened after",
       CommandsGoToTheOwnersSink);
   Run("9 a Hot Restart of A keeps the session with A", HotRestartKeepsTheEngine);
+  Run("10 an enable that fails gives the session back",
+      FailedEnableGivesTheSessionBack);
+  Run("11 an owner whose new enable fails keeps the session it had",
+      FailedEnableOfTheOwnerKeepsItsSession);
   std::printf("%s\n", failures == 0 ? "all cases passed"
                                     : "some cases failed");
   return failures == 0 ? 0 : 1;
