@@ -17,8 +17,8 @@ import 'media_blob_io.dart' if (dart.library.js_interop) 'media_blob_web.dart';
 /// final local = Media('file:///home/user/music/song.flac');
 /// final asset = Media('asset:///assets/audio/sample.mp3');
 ///
-/// // Attach arbitrary data to a track (available via Player.state.playlist),
-/// // and start it 5 minutes in.
+/// // Attach arbitrary data to a track (available via
+/// // Player.state.playback.playlist), and start it 5 minutes in.
 /// final rich = Media(
 ///   'https://cdn.example.com/episode-42.mp3',
 ///   extras: {

@@ -30,7 +30,7 @@ mixin _PlaylistModule on _PlayerBase {
   /// length appends, as [add] does. The current entry keeps playing.
   ///
   /// The per-entry options of [media] ride along as in [add]. To play it
-  /// next, pass `state.playlist.index + 1`.
+  /// next, pass `state.playback.playlist.index + 1`.
   ///
   /// Throws [RangeError] if [index] is outside `0..length`.
   Future<void> insert(int index, Media media) async {
@@ -331,8 +331,8 @@ mixin _PlaylistModule on _PlayerBase {
   }
 
   /// Clears the playlist, **including the currently-playing track**.
-  /// Playback stops; `state.playlist.items` becomes empty and
-  /// `state.playing` becomes `false`. Use [remove] for selective
+  /// Playback stops; `state.playback.playlist.items` becomes empty and
+  /// `state.playback.playing` becomes `false`. Use [remove] for selective
   /// clearing that keeps the active entry alive.
   ///
   /// With [keepCurrent] true only the other entries go: the current one

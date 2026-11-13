@@ -10,8 +10,8 @@ part of '../player.dart';
 extension _Lifecycle on _PlayerBase {
   /// Whether mpv reached the end of the current file, parked by
   /// `keep-open` or about to park, read from the core's own `eof-reached`
-  /// rather than from `state.completed`. That flag comes from the event
-  /// isolate's [MpvEventEndOfContent] reads, which reach the main isolate
+  /// rather than from `state.playback.completed`. That flag comes from the
+  /// event isolate's [MpvEventEndOfContent] reads, which reach the main isolate
   /// behind the events still queued ahead of them: right after a short
   /// last entry parks, `completed` can still be false. The calls that
   /// replace or jump need the core's answer at the call: an unpause
@@ -126,11 +126,11 @@ extension _Lifecycle on _PlayerBase {
   ///
   /// It is a level, read again at every load, restart, `eof-reached`,
   /// `pause` and `loop-*` notification, not the observed `eof-reached` edge
-  /// matched against `state.playlist`: mpv samples observed properties once
-  /// per playloop iteration, so an entry that reaches EOF as soon as it
-  /// loads can go from the previous entry's EOF to its own without a change
-  /// being reported, and the state's playlist position can lag or lead the
-  /// entry an edge belonged to. That raised `completed` at a track
+  /// matched against `state.playback.playlist`: mpv samples observed
+  /// properties once per playloop iteration, so an entry that reaches EOF as
+  /// soon as it loads can go from the previous entry's EOF to its own without
+  /// a change being reported, and the state's playlist position can lag or
+  /// lead the entry an edge belonged to. That raised `completed` at a track
   /// change, cleared by the next load, and missed the real end.
   ///
   /// A live PCM entry ([live]) has no restart either: it plays once and
