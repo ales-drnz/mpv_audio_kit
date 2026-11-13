@@ -105,40 +105,45 @@ jobs:
           FORK: ${{ github.event.pull_request.head.repo.fork }}
         run: scripts/ci/preflight.sh
 
+  # Flutter comes from .github/actions/flutter in every job: stable is the
+  # version of .github/flutter-version, floor the lower bound pubspec.yaml
+  # declares, latest the stable of the day. The format and the drift of the
+  # generated code are checked on stable alone, so a new Flutter cannot turn
+  # them red without a commit. latest only tells what the next one brings:
+  # it does not fail the run.
   analyze:
     name: Analyze (Flutter ${{ matrix.flutter }})
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    continue-on-error: ${{ matrix.flutter == 'latest' }}
     strategy:
       fail-fast: false
       matrix:
-        # The declared floor and the current stable.
-        flutter: ['3.38.x', 'any']
+        flutter: [floor, stable, latest]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+      - uses: ./.github/actions/flutter
         with:
-          channel: stable
-          flutter-version: ${{ matrix.flutter }}
+          version: ${{ matrix.flutter }}
           cache: true
       - run: flutter pub get
       - run: flutter pub get
         working-directory: test_app
       - name: Format
-        if: matrix.flutter == 'any'
+        if: matrix.flutter == 'stable'
         run: dart format --output=none --set-exit-if-changed lib test example test_app/lib test_app/integration_test hook tool
       - run: flutter analyze
       - name: Publish dry run
-        if: matrix.flutter == 'any'
+        if: matrix.flutter == 'stable'
         run: flutter pub publish --dry-run
       # The FFmpeg tarball the generator parses comes from the cache, not
       # from ffmpeg.org on every run: fetch_ffmpeg_src.sh keeps it and checks
       # its SHA-256 either way.
       - name: FFmpeg version of the codegen
         id: ffmpeg
-        if: matrix.flutter == 'any'
+        if: matrix.flutter == 'stable'
         run: echo "version=$(jq -r .ffmpeg tool/codegen/libmpv_manifest.json)" >> "$GITHUB_OUTPUT"
-      - if: matrix.flutter == 'any'
+      - if: matrix.flutter == 'stable'
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: tool/codegen/.ffmpeg-src/ffmpeg-${{ steps.ffmpeg.outputs.version }}.tar.gz
@@ -146,7 +151,7 @@ jobs:
       # The generated effects API must be exactly what tool/codegen emits.
       # git status, not git diff: a file the generator adds is untracked.
       - name: Codegen drift
-        if: matrix.flutter == 'any'
+        if: matrix.flutter == 'stable'
         run: |
           tool/codegen/regen.sh
           drift=$(git status --porcelain -- lib/src/generated test/generated)
@@ -158,7 +163,7 @@ jobs:
           fi
       # The scripts of the changes job, against a fake gh (test/ci).
       - name: CI script tests
-        if: matrix.flutter == 'any'
+        if: matrix.flutter == 'stable'
         run: for t in test/ci/*_test.sh; do bash "$t"; done
 
   # The quality ratchet: the metrics of tool/metrics against their
@@ -173,9 +178,8 @@ jobs:
         with:
           fetch-depth: 0
           filter: blob:none
-      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+      - uses: ./.github/actions/flutter
         with:
-          channel: stable
           cache: true
       - name: Metrics
         run: |
@@ -232,9 +236,8 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+      - uses: ./.github/actions/flutter
         with:
-          channel: stable
           cache: true
       # The multi engine rule of the Windows and Linux plugins, the header
       # they share (native_common/engine_ownership.h), built with g++.
@@ -311,9 +314,8 @@ jobs:
       # No Flutter cache off Linux: the macOS and Windows entries weigh 1.5
       # to 2 GB each and pushed the NDK and Gradle caches out of the 10 GB
       # the repository gets.
-      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+      - uses: ./.github/actions/flutter
         with:
-          channel: stable
           cache: false
       - name: Toolchain versions
         continue-on-error: true
@@ -364,9 +366,8 @@ jobs:
           LIBMPV_SCRIPTS_RUN: ${{ needs.changes.outputs.libmpv_run }}
         run: scripts/ci/web_module.sh
       - if: steps.module.outputs.ready == 'true'
-        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        uses: ./.github/actions/flutter
         with:
-          channel: stable
           cache: true
       # A compile error in a browser test leaves flutter test waiting on
       # the page instead of failing: the analyzer reports it first.
@@ -506,9 +507,8 @@ jobs:
             test_app/android/gradle/wrapper/gradle-wrapper.properties
             android/*.gradle*
       # Flutter is cached on Linux only, as in Test (macOS).
-      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+      - uses: ./.github/actions/flutter
         with:
-          channel: stable
           cache: ${{ runner.os == 'Linux' }}
       - name: Toolchain versions
         if: runner.os == 'macOS'
