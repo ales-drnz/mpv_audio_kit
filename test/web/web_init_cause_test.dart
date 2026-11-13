@@ -42,7 +42,8 @@ void main() {
 
   test('an init that crashed is the cause, its stack out of the '
       'message', () async {
-    final fake = FakeModule()..throwing.add('_mpv_set_option_string');
+    final fake = FakeModule()
+      ..aborts = (name, _) => name == '_mpv_set_option_string';
     final module = MpvModule(fake.instance);
     final session = WebSession(() async => module);
     try {

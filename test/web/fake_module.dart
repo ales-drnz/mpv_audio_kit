@@ -102,8 +102,9 @@ final class FakeModule {
   /// The allocations left before malloc returns NULL; `null` for no end.
   int? allocationsLeft;
 
-  /// The exports that throw, as every call of an aborted module does.
-  final Set<String> throwing = {};
+  /// Whether the call of an export with these arguments throws, as every
+  /// call of an aborted module does; `null` for none.
+  bool Function(String name, List<int> args)? aborts;
 
   int _next = _kHeapStart;
 
@@ -129,8 +130,9 @@ final class FakeModule {
   void _export(String name, int arity, int Function(List<int> args) body) {
     JSNumber run(List<JSNumber> args) {
       calls.add(name);
-      if (throwing.contains(name)) throw StateError('Aborted()');
-      return body([for (final a in args) a.toDartInt]).toJS;
+      final values = [for (final a in args) a.toDartInt];
+      if (aborts?.call(name, values) ?? false) throw StateError('Aborted()');
+      return body(values).toJS;
     }
 
     instance[name] = switch (arity) {
