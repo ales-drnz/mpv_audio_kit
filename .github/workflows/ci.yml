@@ -140,9 +140,15 @@ jobs:
         if: matrix.flutter == 'stable'
         run: dart format --output=none --set-exit-if-changed lib test example test_app/lib test_app/integration_test hook tool
       - run: flutter analyze
+      # The dry run of a checkout without the web module, which is out of
+      # git: what goes to pub.dev is checked by scripts/publish.sh, on the
+      # checkout it is published from. Its check of the versions (pubspec,
+      # podspec, gradle, README, CHANGELOG) runs here.
       - name: Publish dry run
         if: matrix.flutter == 'stable'
-        run: flutter pub publish --dry-run
+        run: |
+          scripts/publish.sh --versions
+          flutter pub publish --dry-run
       # The FFmpeg tarball the generator parses comes from the cache, not
       # from ffmpeg.org on every run: fetch_ffmpeg_src.sh keeps it and checks
       # its SHA-256 either way.
