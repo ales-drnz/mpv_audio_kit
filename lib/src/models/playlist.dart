@@ -2,16 +2,8 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
+import '../internals/equality.dart';
 import 'media.dart';
-
-bool _listEq<T>(List<T> a, List<T> b) {
-  if (identical(a, b)) return true;
-  if (a.length != b.length) return false;
-  for (var i = 0; i < a.length; i++) {
-    if (a[i] != b[i]) return false;
-  }
-  return true;
-}
 
 /// An ordered list of [Media] items loaded into the [Player].
 ///
@@ -54,7 +46,7 @@ final class Playlist {
       identical(this, other) ||
       (other is Playlist &&
           other.index == index &&
-          _listEq(items, other.items));
+          iterableEq(items, other.items));
 
   @override
   int get hashCode => Object.hash(Object.hashAll(items), index);

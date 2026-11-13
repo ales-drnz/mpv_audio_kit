@@ -4,28 +4,9 @@
 
 import 'package:meta/meta.dart';
 
+import '../internals/equality.dart';
 import '../internals/unset_sentinel.dart';
 import 'media_blob_io.dart' if (dart.library.js_interop) 'media_blob_web.dart';
-
-bool _mapEqDyn(Map<String, Object?>? a, Map<String, Object?>? b) {
-  if (identical(a, b)) return true;
-  if (a == null || b == null) return false;
-  if (a.length != b.length) return false;
-  for (final entry in a.entries) {
-    if (!b.containsKey(entry.key) || b[entry.key] != entry.value) return false;
-  }
-  return true;
-}
-
-bool _mapEq(Map<String, String>? a, Map<String, String>? b) {
-  if (identical(a, b)) return true;
-  if (a == null || b == null) return false;
-  if (a.length != b.length) return false;
-  for (final entry in a.entries) {
-    if (b[entry.key] != entry.value) return false;
-  }
-  return true;
-}
 
 /// A piece of media that can be loaded into the [Player].
 ///
@@ -335,10 +316,10 @@ final class Media {
           other.start == start &&
           other.end == end &&
           other.waveformDurationHint == waveformDurationHint &&
-          _mapEqDyn(extras, other.extras) &&
-          _mapEq(httpHeaders, other.httpHeaders) &&
-          _mapEq(streamLavfOptions, other.streamLavfOptions) &&
-          _mapEq(demuxerLavfOptions, other.demuxerLavfOptions));
+          mapEq(extras, other.extras) &&
+          mapEq(httpHeaders, other.httpHeaders) &&
+          mapEq(streamLavfOptions, other.streamLavfOptions) &&
+          mapEq(demuxerLavfOptions, other.demuxerLavfOptions));
 
   @override
   int get hashCode => Object.hash(
@@ -347,26 +328,10 @@ final class Media {
     start,
     end,
     waveformDurationHint,
-    extras == null
-        ? null
-        : Object.hashAllUnordered(
-            extras!.entries.map((e) => Object.hash(e.key, e.value)),
-          ),
-    httpHeaders == null
-        ? null
-        : Object.hashAllUnordered(
-            httpHeaders!.entries.map((e) => Object.hash(e.key, e.value)),
-          ),
-    demuxerLavfOptions == null
-        ? null
-        : Object.hashAllUnordered(
-            demuxerLavfOptions!.entries.map((e) => Object.hash(e.key, e.value)),
-          ),
-    streamLavfOptions == null
-        ? null
-        : Object.hashAllUnordered(
-            streamLavfOptions!.entries.map((e) => Object.hash(e.key, e.value)),
-          ),
+    mapHash(extras),
+    mapHash(httpHeaders),
+    mapHash(demuxerLavfOptions),
+    mapHash(streamLavfOptions),
   );
 
   /// Prints the names of [httpHeaders], [streamLavfOptions] and
