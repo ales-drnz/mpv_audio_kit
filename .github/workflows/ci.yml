@@ -384,8 +384,10 @@ jobs:
           run-id: ${{ needs.changes.outputs.libmpv_run }}
           token: ${{ secrets.LIBMPV_SCRIPTS_TOKEN }}
           pubspecs: pubspec.yaml
+      # In runs of 100 files: the whole list is past the 8191 characters
+      # a command line of cmd.exe holds, which flutter.bat goes through.
       - name: flutter test -x network (files that touch the host)
-        run: flutter test -x network $(scripts/ci/platform_tests.sh)
+        run: scripts/ci/platform_tests.sh | xargs -n 100 flutter test -x network
 
   # The whole suite on the oldest Flutter pubspec.yaml declares, where
   # Analyze alone ran, and then the hook on the oldest version of each
