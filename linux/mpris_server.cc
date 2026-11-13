@@ -927,9 +927,14 @@ void MprisServer::UpdatePlayback(FlValue* playback) {
   // sub-second scrub (which otherwise snaps the OS slider back).
   bool is_seek = FlBool(playback, "seek", false);
 
-  bool was_completed = completed_;
-  bool was_next = has_next_;
-  bool was_prev = has_prev_;
+  const bool was_completed = completed_;
+  const bool was_next = has_next_;
+  const bool was_prev = has_prev_;
+  const bool was_playing = playing_;
+  const double was_rate = rate_;
+  const bool was_seekable = seekable_;
+  const std::string was_loop = loop_;
+  const bool was_shuffle = shuffle_;
   playing_ = FlBool(playback, "playing", false);
   actual_playing_ = FlBool(playback, "actualPlaying", false);
   completed_ = FlBool(playback, "completed", false);
@@ -944,11 +949,15 @@ void MprisServer::UpdatePlayback(FlValue* playback) {
   AnchorPosition();
 
   if (enabled_) {
-    MarkChanged("PlaybackStatus");
-    MarkChanged("Rate");
-    MarkChanged("LoopStatus");
-    MarkChanged("Shuffle");
-    MarkChanged("CanSeek");
+    // Only what changed: most pushes carry a new position and nothing
+    // else, and Position is not a property MPRIS signals.
+    if (playing_ != was_playing || completed_ != was_completed) {
+      MarkChanged("PlaybackStatus");
+    }
+    if (rate_ != was_rate) MarkChanged("Rate");
+    if (loop_ != was_loop) MarkChanged("LoopStatus");
+    if (shuffle_ != was_shuffle) MarkChanged("Shuffle");
+    if (seekable_ != was_seekable) MarkChanged("CanSeek");
     if (has_next_ != was_next) MarkChanged("CanGoNext");
     if (has_prev_ != was_prev) MarkChanged("CanGoPrevious");
     // A completed transition flips Metadata visibility (full ↔ empty).
