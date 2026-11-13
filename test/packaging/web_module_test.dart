@@ -88,8 +88,13 @@ void main() {
     }
   });
 
-  test('the web files in web/, when there, are those of the pinned '
-      'manifest', () {
+  // web/ is empty on a fresh checkout and on CI: the module is out of git,
+  // and CI's browser tests install theirs into test/web/module
+  // (scripts/ci/web_module.sh). So an empty web/ skips, by name, and
+  // scripts/publish.sh is what refuses a release without the module. A
+  // module that is there must be whole and the manifest's.
+  test('the web module in web/, when there, is whole and the one of the '
+      'pinned manifest', () {
     final manifest =
         jsonDecode(
               File(
@@ -103,11 +108,28 @@ void main() {
       return;
     }
     expect(web['abi'], webModuleAbi);
-    for (final MapEntry(:key, :value)
-        in (web['files'] as Map<String, dynamic>).entries) {
-      final file = File('$root/web/$key');
-      if (!file.existsSync()) continue;
-      expect(sha(file.readAsBytesSync()), value, reason: key);
+    final files = (web['files'] as Map<String, dynamic>).cast<String, String>();
+    final missing = [
+      for (final name in files.keys)
+        if (!File('$root/web/$name').existsSync()) name,
+    ];
+    if (missing.length == files.length) {
+      markTestSkipped(
+        'web/ holds no web module (scripts/update_libmpv.sh installs it): '
+        'nothing to check against the manifest of libmpv-$libmpvRelease. '
+        'scripts/publish.sh refuses to publish from such a checkout.',
+      );
+      return;
+    }
+    expect(
+      missing,
+      isEmpty,
+      reason:
+          'web/ holds a part of the web module: run '
+          'scripts/update_libmpv.sh $libmpvRelease',
+    );
+    for (final MapEntry(:key, :value) in files.entries) {
+      expect(sha(File('$root/web/$key').readAsBytesSync()), value, reason: key);
     }
   });
 
