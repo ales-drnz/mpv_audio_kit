@@ -26,9 +26,15 @@ final class Playlist {
 
   /// The index of the currently active track. `0` for an empty playlist,
   /// `-1` when entries exist but none is active yet (the append build-up
-  /// phase of [Player.openAll], before playback starts). Guard reads
-  /// with `index >= 0` before using it to address [items].
+  /// phase of [Player.openAll], before playback starts). An `index >= 0`
+  /// guard is not enough to address [items], since the empty playlist
+  /// has index `0`: read [current] for the active track.
   final int index;
+
+  /// The active track: the entry of [items] at [index], or `null` when
+  /// the playlist is empty or no entry is active yet.
+  Media? get current =>
+      index >= 0 && index < items.length ? items[index] : null;
 
   /// Creates a playlist from an ordered list of [items], with [index]
   /// marking the active track (defaults to the first).
