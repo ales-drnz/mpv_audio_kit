@@ -268,10 +268,12 @@ mixin _PlaybackModule on _PlayerBase {
   Future<void> setChapter(int index) async {
     await _gate();
     await _calls.prop('chapter', index.toString());
+    // No chapter is `null` in the state, as the observer reports it.
+    final shown = index < 0 ? null : index;
     _updateField(
-      (s) => s.copyWith(currentChapter: index),
+      (s) => s.copyWith(currentChapter: shown),
       _reactives.currentChapter,
-      index,
+      shown,
     );
   }
 

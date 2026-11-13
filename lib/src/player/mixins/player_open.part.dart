@@ -113,8 +113,11 @@ mixin _OpenModule on _PlayerBase, _FfiModule {
     }
   }
 
-  Future<void> _openAll(List<Media> medias, bool? play, int index) async {
+  Future<void> _openAll(List<Media> requested, bool? play, int index) async {
     _checkNotDisposed();
+    // A copy: the list is read across many awaits, and the caller's may
+    // change meanwhile.
+    final medias = List<Media>.of(requested, growable: false);
     if (medias.isEmpty) {
       return;
     }
