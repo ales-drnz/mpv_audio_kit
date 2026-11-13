@@ -16,7 +16,15 @@ What it reads:
   `lib/src/internals/libmpv_licenses.dart` are left out. lib may grow: a
   growth past 300 lines only warns, and the commit says why.
 - **Tests per lib**: the lines of code of `test` (`test/generated` left
-  out) per line of lib, in thousandths. It must not go down.
+  out) per line of lib, in thousandths. It must not go down unnoticed: a
+  cleanup of the tests (duplicates removed, cases turned into a table)
+  lowers it and checks nothing less, so a fall is declared with its reason,
+
+      dart tool/metrics/bin/metrics.dart --write --test-ratio-drop="<why>"
+
+  which writes the baseline with the reason in it (`test_per_lib_drop`).
+  Without the flag `--write` refuses to lower the ratio, and the check
+  fails on a fall; with the flag the check only warns.
 - **Complexity** of each function of the same files: 1, plus one for each
   `if`, `for`, `while`, `do`, `case`, `catch`, `?:`, `&&`, `||` and `??`.
   `?.` and `??=` count nothing. Also counted: the `if` and `for` of a
