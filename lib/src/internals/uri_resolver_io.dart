@@ -13,6 +13,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import '../events/player_exception.dart';
+import 'debug_log.dart';
 import 'uri_resolver.dart' show ResolvedUri;
 
 const MethodChannel _channel = MethodChannel('mpv_audio_kit');
@@ -28,6 +29,11 @@ final Map<String, Future<String>> _assetInflight = {};
 /// Whether local paths are Windows paths, as mpv takes them on this host.
 bool get hostIsWindows => Platform.isWindows;
 
+/// Whether `content://` URIs are resolved through the plugin: on Android.
+/// A test turns it on to reach that path on another host.
+@visibleForTesting
+bool debugResolvesContentUris = Platform.isAndroid;
+
 /// Resolves a [uri] that is no `file://` URL: an `asset://` becomes the
 /// path of its copy, an Android `content://` an open descriptor, anything
 /// else goes to mpv as it is.
@@ -39,7 +45,7 @@ Future<ResolvedUri> resolveHostUri(String uri) async {
       throw SourceException(uri, 'the asset could not be loaded: $e');
     }
   }
-  if (Platform.isAndroid && uri.startsWith('content://')) {
+  if (debugResolvesContentUris && uri.startsWith('content://')) {
     try {
       final fd = await _channel.invokeMethod<int>('openFileDescriptor', {
         'uri': uri,
@@ -54,6 +60,9 @@ Future<ResolvedUri> resolveHostUri(String uri) async {
       );
     } on PlatformException catch (e) {
       throw SourceException(uri, '${e.code}: ${e.message}');
+    } on MissingPluginException catch (e) {
+      // An engine the plugin is not registered with.
+      throw SourceException(uri, 'the plugin does not answer: ${e.message}');
     }
   }
   return ResolvedUri(uri);
@@ -72,7 +81,7 @@ Future<void> _closeAndroidFd(int fd) async {
   try {
     await _channel.invokeMethod<void>('closeFileDescriptor', {'fd': fd});
   } catch (e) {
-    debugPrint('mpv_audio_kit: closeFileDescriptor failed for fd=$fd: $e');
+    debugLog('mpv_audio_kit: closeFileDescriptor failed for fd=$fd: $e');
   }
 }
 
