@@ -51,3 +51,12 @@ linter:
     - close_sinks
     - discarded_futures
     - unnecessary_ignore
+    - always_declare_return_types
+    - strict_top_level_inference
+    - unreachable_from_main
+    - prefer_void_to_null
+    - avoid_void_async
+    - throw_in_finally
+    - unnecessary_statements
+    - unnecessary_library_name
+    - test_types_in_equals
