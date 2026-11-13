@@ -66,9 +66,11 @@ struct SmtcPlayback {
 // platform thread before touching the Flutter event channel.
 class SmtcController {
  public:
+  // Never destroyed: the one controller of the process belongs to a hub
+  // that lives until the process ends (media_session_channel_win.cpp), so
+  // the OS handlers, which capture this, are never revoked.
   explicit SmtcController(
       std::function<void(flutter::EncodableValue)> command_sink);
-  ~SmtcController();
 
   SmtcController(const SmtcController&) = delete;
   SmtcController& operator=(const SmtcController&) = delete;
@@ -97,6 +99,7 @@ class SmtcController {
   winrt::Windows::Media::Playback::MediaPlayer player_{nullptr};
   winrt::Windows::Media::SystemMediaTransportControls smtc_{nullptr};
 
+  // The registrations of the five OS handlers, kept for the record.
   winrt::event_token button_token_{};
   winrt::event_token position_token_{};
   winrt::event_token repeat_token_{};
@@ -106,12 +109,6 @@ class SmtcController {
   bool created_ = false;
   bool enabled_ = false;
   int64_t publish_count_ = 0;
-
-  // Cleared at the top of the destructor. OS event handlers fire on WinRT pool
-  // threads and capture `this`; revoking their tokens does not join an already-
-  // running handler, so each handler checks this flag before touching
-  // command_sink_ to avoid a use-after-free across teardown.
-  std::atomic<bool> alive_{true};
 
   // Seek intervals are read on WinRT pool threads (button handlers) while the
   // platform thread mutates config_ — keep them as atomics to avoid a race.

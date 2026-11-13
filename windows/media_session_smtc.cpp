@@ -109,19 +109,6 @@ SmtcController::SmtcController(
     std::function<void(flutter::EncodableValue)> command_sink)
     : command_sink_(std::move(command_sink)) {}
 
-SmtcController::~SmtcController() {
-  // Stop in-flight OS handlers from dereferencing command_sink_ before we revoke
-  // their tokens (revoke does not join a handler already running on a pool thread).
-  alive_.store(false);
-  if (created_) {
-    smtc_.ButtonPressed(button_token_);
-    smtc_.PlaybackPositionChangeRequested(position_token_);
-    smtc_.AutoRepeatModeChangeRequested(repeat_token_);
-    smtc_.ShuffleEnabledChangeRequested(shuffle_token_);
-    smtc_.PlaybackRateChangeRequested(rate_token_);
-  }
-}
-
 void SmtcController::EnsureCreated() {
   if (created_) return;
 
@@ -154,7 +141,6 @@ void SmtcController::EnsureCreated() {
   position_token_ = smtc_.PlaybackPositionChangeRequested(
       [this](wm::SystemMediaTransportControls const&,
              wm::PlaybackPositionChangeRequestedEventArgs const& args) {
-        if (!alive_.load()) return;
         command_sink_(flutter::EncodableValue(flutter::EncodableMap{
             {flutter::EncodableValue("type"), flutter::EncodableValue("seekTo")},
             {flutter::EncodableValue("positionMs"),
@@ -165,7 +151,6 @@ void SmtcController::EnsureCreated() {
   repeat_token_ = smtc_.AutoRepeatModeChangeRequested(
       [this](wm::SystemMediaTransportControls const&,
              wm::AutoRepeatModeChangeRequestedEventArgs const& args) {
-        if (!alive_.load()) return;
         command_sink_(flutter::EncodableValue(flutter::EncodableMap{
             {flutter::EncodableValue("type"),
              flutter::EncodableValue("setRepeatMode")},
@@ -177,7 +162,6 @@ void SmtcController::EnsureCreated() {
   shuffle_token_ = smtc_.ShuffleEnabledChangeRequested(
       [this](wm::SystemMediaTransportControls const&,
              wm::ShuffleEnabledChangeRequestedEventArgs const& args) {
-        if (!alive_.load()) return;
         command_sink_(flutter::EncodableValue(flutter::EncodableMap{
             {flutter::EncodableValue("type"), flutter::EncodableValue("setShuffle")},
             {flutter::EncodableValue("shuffle"),
@@ -188,7 +172,6 @@ void SmtcController::EnsureCreated() {
   rate_token_ = smtc_.PlaybackRateChangeRequested(
       [this](wm::SystemMediaTransportControls const&,
              wm::PlaybackRateChangeRequestedEventArgs const& args) {
-        if (!alive_.load()) return;
         command_sink_(flutter::EncodableValue(flutter::EncodableMap{
             {flutter::EncodableValue("type"),
              flutter::EncodableValue("setPlaybackRate")},
@@ -201,7 +184,6 @@ void SmtcController::EnsureCreated() {
 }
 
 void SmtcController::OnButton(wm::SystemMediaTransportControlsButton button) {
-  if (!alive_.load()) return;
   using B = wm::SystemMediaTransportControlsButton;
   switch (button) {
     case B::Play:
