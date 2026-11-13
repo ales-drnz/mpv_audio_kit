@@ -79,15 +79,34 @@ mixin _HooksModule on _PlayerBase {
   }) async {
     final name = hook.mpvValue;
     if (timeout != null) _hooks.timeouts[name] = timeout;
-    if (_hooks.registered.contains(name)) return;
+    if (_hooks.registered.contains(name)) {
+      // Being registered by an earlier call: this one completes with it,
+      // once mpv took the hook, or fails with it.
+      await _hookAdds[name];
+      return;
+    }
     // A dispose that started after the caller's gate frees the handle once
     // the runs it knows of settle: no new one may start against it.
     if (_disposed) return;
     _hooks.registered.add(name);
     // Tracked by the session, so dispose waits for it before freeing the
     // core (see [MpvSession.settleHookAdds]).
-    await _session.hookAdd(name, priority);
+    final run = _session.hookAdd(name, priority);
+    _hookAdds[name] = run;
+    try {
+      await run;
+    } catch (_) {
+      // mpv does not have the hook: a later call registers it again.
+      _hooks.registered.remove(name);
+      rethrow;
+    } finally {
+      // The removed value is the run awaited above.
+      unawaited(_hookAdds.remove(name));
+    }
   }
+
+  /// The registrations with mpv under way, by hook name.
+  final Map<String, Future<void>> _hookAdds = {};
 
   /// Signals mpv that hook processing for [id] is complete.
   ///
