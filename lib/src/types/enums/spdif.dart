@@ -57,14 +57,12 @@ enum Spdif {
 
   /// Parses mpv's wire-level CSV (`'ac3,dts,truehd'`) into a typed set.
   /// Empty or whitespace-only input → empty set. Unknown tokens are
-  /// dropped silently.
+  /// dropped silently. The set cannot be changed, empty or not.
   static Set<Spdif> parseMpvList(String raw) {
     if (raw.trim().isEmpty) return const <Spdif>{};
-    return raw
-        .split(',')
-        .map((s) => fromMpv(s.trim()))
-        .whereType<Spdif>()
-        .toSet();
+    return Set.unmodifiable(
+      raw.split(',').map((s) => fromMpv(s.trim())).whereType<Spdif>(),
+    );
   }
 
   /// Serialises a set into the comma-separated wire format mpv expects.

@@ -781,4 +781,90 @@ void main() {
       expect(p.index, 0);
     });
   });
+  group('the collections of the state cannot be changed', () {
+    // A change in place would alter the value the player holds, with no
+    // event, and the == and hashCode the streams deduplicate on.
+    test('the playlist items', () {
+      final p = parsePlaylistNode(
+        raw: [
+          {'filename': 'a.mp3', 'current': true},
+        ],
+        mediaCache: const {},
+        previous: Playlist.empty,
+      );
+      expect(() => p.items.add(const Media('b.mp3')), throwsUnsupportedError);
+      expect(() => p.items[0] = const Media('b.mp3'), throwsUnsupportedError);
+      expect(p.items.single.uri, 'a.mp3');
+    });
+
+    test('the devices', () {
+      final devices = parseDeviceListNode([
+        {'name': 'auto', 'description': 'Autoselect'},
+      ]);
+      expect(
+        () => devices[0] = const Device(name: 'x', description: ''),
+        throwsUnsupportedError,
+      );
+      expect(devices.clear, throwsUnsupportedError);
+    });
+
+    test('the metadata', () {
+      final metadata = parseMetadataNode({'title': 'A'})!;
+      expect(() => metadata['title'] = 'B', throwsUnsupportedError);
+      expect(() => metadata.remove('title'), throwsUnsupportedError);
+      expect(metadata, {'title': 'A'});
+    });
+
+    test('the seekable ranges of the cache state', () {
+      final state = parseDemuxerCacheStateFull({
+        'seekable-ranges': [
+          {'start': 0.0, 'end': 5.0},
+        ],
+      });
+      expect(state.seekableRanges.clear, throwsUnsupportedError);
+      expect(
+        () => state.seekableRanges[0] = const CacheRange(
+          Duration.zero,
+          Duration.zero,
+        ),
+        throwsUnsupportedError,
+      );
+    });
+
+    test('the tracks and the metadata of each', () {
+      final tracks = parseTrackListNode([
+        {
+          'id': 1,
+          'type': 'audio',
+          'metadata': {'title': 'A'},
+        },
+      ]);
+      expect(() => tracks[0] = tracks[0], throwsUnsupportedError);
+      expect(tracks.clear, throwsUnsupportedError);
+      expect(() => tracks[0].metadata['title'] = 'B', throwsUnsupportedError);
+      final current = parseCurrentTrackNode({
+        'id': 1,
+        'type': 'audio',
+        'metadata': {'title': 'A'},
+      })!;
+      expect(current.metadata.clear, throwsUnsupportedError);
+    });
+
+    test('the chapters', () {
+      final chapters = parseChapterListNode([
+        {'time': 1.0, 'title': 'Intro'},
+      ]);
+      expect(
+        () => chapters[0] = const Chapter(time: Duration.zero),
+        throwsUnsupportedError,
+      );
+      expect(chapters.clear, throwsUnsupportedError);
+    });
+
+    test('the passthrough codecs', () {
+      final codecs = Spdif.parseMpvList('ac3,dts');
+      expect(() => codecs.add(Spdif.eac3), throwsUnsupportedError);
+      expect(codecs, {Spdif.ac3, Spdif.dts});
+    });
+  });
 }

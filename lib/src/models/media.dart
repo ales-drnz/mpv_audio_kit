@@ -279,7 +279,7 @@ final class Media {
     final (url, name) = blobUrl(blob);
     final titled = name == null || (extras?.containsKey('title') ?? false)
         ? extras
-        : {'title': name, ...?extras};
+        : Map<String, Object?>.unmodifiable({'title': name, ...?extras});
     return Media(url, extras: titled, start: start, end: end);
   }
 

@@ -19,7 +19,9 @@ bool _listEq<T>(List<T> a, List<T> b) {
 /// and [index] match, useful when diffing playlists for re-render
 /// decisions.
 final class Playlist {
-  /// The ordered list of tracks.
+  /// The ordered list of tracks. The list of a playlist the player gives
+  /// (its state and streams) cannot be changed in place: change the queue
+  /// through the [Player].
   final List<Media> items;
 
   /// The index of the currently active track. `0` for an empty playlist,
