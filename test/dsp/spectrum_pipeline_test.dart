@@ -6,6 +6,7 @@
 // The spectrum poll against a fake mpv, with no libmpv loaded.
 
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
@@ -27,6 +28,55 @@ void main() {
       expect(gets, lessThanOrEqualTo(22), reason: '$gets reads in 160 ms');
       await sub.cancel();
       await p.dispose();
+    });
+  });
+
+  group('playing', () {
+    // The tap gives the latest 4096 frames at each read, so two reads in
+    // a row overlap: the spectrum analyzes the new part only.
+    test('a read with less new audio than an FFT hop sends the PCM frame '
+        'and no spectrum', () async {
+      final rnd = math.Random(3);
+      final audio = Float32List(48000 * 2 * 2);
+      for (var i = 0; i < audio.length; i++) {
+        audio[i] = rnd.nextDouble() - 0.5;
+      }
+      // 128 new frames per read, a quarter of the 512 of an FFT hop.
+      var end = 4096;
+      final p =
+          SpectrumPipeline(
+            asyncGet: (name, format) async {
+              end += 128;
+              return (
+                0,
+                {
+                  'sample_rate': 48000,
+                  'channels': 2,
+                  'pts_ns': end * 1000000000 ~/ 48000,
+                  'samples': Uint8List.fromList(
+                    Float32List.sublistView(
+                      audio,
+                      (end - 4096) * 2,
+                      end * 2,
+                    ).buffer.asUint8List((end - 4096) * 8, 4096 * 8),
+                  ),
+                },
+              );
+            },
+          )..setSettings(
+            const SpectrumSettings(emitInterval: Duration(milliseconds: 8)),
+          );
+      var pcm = 0;
+      var fft = 0;
+      final pcmSub = p.pcmStream.listen((_) => pcm++);
+      final fftSub = p.fftStream.listen((_) => fft++);
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+      await pcmSub.cancel();
+      await fftSub.cancel();
+      await p.dispose();
+      expect(pcm, greaterThan(12), reason: 'every read is a PCM frame');
+      // The first read fills the ring, then one spectrum every 4 reads.
+      expect(fft, inInclusiveRange(pcm ~/ 4, pcm ~/ 4 + 2), reason: '$pcm');
     });
   });
 

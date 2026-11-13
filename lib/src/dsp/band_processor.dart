@@ -29,9 +29,13 @@ import '../types/settings/spectrum_settings.dart';
 /// engine and scratch buffers are not built until [process] is called
 /// for the first time, so an unused processor costs no memory.
 ///
-/// A tap frame holds the latest 4096 frames per channel, so frames
-/// overlap and [process] analyzes part of the audio again on each call,
-/// as the player's own [PlayerStream.fft] does.
+/// A tap frame holds the latest 4096 frames per channel, so two frames
+/// in a row overlap. [process] finds where a frame continues the one
+/// before and analyzes only the audio that is new, so each sample is
+/// analyzed once and the smoothing follows the time of the audio, not
+/// how often frames arrive. The player's own [PlayerStream.fft] does the
+/// same. Frames that do not overlap (pieces of a stream one after the
+/// other, a seek, a new track) are analyzed whole.
 ///
 /// Example: bind a per-filter editor's input and output curves to the
 /// player's live spectrum settings:
@@ -84,6 +88,15 @@ class BandProcessor {
   Int32List? _bandEndBin;
   int _lastBandSampleRate = 0;
 
+  // ── The frame before ───────────────────────────────────────────────
+  // A copy of the samples [process] got last, with their format and
+  // timestamp: the next frame is laid over them to find its new part.
+  Float32List? _last;
+  int _lastLength = 0;
+  int _lastChannels = 0;
+  int _lastSampleRate = 0;
+  Duration _lastTimestamp = Duration.zero;
+
   // The most-recent raw bin power vector: the consumer-facing
   // [FftFrame.bins] payload of the next emitted frame. Allocated
   // once (size = fftSize / 2) and overwritten every FFT.
@@ -117,6 +130,8 @@ class BandProcessor {
       _ringWrite = 0;
       _samplesInRing = 0;
       _samplesUntilNextHop = 0;
+      // The ring is empty: the next frame fills it whole.
+      _lastLength = 0;
     }
     if (windowChanged) _window = null;
     if (bandConfigChanged || fftSizeChanged) {
@@ -131,11 +146,14 @@ class BandProcessor {
     }
   }
 
-  /// Pushes [frame]'s samples through the ring. Returns an [FftFrame]
-  /// holding the latest smoothed bands when at least one FFT fired
-  /// during this call, or `null` while the ring is still priming.
-  /// `null` is also returned when the input has invalid metadata so
-  /// the caller can simply ignore it.
+  /// Pushes the samples of [frame] the ring does not have yet: all of
+  /// them, or only those past the overlap with the frame before (see the
+  /// class doc). Returns an [FftFrame] holding the latest smoothed bands
+  /// when at least one FFT fired during this call. Returns `null` while
+  /// the ring is still priming, and when the new audio did not reach the
+  /// next FFT (less than `fftSize / overlapFactor` samples since the
+  /// last one). `null` is also returned when the input has invalid
+  /// metadata so the caller can simply ignore it.
   FftFrame? process(PcmFrame frame) {
     final samples = frame.samples;
     final channels = frame.channels;
@@ -159,12 +177,15 @@ class BandProcessor {
     final samplesPerChannel = samples.length ~/ channels;
     if (samplesPerChannel <= 0) return null;
 
-    // Push every input sample (mono-mixed) into the ring. Fire an FFT
+    final firstNew = _firstNewFrame(frame, samplesPerChannel);
+    _remember(frame, samplesPerChannel);
+
+    // Push every new input sample (mono-mixed) into the ring. Fire an FFT
     // every `hopSize` samples once the ring has been filled at least
     // once (otherwise the front-edge would carry leftover zeros).
     var didFft = false;
     final invChannels = channels == 1 ? 1.0 : 1.0 / channels;
-    for (var i = 0; i < samplesPerChannel; i++) {
+    for (var i = firstNew; i < samplesPerChannel; i++) {
       double mono;
       if (channels == 1) {
         mono = samples[i].toDouble();
@@ -193,6 +214,119 @@ class BandProcessor {
 
     if (!didFft) return null;
     return _emit(frame.timestamp, sampleRate);
+  }
+
+  /// Keeps a copy of the [frames] whole frames of [frame] for the next
+  /// call ([_firstNewFrame]). A copy: the caller may reuse its buffer.
+  void _remember(PcmFrame frame, int frames) {
+    final length = frames * frame.channels;
+    var last = _last;
+    if (last == null || last.length < length) {
+      last = _last = Float32List(length);
+    }
+    last.setRange(0, length, frame.samples);
+    _lastLength = length;
+    _lastChannels = frame.channels;
+    _lastSampleRate = frame.sampleRate;
+    _lastTimestamp = frame.timestamp;
+  }
+
+  /// The index of the first frame of [frame] (of [frames] frames) the
+  /// ring does not have: where it stops repeating the end of the frame
+  /// before. 0 when the whole frame is new.
+  ///
+  /// The timestamps say about how much audio is new: they are exact for
+  /// pieces of one stream, and close for a tap, whose clock is not the
+  /// samples'. So they only say where to look. The proof is the samples:
+  /// the start of [frame] must equal, value by value, the end of the
+  /// frame before. Offsets are tried from the one the timestamps give,
+  /// outwards. For silence or a periodic signal several offsets fit, and
+  /// each of them leaves the ring with the same audio.
+  ///
+  /// The whole frame is new when there is no frame before or its format
+  /// differs, when the timestamp did not advance, when it advanced by the
+  /// length of the frame or more, and when no offset fits (a seek, a new
+  /// track, audio the tap missed).
+  int _firstNewFrame(PcmFrame frame, int frames) {
+    final last = _last;
+    final channels = frame.channels;
+    if (last == null ||
+        _lastLength == 0 ||
+        channels != _lastChannels ||
+        frame.sampleRate != _lastSampleRate) {
+      return 0;
+    }
+    final elapsed = (frame.timestamp - _lastTimestamp).inMicroseconds;
+    if (elapsed <= 0) return 0;
+    final guess = (elapsed * frame.sampleRate / Duration.microsecondsPerSecond)
+        .round();
+    if (guess >= frames) return 0;
+
+    // With n new frames, the first `frames - n` repeat the end of the
+    // frame before, which has to hold that many.
+    final least = math.max(1, frames - _lastLength ~/ channels);
+    final most = frames - 1;
+    if (least > most) return 0;
+    final n = _newFramesNear(
+      frame.samples,
+      frames,
+      channels,
+      guess.clamp(least, most),
+      least,
+      most,
+    );
+    return n == null ? 0 : frames - n;
+  }
+
+  /// How many of the [frames] frames of [samples] are new: the count
+  /// from [least] to [most] nearest to [center] at which the frames
+  /// before them repeat the end of the frame before. `null` when none
+  /// does.
+  int? _newFramesNear(
+    Float32List samples,
+    int frames,
+    int channels,
+    int center,
+    int least,
+    int most,
+  ) {
+    // A bound on the compares of counts that fit at first and fail later
+    // (long runs of one value): past it the frame is taken whole.
+    var budget = 8 * frames * channels;
+    for (var d = 0; center - d >= least || center + d <= most; d++) {
+      // Below the center, then above it.
+      for (var n = center - d; n <= center + d; n += 2 * d) {
+        if (n >= least && n <= most) {
+          final length = (frames - n) * channels;
+          final same = _repeated(samples, length);
+          if (same == length) return n;
+          budget -= same;
+          if (budget < 0) return null;
+        }
+        if (d == 0) break;
+      }
+    }
+    return null;
+  }
+
+  /// How many of the first [length] values of [samples] equal, one by
+  /// one, the last [length] of the frame before: [length] when all do.
+  /// 0 at once when one of three values spread over them differs, which
+  /// refuses nearly every placement that does not fit.
+  int _repeated(Float32List samples, int length) {
+    final last = _last!;
+    final base = _lastLength - length;
+    final middle = length >> 1;
+    if (samples[0] != last[base] ||
+        samples[length - 1] != last[base + length - 1] ||
+        samples[middle] != last[base + middle]) {
+      return 0;
+    }
+    var i = 0;
+    while (i < length && samples[i] == last[base + i]) {
+      i++;
+    }
+    return i;
   }
 
   void _runFftOnRing(int sampleRate, int fftSize) {
