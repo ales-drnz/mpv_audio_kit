@@ -93,6 +93,18 @@ class _RecordingChannel extends MediaSessionChannel {
       calls.where((c) => c.method == method).toList();
 }
 
+/// A native side that answers a metadata push (a cover of several MB)
+/// only when [answered] completes.
+class _SlowMetadataChannel extends _RecordingChannel {
+  final answered = Completer<void>();
+
+  @override
+  Future<void> updateMetadata(MediaSessionMetadataSnapshot metadata) async {
+    await super.updateMetadata(metadata);
+    await answered.future;
+  }
+}
+
 class _Call {
   final String method;
   final Map<String, Object?> args;
@@ -473,6 +485,57 @@ void main() {
       final snap =
           metaCalls.single.args['metadata'] as MediaSessionMetadataSnapshot;
       expect(snap.title, 'Custom Title');
+    });
+  });
+
+  group('MediaSessionController — flush', () {
+    const next = PlayerState(
+      playback: PlaybackState(playWhenReady: true),
+      file: FileState(metadata: {'title': 'Next'}),
+      settings: PlayerSettings(mediaSession: MediaSession()),
+    );
+
+    test('the play state does not wait for the native side to answer the '
+        'metadata push', () async {
+      final rig = _Rig();
+      final ch = _SlowMetadataChannel();
+      addTearDown(rig.dispose);
+      addTearDown(ch.close);
+      final controller = await _buildController(rig: rig, channel: ch);
+      addTearDown(controller.dispose);
+      await _settle();
+      ch.calls.clear();
+
+      // The end of a track's loading marks both in one flush.
+      rig.state = next;
+      rig.buffering.add(false);
+      await _settle();
+
+      expect(ch.calls.map((c) => c.method), [
+        'updateMetadata',
+        'updatePlayback',
+      ], reason: 'both sent, metadata first, with its answer still pending');
+      ch.answered.complete();
+    });
+
+    test('nothing is pushed after the disable of a dispose that arrives '
+        'while a push is unanswered', () async {
+      final rig = _Rig();
+      final ch = _SlowMetadataChannel();
+      addTearDown(rig.dispose);
+      addTearDown(ch.close);
+      final controller = await _buildController(rig: rig, channel: ch);
+      await _settle();
+      ch.calls.clear();
+
+      rig.state = next;
+      rig.buffering.add(false);
+      await _settle();
+      await controller.dispose();
+      ch.answered.complete();
+      await _settle();
+
+      expect(ch.calls.last.method, 'disable');
     });
   });
 

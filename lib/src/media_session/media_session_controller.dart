@@ -320,7 +320,12 @@ class MediaSessionController {
   /// previous file's title, tags and duration unavailable before the new
   /// ones arrive, and pushing that gap would flash an empty entry on the
   /// lockscreen. The end of loading pushes it once.
-  Future<void> _flush() async {
+  ///
+  /// Both pushes are sent in this turn, metadata first: the channel keeps
+  /// the order of the sends, and the play state of a track change does not
+  /// wait for the native side to answer a message with a cover in it.
+  /// Nothing is sent after an await, so nothing follows a `disable`.
+  void _flush() {
     _flushScheduled = false;
     if (_disposed || _stateSnapshot().settings.mediaSession == null) {
       _metadataDirty = false;
@@ -333,14 +338,14 @@ class MediaSessionController {
       final snap = _computeMetadata();
       if (_lastMetadata == null || snap != _lastMetadata) {
         _lastMetadata = snap;
-        await _channel.updateMetadata(snap);
+        unawaited(_channel.updateMetadata(snap));
       }
     }
     if (_playbackDirty) {
       final seek = _playbackSeek;
       _playbackDirty = false;
       _playbackSeek = false;
-      await _channel.updatePlayback(_computePlayback(seek: seek));
+      unawaited(_channel.updatePlayback(_computePlayback(seek: seek)));
     }
   }
 

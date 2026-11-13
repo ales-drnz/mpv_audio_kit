@@ -170,7 +170,8 @@ class MediaSessionPlaybackSnapshot {
 /// swallow [MissingPluginException] and [PlatformException] so an unwired
 /// platform is a no-op, not a crash; Dart-side state stays correct. The
 /// one exception is an `enable` refused because another Flutter engine of
-/// the process owns the session: it throws [StateError].
+/// the process owns the session: it throws [StateError]. Only `enable`
+/// does: an update or a `disable` is sent without anyone awaiting it.
 ///
 /// The event channel has no such net: Flutter reports a listen on a
 /// channel without a native side as a [FlutterError]. So [enable] says
@@ -222,7 +223,7 @@ class MediaSessionChannel {
     'config': _encodeConfig(session),
     'metadata': _encodeMetadata(metadata),
     'playback': _encodePlayback(playback),
-  });
+  }, throwsAlreadyOwned: true);
 
   /// Push a new configuration to the native side: actions, artwork
   /// source, audio-interruption flags. Called when the consumer
@@ -254,7 +255,11 @@ class MediaSessionChannel {
   static const String _alreadyOwned = 'already_owned';
 
   /// Whether a native side answered [method], with a result or an error.
-  Future<bool> _invoke(String method, Object? args) async {
+  Future<bool> _invoke(
+    String method,
+    Object? args, {
+    bool throwsAlreadyOwned = false,
+  }) async {
     try {
       await _method.invokeMethod<void>(method, args);
     } on MissingPluginException {
@@ -262,7 +267,7 @@ class MediaSessionChannel {
       // is still consistent, only the OS lockscreen entry is absent.
       return false;
     } on PlatformException catch (e) {
-      if (e.code == _alreadyOwned) {
+      if (throwsAlreadyOwned && e.code == _alreadyOwned) {
         throw StateError(
           'Another Flutter engine of this process owns the OS media '
           'session. It is one per process: it stays with the engine that '
