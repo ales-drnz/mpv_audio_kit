@@ -81,12 +81,14 @@ mixin _OutputModule on _PlayerBase {
   /// instead. Changed during playback, the list reopens the decoder, with
   /// a short gap.
   Future<void> setAudioSpdif(Set<Spdif> codecs) async {
+    // A copy: the caller's set, changed later, must not change the state.
+    final value = Set<Spdif>.unmodifiable(codecs);
     await _gate();
-    await _calls.prop('audio-spdif', Spdif.formatMpvList(codecs));
+    await _calls.prop('audio-spdif', Spdif.formatMpvList(value));
     _updateField(
-      (s) => s.copyWith(audioSpdif: codecs),
+      (s) => s.copyWith(audioSpdif: value),
       _reactives.audioSpdif,
-      codecs,
+      value,
     );
   }
 
@@ -118,7 +120,7 @@ mixin _OutputModule on _PlayerBase {
         // The browser refused the rate and kept its output at the rate
         // before: mpv and the state go back to it too, unless another
         // call wrote a rate since, which stands.
-        if (await getRawProperty('audio-samplerate') == rate.toString()) {
+        if (await _readString('audio-samplerate') == rate.toString()) {
           await _calls.prop('audio-samplerate', before.toString());
           _updateField(
             (s) => s.copyWith(audioSampleRate: before),

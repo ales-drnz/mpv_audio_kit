@@ -73,7 +73,7 @@ mixin _PlaybackModule on _PlayerBase {
       // `_sendEndOfContent`).
       var stuck = _transport.loadsInFlight == 0;
       if (stuck) stuck = await _parkedAtEof();
-      if (stuck) stuck = await getRawProperty('seekable') != 'yes';
+      if (stuck) stuck = await _readString('seekable') != 'yes';
       if (stuck && _transport.loadsInFlight == 0) {
         if (_transport.owns(intent)) _transport.writeIntent(false);
         return;
@@ -87,7 +87,7 @@ mixin _PlaybackModule on _PlayerBase {
     // load): the unpause only arms the next load, nothing plays now. Not
     // while a load is running, which is about to give the core content.
     var idle = _transport.loadsInFlight == 0;
-    if (idle) idle = await getRawProperty('idle-active') == 'yes';
+    if (idle) idle = await _readString('idle-active') == 'yes';
     if (idle && _transport.loadsInFlight == 0 && _transport.owns(intent)) {
       _transport.writeIntent(false);
     }
@@ -268,10 +268,12 @@ mixin _PlaybackModule on _PlayerBase {
   Future<void> setChapter(int index) async {
     await _gate();
     await _calls.prop('chapter', index.toString());
+    // No chapter is `null` in the state, as the observer reports it.
+    final shown = index < 0 ? null : index;
     _updateField(
-      (s) => s.copyWith(currentChapter: index),
+      (s) => s.copyWith(currentChapter: shown),
       _reactives.currentChapter,
-      index,
+      shown,
     );
   }
 

@@ -56,18 +56,49 @@ const Duration _kIsolateExitTimeout = Duration(seconds: 2);
 
 // ── Isolate entry point ───────────────────────────────────────────────────────
 
+/// The calls of the bring-up that mpv refused, as `what: rc=code`. The
+/// player still starts, with mpv's default in place of each: they go out
+/// as one warning once the main isolate listens. An option this build of
+/// mpv does not have goes to [unknown] instead, reported at debug level:
+/// the recipe switches off features (the scripts, the OSC) that an audio
+/// build leaves out.
+final class _Refusals {
+  final refused = <String>[];
+  final unknown = <String>[];
+
+  /// The internal log lines for what was collected.
+  Iterable<MpvEventInternalLog> get logs => [
+    if (refused.isNotEmpty)
+      MpvEventInternalLog(
+        'warn',
+        'mpv refused at bring-up, its defaults apply: ${refused.join('; ')}',
+      ),
+    if (unknown.isNotEmpty)
+      MpvEventInternalLog(
+        'debug',
+        'options this libmpv does not have: ${unknown.join(', ')}',
+      ),
+  ];
+}
+
 void _applyOptionStrings(
   mpv.MpvLibrary lib,
   Pointer<mpv.MpvHandle> handle,
   Map<String, String> opts,
+  _Refusals refused,
 ) {
   for (final entry in opts.entries) {
     using((arena) {
-      lib.mpvSetOptionString(
+      final rc = lib.mpvSetOptionString(
         handle,
         entry.key.toNativeUtf8(allocator: arena),
         entry.value.toNativeUtf8(allocator: arena),
       );
+      if (rc == mpv.MpvError.mpvErrorOptionNotFound) {
+        refused.unknown.add(entry.key);
+      } else if (rc < 0) {
+        refused.refused.add('option ${entry.key}=${entry.value}: rc=$rc');
+      }
     });
   }
 }
@@ -76,14 +107,18 @@ void _applyPropertyStrings(
   mpv.MpvLibrary lib,
   Pointer<mpv.MpvHandle> handle,
   Map<String, String> props,
+  _Refusals refused,
 ) {
   for (final entry in props.entries) {
     using((arena) {
-      lib.mpvSetPropertyString(
+      final rc = lib.mpvSetPropertyString(
         handle,
         entry.key.toNativeUtf8(allocator: arena),
         entry.value.toNativeUtf8(allocator: arena),
       );
+      if (rc < 0) {
+        refused.refused.add('property ${entry.key}=${entry.value}: rc=$rc');
+      }
     });
   }
 }
@@ -92,15 +127,17 @@ void _applyObserves(
   mpv.MpvLibrary lib,
   Pointer<mpv.MpvHandle> handle,
   List<MpvObserveSpec> observes,
+  _Refusals refused,
 ) {
   for (final spec in observes) {
     using((arena) {
-      lib.mpvObserveProperty(
+      final rc = lib.mpvObserveProperty(
         handle,
         spec.replyId,
         spec.name.toNativeUtf8(allocator: arena),
         spec.format,
       );
+      if (rc < 0) refused.refused.add('observe ${spec.name}: rc=$rc');
     });
   }
 }
@@ -121,6 +158,7 @@ void _isolateEntry(SendPort initialReplyPort) {
           : null;
       final stopFlag = Pointer<Int32>.fromAddress(message.stopFlagAddress);
       final ownerGone = Pointer<Int32>.fromAddress(message.ownerGoneAddress);
+      final refused = _Refusals();
       try {
         // The heavy FFI sequence runs here: off the main isolate so
         // the host UI keeps rendering during cold start.
@@ -132,13 +170,16 @@ void _isolateEntry(SendPort initialReplyPort) {
           return;
         }
         handle = h;
-        _applyOptionStrings(lib!, h, message.preInitOptions);
+        _applyOptionStrings(lib!, h, message.preInitOptions, refused);
         if (message.logLevel != null) {
           using((arena) {
-            lib!.mpvRequestLogMessages(
+            final rc = lib!.mpvRequestLogMessages(
               h,
               message.logLevel!.toNativeUtf8(allocator: arena),
             );
+            if (rc < 0) {
+              refused.refused.add('log level ${message.logLevel}: rc=$rc');
+            }
           });
         }
         final failed = _initFailure(lib!, h, lib!.mpvInitialize(h));
@@ -148,8 +189,8 @@ void _isolateEntry(SendPort initialReplyPort) {
           fromMain.close();
           return;
         }
-        _applyPropertyStrings(lib!, h, message.postInitOptions);
-        _applyObserves(lib!, h, message.observes);
+        _applyPropertyStrings(lib!, h, message.postInitOptions, refused);
+        _applyObserves(lib!, h, message.observes, refused);
         // Not registered with the logic: `pause` and `keep-open-parked`
         // never reach the main isolate, the logic reads them for the end
         // of content only.
@@ -164,8 +205,9 @@ void _isolateEntry(SendPort initialReplyPort) {
             mpv.MpvFormat.mpvFormatFlag,
             _kParkObserverReplyId,
           ),
-        ]);
+        ], refused);
         toMain!.send(_InitDone(h.address));
+        refused.logs.forEach(toMain!.send);
       } catch (e, st) {
         // The main isolate gets no handle from a failed init, so the core
         // created above is destroyed here or never.
@@ -651,9 +693,14 @@ class MpvEventIsolate {
   /// teardown. [Isolate.kill] is never used for the same reason (killing
   /// mid-FFI to libmpv is a non-deterministic crash).
   ///
+  /// After a `false` the exit listener stays armed: a later call waits for
+  /// the same exit again, with the same bound, and answers `true` once the
+  /// worker has left. The caller destroys the handle then.
+  ///
   /// The native stop flag is freed ONLY on confirmed exit, when no parked
-  /// reader can survive the free; on the timeout branch it is intentionally
-  /// leaked (4 bytes, bounded by live Player count, reclaimed at process exit).
+  /// reader can survive the free; until then it stays allocated (4 bytes,
+  /// bounded by live Player count, reclaimed at process exit when the
+  /// worker never leaves).
   Future<bool> stop() async {
     // Publish the stop intent unconditionally: callers that have no
     // (lib, handle) pair for [requestStop] (teardown before bring-up
@@ -668,35 +715,35 @@ class MpvEventIsolate {
     if (!_events.isClosed) unawaited(_events.close());
 
     final exitPort = _exitPort;
-    final isolate = _isolate;
-    if (isolate == null || exitPort == null) {
+    if (_isolate == null || exitPort == null) {
       _toIsolate = null;
       _exitPort = null;
       _freeStopFlag();
       return true;
     }
-
-    _isolate = null;
     _toIsolate = null;
-    _exitPort = null;
 
     // The exit listener was armed in `start()` before the isolate could
     // possibly tear down. The 2 s timeout is a safety net for a pathologically
     // stuck libmpv: clean exits land in single-digit ms via `mpv_wakeup`.
+    // One listen for every call: the port closes with its first message.
+    final exit = _exit ??= exitPort.first;
     try {
-      await exitPort.first.timeout(_kIsolateExitTimeout);
-      _freeStopFlag();
-      return true;
+      await exit.timeout(_kIsolateExitTimeout);
     } on TimeoutException {
-      // Leaked on purpose: drop the pointer so a later stop() (dispose
-      // after a timed-out bring-up teardown) cannot free it under the
-      // worker that may still read it.
-      _stopFlag = null;
+      // The flag and the listener stay for the next call: the worker may
+      // still read the one and has yet to trigger the other.
       return false;
-    } finally {
-      exitPort.close();
     }
+    _isolate = null;
+    _exitPort = null;
+    _exit = null;
+    _freeStopFlag();
+    return true;
   }
+
+  /// The worker's exit, listened to by the first [stop] that waits for it.
+  Future<Object?>? _exit;
 
   void _freeStopFlag() {
     final flag = _stopFlag;

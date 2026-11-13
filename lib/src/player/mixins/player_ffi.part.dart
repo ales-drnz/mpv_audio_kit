@@ -62,6 +62,12 @@ Future<void> Function()? debugBeforePcmCutRemove;
 @visibleForTesting
 Future<void> Function()? debugBeforeRetainedRemove;
 
+/// Test only: the keys of the [Media] cache of [player]. Not exported, as
+/// [debugBeforePcmCutRemove].
+@visibleForTesting
+Set<String> debugMediaCacheKeys(Player player) =>
+    player._mediaCache.byUri.keys.toSet();
+
 /// The `loadfile` of a [Media] with its entry bookkeeping (the entry in
 /// [_PlayerBase._entries], the cut of an aborted live source), and the
 /// public raw escape hatches (property reads and writes, commands, log
@@ -282,6 +288,20 @@ mixin _FfiModule on _PlayerBase {
     }
   }
 
+  /// Throws [ArgumentError] when [command] shuts the core down. A core
+  /// that quits takes the event isolate with it: no call would get its
+  /// reply any more.
+  void _checkNotQuit(String command) {
+    if (command == 'quit' || command == 'quit-watch-later') {
+      throw ArgumentError.value(
+        command,
+        'args',
+        'Command `$command` shuts the core down under the player. '
+            'Use Player.dispose() instead.',
+      );
+    }
+  }
+
   /// Sends a raw mpv command.
   ///
   /// **Escape hatch.** Same caveats as [setRawProperty]: prefer the
@@ -293,7 +313,9 @@ mixin _FfiModule on _PlayerBase {
   /// (`set`, `add`, `multiply`, `cycle`, `cycle-values`, `change-list`),
   /// also after a prefix such as `no-osd`, through `options/` or
   /// `file-local-options/`, or in the per-file options of `loadfile`,
-  /// throw [ArgumentError] before anything reaches mpv.
+  /// throw [ArgumentError] before anything reaches mpv. So do `quit` and
+  /// `quit-watch-later`: a core that shuts down under the player answers
+  /// no call any more. Use [dispose].
   ///
   /// Throws [PlayerDisposedException] if the player has been disposed,
   /// [ArgumentError] for a reserved command as above, or
@@ -320,6 +342,7 @@ mixin _FfiModule on _PlayerBase {
               'experimental or expression-based filters as a RawAudioEffect.',
         );
       }
+      _checkNotQuit(command);
       if (_kPropertyCommands.contains(command)) {
         // `cycle-values` takes flags such as `!reverse` before the name.
         var p = i + 1;

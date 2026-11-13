@@ -100,6 +100,7 @@ mixin _MediaSessionModule on _PlayerBase {
 
     // 4. Bring the controller in line with the state, in turn with the
     //    other calls: see [_queueMediaSessionSync].
+    _sessionRequested = true;
     try {
       await _queueMediaSessionSync();
     } catch (_) {
@@ -129,8 +130,28 @@ mixin _MediaSessionModule on _PlayerBase {
     if (identical(_sessionOwner, this)) {
       _sessionOwner = null;
     }
-    await _queueMediaSessionSync();
+    // A player that never asked for a session has nothing in the queue,
+    // and must not wait for the session of another one.
+    if (!_sessionRequested) return;
+    try {
+      await _queueMediaSessionSync().timeout(_kSessionReleaseBound);
+    } on TimeoutException {
+      // The native side does not answer. The turn stays in the queue and
+      // tears the controller down when it comes: dispose goes on to the
+      // core meanwhile.
+      _internalLog(
+        'The media session did not release within '
+        '${_kSessionReleaseBound.inSeconds}s; dispose goes on without it',
+        level: LogLevel.warn,
+      );
+    }
   }
+
+  /// Whether [setMediaSession] ever queued work for this player.
+  bool _sessionRequested = false;
+
+  /// How long dispose waits for its turn in [_sessionQueue].
+  static const Duration _kSessionReleaseBound = Duration(seconds: 5);
 
   /// Runs [_syncMediaSessionController] after the media-session work every
   /// [Player] of the isolate queued before it. Calls that are not awaited
@@ -269,7 +290,9 @@ mixin _MediaSessionModule on _PlayerBase {
   /// AudioUnit the system stopped for an interruption or a media services
   /// reset stays silent, while mpv keeps reporting playback.
   void _reloadAudioOutput() {
-    _applySessionCommand(_calls.commandChecked(const ['ao-reload']));
+    // Through the gate: the session can exist before the core runs, and
+    // stays when the core could not start.
+    _applySessionCommand((this as Player).reloadAudio());
   }
 
   /// Fires an inbound-command action without awaiting it (the command-stream
