@@ -75,6 +75,7 @@ import '../types/settings/spectrum_settings.dart';
 import '../types/state/audio_output_state.dart';
 import 'audio_output_error.dart';
 import 'lifecycle_transitions.dart';
+import 'media_cache.dart';
 import 'player_api.dart';
 import 'player_configuration.dart';
 import 'player_state.dart';
@@ -306,15 +307,7 @@ abstract class _PlayerBase {
 
   void _assignState(PlayerState s) => _state = s;
 
-  final Map<String, Media> _mediaCache = {};
-
-  /// The keys of [_mediaCache] a source resolver gave, which
-  /// `_cacheResolved` turns over at each load.
-  final Set<String> _resolvedKeys = {};
-
-  /// How many add, insert and replace calls are between their first write
-  /// to [_mediaCache] and mpv's answer: the cache is not pruned meanwhile.
-  int _entryLoads = 0;
+  final MediaCache _mediaCache = MediaCache();
 
   /// The playlist entries this player loaded, by mpv's `playlist_entry_id`:
   /// their [Media] (unlike [_mediaCache], two entries with the same URI keep
@@ -465,6 +458,12 @@ abstract class _PlayerBase {
   String _buildLoadfileOptions(Media media);
   void _validateLoadOptions(Media media);
   void _rejectPcm(Media media, String name);
+
+  /// See `_FfiModule`: the raw property escape hatches of the public API.
+  /// The player's own reads and writes go through [_readString] and
+  /// [_calls] instead.
+  Future<String?> getRawProperty(String name);
+  Future<void> setRawProperty(String name, String value);
 
   /// Reads the mpv property [name] as a string for a call already past
   /// [_gate]: `null` when the read fails, also once dispose closed the

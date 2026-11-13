@@ -66,7 +66,7 @@ Future<void> Function()? debugBeforeRetainedRemove;
 /// [debugBeforePcmCutRemove].
 @visibleForTesting
 Set<String> debugMediaCacheKeys(Player player) =>
-    player._mediaCache.keys.toSet();
+    player._mediaCache.byUri.keys.toSet();
 
 /// The `loadfile` of a [Media] with its entry bookkeeping (the entry in
 /// [_PlayerBase._entries], the cut of an aborted live source), and the
@@ -200,6 +200,7 @@ mixin _FfiModule on _PlayerBase {
   ///
   /// Returns `null` if the property doesn't exist or the read
   /// fails. Throws [PlayerDisposedException] if the player has been disposed.
+  @override
   Future<String?> getRawProperty(String name) async {
     await _gate();
     final (error, value) = await _calls.get(name, MpvFormat.mpvFormatString);
@@ -248,6 +249,7 @@ mixin _FfiModule on _PlayerBase {
   /// Throws [PlayerDisposedException] if the player has been disposed,
   /// [ArgumentError] if [name] is reserved, or [MpvCommandException] if mpv
   /// rejects the property write (unknown name, out-of-range value, etc.).
+  @override
   Future<void> setRawProperty(String name, String value) async {
     _checkNotOwned(name, 'name');
     await _gate();
@@ -282,6 +284,20 @@ mixin _FfiModule on _PlayerBase {
         'observed, so a raw write would desync state.playWhenReady (and '
         'the OS play-pause button) from actual playback. '
         'Use Player.play() or Player.pause() instead.',
+      );
+    }
+  }
+
+  /// Throws [ArgumentError] when [command] shuts the core down. A core
+  /// that quits takes the event isolate with it: no call would get its
+  /// reply any more.
+  void _checkNotQuit(String command) {
+    if (command == 'quit' || command == 'quit-watch-later') {
+      throw ArgumentError.value(
+        command,
+        'args',
+        'Command `$command` shuts the core down under the player. '
+            'Use Player.dispose() instead.',
       );
     }
   }
@@ -326,16 +342,7 @@ mixin _FfiModule on _PlayerBase {
               'experimental or expression-based filters as a RawAudioEffect.',
         );
       }
-      // A core that quits takes the event isolate with it: no call would
-      // get its reply any more.
-      if (command == 'quit' || command == 'quit-watch-later') {
-        throw ArgumentError.value(
-          command,
-          'args',
-          'Command `$command` shuts the core down under the player. '
-              'Use Player.dispose() instead.',
-        );
-      }
+      _checkNotQuit(command);
       if (_kPropertyCommands.contains(command)) {
         // `cycle-values` takes flags such as `!reverse` before the name.
         var p = i + 1;

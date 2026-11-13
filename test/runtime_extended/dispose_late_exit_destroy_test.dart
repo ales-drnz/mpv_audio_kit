@@ -8,7 +8,6 @@ library;
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
 import '../_helpers/setter_test_helpers.dart';
 import '../_helpers/slow_core_shim.dart';

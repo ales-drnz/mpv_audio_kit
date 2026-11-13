@@ -30,7 +30,6 @@ mixin _OpenModule on _PlayerBase, _FfiModule {
     final previousIntent = _state.playback.playWhenReady;
     final intent = _transport.claimIntent(shouldPlay);
     _mediaCache.clear();
-    _resolvedKeys.clear();
     _mediaCache[media.uri] = media;
     final OwnedSource source;
     try {
@@ -215,7 +214,6 @@ mixin _OpenModule on _PlayerBase, _FfiModule {
     final old = _state.playback.playlist;
     final index = old.index;
     _mediaCache.clear();
-    _resolvedKeys.clear();
     if (index < 0 || index >= old.items.length) return;
     final current = old.items[index];
     _mediaCache[current.uri] = current;
@@ -339,24 +337,33 @@ mixin _OpenModule on _PlayerBase, _FfiModule {
         // entry 0), which would start the incoming album's first track:
         // the exact transient this flow eliminates. Idle lands within a
         // playloop iteration; the bound only guards a wedged core.
-        var idle = false;
-        for (var i = 0; i < 100; i++) {
-          idle = await _readString('idle-active') == 'yes';
-          if (load.superseded) return null;
-          if (idle) break;
-          await Future<void>.delayed(const Duration(milliseconds: 5));
-        }
-        if (load.superseded) return null;
-        if (!idle) {
-          _internalLog(
-            'openAll: the core did not reach idle after the removal of the '
-            'parked entry; the first new entry may start before the jump',
-            level: LogLevel.warn,
-          );
-        }
+        if (!await _awaitIdle(load)) return null;
       }
     }
     return retainedCount > 0 && !parkedAtEof;
+  }
+
+  /// The barrier of [_openAllClear]: waits, half a second at most, for the
+  /// core to reach idle. Returns `false` once a later load took over. A
+  /// wait that ran out is logged: the appends go on, and the first new
+  /// entry may start before the jump.
+  Future<bool> _awaitIdle(_LoadTicket load) async {
+    var idle = false;
+    for (var i = 0; i < 100; i++) {
+      idle = await _readString('idle-active') == 'yes';
+      if (load.superseded) return false;
+      if (idle) break;
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+    }
+    if (load.superseded) return false;
+    if (!idle) {
+      _internalLog(
+        'openAll: the core did not reach idle after the removal of the '
+        'parked entry; the first new entry may start before the jump',
+        level: LogLevel.warn,
+      );
+    }
+    return true;
   }
 
   /// Phase 2 of [Player.openAll]: appends [medias] from their [sources].
@@ -427,7 +434,6 @@ mixin _OpenModule on _PlayerBase, _FfiModule {
     final previousIntent = _state.playback.playWhenReady;
     final intent = _transport.claimIntent(shouldPlay);
     _mediaCache.clear();
-    _resolvedKeys.clear();
     final OwnedSource source;
     try {
       source = OwnedSource(await resolveUri(playlist.uri));

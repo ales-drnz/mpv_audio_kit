@@ -62,7 +62,7 @@ void main() {
         return alias(shortFixture, calls);
       });
       await player.setLoop(Loop.playlist);
-      await player.open(Media('resolve://sine'), play: true);
+      await player.open(const Media('resolve://sine'), play: true);
       await waitUntil(
         () => calls >= 12,
         timeout: const Duration(seconds: 30),

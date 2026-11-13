@@ -60,7 +60,7 @@ mixin _PlaylistModule on _PlayerBase {
   /// appends in mpv.
   Future<void> _addEntry(Media media, _LoadTicket load, {int? at}) async {
     // Kept from the cache prune until mpv has the entry.
-    _entryLoads++;
+    _mediaCache.entryLoads++;
     try {
       _mediaCache[media.uri] = media;
       final source = OwnedSource(await resolveUri(media.uri));
@@ -87,7 +87,7 @@ mixin _PlaylistModule on _PlayerBase {
         await source.release();
       }
     } finally {
-      _entryLoads--;
+      _mediaCache.entryLoads--;
     }
   }
 
@@ -256,7 +256,7 @@ mixin _PlaylistModule on _PlayerBase {
     await _gate();
     if (await _checkPlaylistIndex(index, 'index') == null) return;
     // As in [_addEntry].
-    _entryLoads++;
+    _mediaCache.entryLoads++;
     try {
       _mediaCache[media.uri] = media;
       final source = OwnedSource(await resolveUri(media.uri));
@@ -326,7 +326,7 @@ mixin _PlaylistModule on _PlayerBase {
         await source.release();
       }
     } finally {
-      _entryLoads--;
+      _mediaCache.entryLoads--;
     }
   }
 
@@ -352,8 +352,7 @@ mixin _PlaylistModule on _PlayerBase {
     final current = keepCurrent && playlist.index >= 0
         ? playlist.items.elementAtOrNull(playlist.index)
         : null;
-    _mediaCache.removeWhere((_, media) => current == null || media != current);
-    _resolvedKeys.retainAll(_mediaCache.keys);
+    _mediaCache.keepOnly(current);
     // Execute in-flight transport writes first; see [CoreCalls.settleWrites].
     await _calls.settleWrites();
     if (load.superseded) return;

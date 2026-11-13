@@ -325,7 +325,12 @@ mixin _HooksModule on _PlayerBase {
       // Keep the original Media reachable under the rewritten URL, so a
       // later `on_load_fail` on this entry (expired token on the resolved
       // URL) still hands the resolver the same Media and extras.
-      _cacheResolved(target, media, load: true);
+      _mediaCache.putResolved(
+        target,
+        media,
+        load: true,
+        kept: _prefetchResolved?.$2,
+      );
     } catch (e, st) {
       _internalLog(
         'Source resolver threw for ${hook.mpvValue}: $e\n$st',
@@ -421,26 +426,7 @@ mixin _HooksModule on _PlayerBase {
       return;
     }
     _prefetchResolved = (current, target, asked, entry);
-    if (changed) _cacheResolved(target, media, load: false);
-  }
-
-  /// Caches [media] under [target], the URL a resolver gave for it. With
-  /// [load] (the URL of the load under way) the URLs of earlier loads
-  /// leave the cache, except the one kept for the prefetch: a resolver
-  /// that gives a new URL at each load (a signed URL under a looping
-  /// playlist) would grow it by one key a load.
-  void _cacheResolved(String target, Media media, {required bool load}) {
-    if (load) {
-      final kept = _prefetchResolved?.$2;
-      _resolvedKeys.removeWhere((key) {
-        if (key == target || key == kept) return false;
-        _mediaCache.remove(key);
-        return true;
-      });
-    }
-    // A key a load of the player wrote stays that load's.
-    if (!_mediaCache.containsKey(target)) _resolvedKeys.add(target);
-    _mediaCache[target] = media;
+    if (changed) _mediaCache.putResolved(target, media, load: false);
   }
 
   /// The [Media] cached under [uri]. On Windows mpv hands a local path
@@ -450,7 +436,7 @@ mixin _HooksModule on _PlayerBase {
     final hit = _mediaCache[uri];
     if (hit != null || !hostIsWindows) return hit;
     final key = uri.replaceAll('/', r'\');
-    for (final entry in _mediaCache.entries) {
+    for (final entry in _mediaCache.byUri.entries) {
       if (entry.key.replaceAll('/', r'\') == key) return entry.value;
     }
     return null;
