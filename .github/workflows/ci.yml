@@ -129,6 +129,13 @@ jobs:
       - run: flutter pub get
       - run: flutter pub get
         working-directory: test_app
+      # flutter analyze reads the packages of tool too (analysis_options.yaml
+      # leaves out tool/codegen alone), each with its own dependencies.
+      - name: Dependencies of the tool packages
+        run: |
+          for package in metrics data_classes mutation; do
+            dart pub get -C "tool/$package"
+          done
       - name: Format
         if: matrix.flutter == 'stable'
         run: dart format --output=none --set-exit-if-changed lib test example test_app/lib test_app/integration_test hook tool

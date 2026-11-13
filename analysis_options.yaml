@@ -1,8 +1,11 @@
 # Static analysis configuration for a published package.
 #
 # Builds on flutter_lints with a stricter, curated ruleset: enforced API
-# docs, stricter type checking, const correctness, trailing commas, and
-# awaited futures.
+# docs, stricter type checking, const correctness and awaited futures.
+#
+# The Dart packages under tool/ (metrics, data_classes, mutation) have
+# rules of their own in tool/metrics/analysis_options.yaml, and are
+# analyzed once their dependencies are there (dart pub get -C tool/<name>).
 
 include: package:flutter_lints/flutter.yaml
 
@@ -12,18 +15,15 @@ analyzer:
     strict-raw-types: true
     strict-inference: true
   exclude:
-    - docs/**
     # Emitted by tool/codegen; their ignore_for_file
     # headers don't cover this file's stricter ruleset, and the resulting
     # ~5k infos would bury every real finding in `flutter analyze`.
     - test/generated/**
     # The codegen's static overlay only compiles once copied into lib/.
-    - tool/**
+    - tool/codegen/**
     - build/**
     - android/**
-    - ios/**
     - windows/**
-    - macos/**
     - linux/**
 
 linter:

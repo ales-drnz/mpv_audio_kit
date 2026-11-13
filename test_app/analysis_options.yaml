@@ -10,7 +10,6 @@ analyzer:
     strict-casts: true
     strict-raw-types: true
   exclude:
-    - docs/**
     - build/**
     - android/**
     - ios/**

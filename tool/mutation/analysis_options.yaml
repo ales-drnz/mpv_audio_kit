@@ -1,0 +1,2 @@
+# The rules the packages under tool/ share.
+include: ../metrics/analysis_options.yaml
