@@ -16,9 +16,7 @@
 // This must be included before many other Windows headers.
 #include <windows.h>
 
-#include <flutter/method_channel.h>
 #include <flutter/plugin_registrar_windows.h>
-#include <flutter/standard_method_codec.h>
 
 #include <memory>
 
@@ -26,59 +24,18 @@
 
 namespace mpv_audio_kit {
 
-/**
- * @brief Static method to register the plugin with the Windows registrar.
- * 
- * Sets up the MethodChannel and the plugin instance.
- * 
- * @param registrar The Windows plugin registrar.
- */
+// Registers the plugin with the Windows registrar. libmpv is driven via FFI
+// from Dart, and the `mpv_audio_kit` method channel (openFileDescriptor and
+// closeFileDescriptor) is Android's alone: Dart calls it nowhere else, so it
+// is not registered here.
 void MpvAudioKitPlugin::RegisterWithRegistrar(
     flutter::PluginRegistrarWindows *registrar) {
-  auto channel =
-      std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
-          registrar->messenger(), "mpv_audio_kit",
-          &flutter::StandardMethodCodec::GetInstance());
-
-  auto plugin = std::make_unique<MpvAudioKitPlugin>();
-
-  // Set the method call handler for the channel.
-  channel->SetMethodCallHandler(
-      [plugin_pointer = plugin.get()](const auto &call, auto result) {
-        plugin_pointer->HandleMethodCall(call, std::move(result));
-      });
-
   // ── OS media session (SMTC via C++/WinRT) ───────────────────────────
   // MediaSessionChannelWin holds this engine's media-session channels and
   // goes with the registrar. The SystemMediaTransportControls controller
   // and the platform-thread command marshaling are one per process, in a
   // hub that is never destroyed (see media_session_channel_win.h).
   registrar->AddPlugin(std::make_unique<MediaSessionChannelWin>(registrar));
-
-  // Add the plugin instance to the registrar.
-  registrar->AddPlugin(std::move(plugin));
-}
-
-MpvAudioKitPlugin::MpvAudioKitPlugin() {}
-
-MpvAudioKitPlugin::~MpvAudioKitPlugin() {}
-
-/**
- * @brief Handles method calls from Dart via the MethodChannel.
- * 
- * The package drives libmpv via direct FFI/C bindings, so the main
- * MethodChannel is unused on Windows and this handler is minimal.
- * 
- * @param method_call The incoming method call from Dart.
- * @param result The result object to send a response back.
- */
-void MpvAudioKitPlugin::HandleMethodCall(
-    const flutter::MethodCall<flutter::EncodableValue> & /*method_call*/,
-    std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
-  // The channel's methods (openFileDescriptor, closeFileDescriptor) are
-  // Android-only. The unused call param is left unnamed to avoid C4100
-  // under MSVC /W4 /WX.
-  result->NotImplemented();
 }
 
 }  // namespace mpv_audio_kit
