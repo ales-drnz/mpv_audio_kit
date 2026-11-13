@@ -108,12 +108,17 @@ class MediaSessionPlaybackSnapshot {
   final bool shuffle;
 
   /// End-of-content reached ([PlaybackState.completed]: `eof-reached` on the
-  /// last playlist entry with no loop on). The native side maps this to a
-  /// terminal state (Android `STATE_ENDED`, Linux MPRIS
-  /// `PlaybackStatus=Stopped` with empty `Metadata`) instead of leaving a
-  /// finished track parked as "Paused at full length" on the OS surface.
-  /// Apple has no distinct "ended" playback state and parks acceptably as
-  /// paused, so it ignores it.
+  /// last playlist entry with no loop on). Two native sides map it to a
+  /// terminal state instead of leaving a finished track parked as "Paused
+  /// at full length" on the OS surface:
+  ///
+  /// | Platform | What it does with `completed` |
+  /// | :--- | :--- |
+  /// | Android | `STATE_ENDED` |
+  /// | Linux | MPRIS `PlaybackStatus=Stopped` with empty `Metadata` |
+  /// | Apple | not read: no "ended" state, the entry parks as paused |
+  /// | Windows | not read: the SMTC entry stays `Paused` |
+  /// | Web | not read: `playbackState` stays `paused` |
   final bool completed;
 
   /// This snapshot originates from a seek landing (PLAYBACK_RESTART), as
@@ -124,13 +129,33 @@ class MediaSessionPlaybackSnapshot {
   final bool seek;
 
   /// Actual audio output (`core-idle` inverted), distinct from [playing]
-  /// (which is the intent the OS button binds to). The native side advances
-  /// the scrub bar by extrapolation ONLY while this is true, so the slider
-  /// doesn't keep moving during a buffer stall or a seek transient.
+  /// (which is the intent the OS button binds to). Where a native side
+  /// reads it, the scrub bar advances by extrapolation only while this is
+  /// true, so the slider doesn't keep moving during a buffer stall or a
+  /// seek transient. Where none does, the position the OS shows follows
+  /// [playing] and [rate] alone: on Apple and the web the slider keeps
+  /// moving through a stall, until the next push (a seek landing, a pause)
+  /// sets it right.
+  ///
+  /// | Platform | What it does with `actualPlaying` |
+  /// | :--- | :--- |
+  /// | Android | the position advances only while it is true |
+  /// | Linux | the MPRIS `Position` advances only while it is true |
+  /// | Apple | not read: the published rate follows [playing] |
+  /// | Windows | not read: the SMTC timeline carries the pushed position |
+  /// | Web | not read: `setPositionState` follows [playing] and [rate] |
   final bool actualPlaying;
 
-  /// Buffering or loading. Mapped to a loading state where the OS supports one
-  /// (Android `STATE_BUFFERING`).
+  /// Buffering or loading. Mapped to a loading state where the OS has one
+  /// and the native side reads it:
+  ///
+  /// | Platform | What it does with `buffering` |
+  /// | :--- | :--- |
+  /// | Android | `STATE_BUFFERING` |
+  /// | Windows | SMTC `PlaybackStatus` `Changing` |
+  /// | Apple | not read |
+  /// | Linux | not read: MPRIS has no such status |
+  /// | Web | not read |
   final bool buffering;
 
   /// Whether next or previous navigation is available right now. For a real
@@ -329,6 +354,9 @@ class MediaSessionChannel {
         if (m.artworkUrl != null) 'artworkUrl': m.artworkUrl,
       };
 
+  // The keys of the three maps are the contract with every native side,
+  // which reads them by name: channel_encode_test pins the set. Not every
+  // side reads every key (see [MediaSessionPlaybackSnapshot]).
   Map<String, Object?> _encodePlayback(MediaSessionPlaybackSnapshot p) =>
       <String, Object?>{
         'playing': p.playing,

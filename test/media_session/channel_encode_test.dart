@@ -54,6 +54,92 @@ void main() {
     debugDefaultTargetPlatformOverride = null;
   });
 
+  // The contract with the native sides: each reads these maps by key. A
+  // key renamed, dropped or added here must be followed on Android, Apple,
+  // Linux, Windows and the web, so the set is fixed in one place.
+  group('the keys of an enable', () {
+    const config = {
+      'actions',
+      'isFavorite',
+      'interruptionPolicy',
+      'fastForwardIntervalMs',
+      'rewindIntervalMs',
+      'supportedPlaybackRates',
+    };
+    const metadata = {
+      'title',
+      'artist',
+      'album',
+      'artworkBytes',
+      'artworkMime',
+      'durationMs',
+      'trackNumber',
+      'discNumber',
+      'albumArtist',
+      'genre',
+      'url',
+    };
+    const playback = {
+      'playing',
+      'positionMs',
+      'rate',
+      'seekable',
+      'loop',
+      'shuffle',
+      'completed',
+      'seek',
+      'actualPlaying',
+      'buffering',
+      'hasNext',
+      'hasPrevious',
+      'appPauses',
+    };
+
+    Set<Object?> keys(Map<Object?, Object?> sent, String map) =>
+        (sent[map]! as Map).keys.toSet();
+
+    test('are config, metadata and playback, each with its own', () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      final sent = await _enableArguments();
+      expect(sent.keys.toSet(), {'config', 'metadata', 'playback'});
+      expect(keys(sent, 'config'), config);
+      expect(keys(sent, 'metadata'), metadata);
+      expect(keys(sent, 'playback'), playback);
+    });
+
+    test('add appName on Windows, and desktopEntry too on Linux', () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+      expect(keys(await _enableArguments(), 'config'), {...config, 'appName'});
+      debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+      expect(keys(await _enableArguments(), 'config'), {
+        ...config,
+        'appName',
+        'desktopEntry',
+      });
+      for (final platform in [TargetPlatform.iOS, TargetPlatform.macOS]) {
+        debugDefaultTargetPlatformOverride = platform;
+        expect(keys(await _enableArguments(), 'config'), config);
+      }
+    });
+
+    test('add artworkUrl only when the snapshot has one', () async {
+      final sent = await _enableArguments(
+        metadata: const MediaSessionMetadataSnapshot(
+          artworkUrl: 'https://example.com/cover.jpg',
+        ),
+      );
+      expect(keys(sent, 'metadata'), {...metadata, 'artworkUrl'});
+    });
+
+    test('carry the playback flags as booleans', () async {
+      final sent = await _enableArguments();
+      final map = sent['playback']! as Map;
+      for (final key in ['completed', 'actualPlaying', 'buffering', 'seek']) {
+        expect(map[key], isA<bool>(), reason: key);
+      }
+    });
+  });
+
   test('supportedPlaybackRates crosses as a plain list, whatever list the '
       'app gave', () async {
     // A Float64List is a List<double>, and the codec writes it as typed
