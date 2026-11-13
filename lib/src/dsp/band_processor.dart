@@ -52,7 +52,13 @@ class BandProcessor {
   /// Creates a processor seeded with the given [SpectrumSettings]. The
   /// FFT engine and scratch buffers stay unallocated until the first
   /// [process] call, so an idle processor costs no memory.
-  BandProcessor(this._settings);
+  ///
+  /// Throws [ArgumentError] when a field of the settings is out of range,
+  /// in a release build too, where the asserts of [SpectrumSettings] are
+  /// skipped.
+  BandProcessor(this._settings) {
+    _settings.validate();
+  }
 
   SpectrumSettings _settings;
 
@@ -87,7 +93,11 @@ class BandProcessor {
   /// depend on changed fields (FFT size, window or band layout).
   /// Smoothing is reset on band-count change so the bands don't
   /// inherit stale heights from a different layout.
+  ///
+  /// Throws [ArgumentError] when a field of [next] is out of range, and
+  /// keeps the configuration it had.
   void setSettings(SpectrumSettings next) {
+    next.validate();
     final fftSizeChanged = next.fftSize != _settings.fftSize;
     final overlapChanged = next.overlapFactor != _settings.overlapFactor;
     final windowChanged = next.window != _settings.window || fftSizeChanged;

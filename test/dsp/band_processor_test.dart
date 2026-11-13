@@ -3,6 +3,8 @@
 // Use of this source code is governed by BSD 3-Clause license that can be
 // found in the LICENSE file.
 
+import 'dart:convert';
+import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
@@ -29,7 +31,51 @@ PcmFrame _frame(int end) {
   );
 }
 
+String _dart() {
+  final root = Platform.environment['FLUTTER_ROOT'];
+  if (root != null) {
+    final exe = Platform.isWindows ? 'dart.exe' : 'dart';
+    final path = [
+      root,
+      'bin',
+      'cache',
+      'dart-sdk',
+      'bin',
+      exe,
+    ].join(Platform.pathSeparator);
+    if (File(path).existsSync()) return path;
+  }
+  return 'dart';
+}
+
 void main() {
+  // BandProcessor is public and takes any SpectrumSettings: in a release
+  // build the constructor asserts are skipped, and an overlapFactor of 0
+  // threw IntegerDivisionByZeroException from process. `flutter test` always
+  // runs asserts, so a `dart` process, which runs none, builds the settings.
+  test(
+    'settings out of range are refused, in a build without asserts',
+    testOn: 'mac-os || linux || windows',
+    () async {
+      final result = await Process.run(_dart(), [
+        'test/_helpers/probes/band_processor_probe.dart',
+      ], stdoutEncoding: utf8);
+      expect(result.exitCode, 0, reason: '${result.stderr}');
+      final report =
+          jsonDecode((result.stdout as String).trim().split('\n').last)
+              as Map<String, dynamic>;
+      expect(report['asserts'], isFalse);
+      final cases = report['cases'] as Map<String, dynamic>;
+      expect(cases['defaults'], isNull);
+      expect(cases['process after a refused set'], isNull);
+      for (final MapEntry(:key, :value) in cases.entries) {
+        if (!key.startsWith('new ') && !key.startsWith('set ')) continue;
+        expect(value, anyOf('ArgumentError', 'RangeError'), reason: key);
+      }
+    },
+    timeout: const Timeout(Duration(minutes: 2)),
+  );
+
   for (final (name, bad) in [
     ('NaN', double.nan),
     ('Inf', double.infinity),
