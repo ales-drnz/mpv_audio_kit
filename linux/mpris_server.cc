@@ -610,9 +610,9 @@ void MprisServer::AnchorPosition() {
 
 // ── Artwork temp files ──────────────────────────────────────────────────────
 
-void MprisServer::WriteArtwork(const std::vector<uint8_t>& bytes,
+void MprisServer::WriteArtwork(const uint8_t* data, size_t size,
                                const std::string& mime) {
-  if (bytes.empty()) {
+  if (data == nullptr || size == 0) {
     // Switching to no-art: remove the previous temp file too, or it leaks
     // on disk until disable/SweepArtwork.
     if (!prev_art_path_.empty()) {
@@ -624,7 +624,12 @@ void MprisServer::WriteArtwork(const std::vector<uint8_t>& bytes,
     art_cache_key_.clear();
     return;
   }
-  if (bytes == art_cache_key_) return;  // unchanged
+  // Unchanged: compared in the codec's buffer, so the cover of a push that
+  // only changes the title is not copied.
+  if (size == art_cache_key_.size() &&
+      memcmp(data, art_cache_key_.data(), size) == 0) {
+    return;
+  }
 
   if (art_dir_.empty()) {
     // One directory per process: two apps on the kit would otherwise
@@ -652,8 +657,8 @@ void MprisServer::WriteArtwork(const std::vector<uint8_t>& bytes,
 
   GError* err = nullptr;
   if (g_file_set_contents(path.c_str(),
-                          reinterpret_cast<const char*>(bytes.data()),
-                          static_cast<gssize>(bytes.size()), &err)) {
+                          reinterpret_cast<const char*>(data),
+                          static_cast<gssize>(size), &err)) {
     if (!prev_art_path_.empty()) g_remove(prev_art_path_.c_str());
     prev_art_path_ = path;
     // Build a correct percent-encoded file:// URI rather than concatenating.
@@ -661,7 +666,7 @@ void MprisServer::WriteArtwork(const std::vector<uint8_t>& bytes,
     art_url_ = uri ? uri : ("file://" + path);
     if (uri) g_free(uri);
     has_artwork_ = true;
-    art_cache_key_ = bytes;
+    art_cache_key_.assign(data, data + size);
   } else if (err) {
     g_error_free(err);
   }
@@ -887,11 +892,9 @@ void MprisServer::UpdateMetadata(FlValue* metadata) {
       metadata ? fl_value_lookup_string(metadata, "artworkBytes") : nullptr;
   std::string mime = FlString(metadata, "artworkMime");
   if (art && fl_value_get_type(art) == FL_VALUE_TYPE_UINT8_LIST) {
-    size_t n = fl_value_get_length(art);
-    const uint8_t* d = fl_value_get_uint8_list(art);
-    WriteArtwork(std::vector<uint8_t>(d, d + n), mime);
+    WriteArtwork(fl_value_get_uint8_list(art), fl_value_get_length(art), mime);
   } else {
-    WriteArtwork({}, "");
+    WriteArtwork(nullptr, 0, "");
   }
 
   if (enabled_) {
