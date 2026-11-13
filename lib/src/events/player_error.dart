@@ -64,6 +64,17 @@ final class EndFileError extends PlayerError {
     required this.message,
   });
 
+  /// Whether this is likely a loading or network failure.
+  bool get isLoadingError => code == MpvError.mpvErrorLoadingFailed;
+
+  /// Whether the audio output failed to initialize.
+  bool get isAudioOutputError => code == MpvError.mpvErrorAoInitFailed;
+
+  /// Whether the file format is unknown or too broken to open.
+  bool get isFormatError =>
+      code == MpvError.mpvErrorUnknownFormat ||
+      code == MpvError.mpvErrorNothingToPlay;
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -121,18 +132,17 @@ final class LogError extends PlayerError {
   String toString() => 'LogError(prefix: $prefix, level: $level, text: $text)';
 }
 
-/// Convenience predicates for [EndFileError].
+/// The predicates of [EndFileError], which are members of the class now.
+/// The extension stays so that code naming it still compiles.
 extension EndFileErrorX on EndFileError {
-  /// Whether this is likely a loading or network failure.
-  bool get isLoadingError => code == MpvError.mpvErrorLoadingFailed;
+  /// See [EndFileError.isLoadingError].
+  bool get isLoadingError => this.isLoadingError;
 
-  /// Whether the audio output failed to initialize.
-  bool get isAudioOutputError => code == MpvError.mpvErrorAoInitFailed;
+  /// See [EndFileError.isAudioOutputError].
+  bool get isAudioOutputError => this.isAudioOutputError;
 
-  /// Whether the file format is unknown or too broken to open.
-  bool get isFormatError =>
-      code == MpvError.mpvErrorUnknownFormat ||
-      code == MpvError.mpvErrorNothingToPlay;
+  /// See [EndFileError.isFormatError].
+  bool get isFormatError => this.isFormatError;
 }
 
 /// Emitted for **every** file-end event, regardless of whether an error occurred.
@@ -252,6 +262,13 @@ final class MpvFileEndedEvent {
     skippedSegments,
   );
 
+  /// `true` when [reason] is [MpvEndFileReason.eof].
+  ///
+  /// mpv also reports EOF when a network stream drops, so this means the
+  /// demuxer ran out of data, not that the track played to completion.
+  /// [readError] and [skippedSegments] tell such ends apart.
+  bool get reachedNaturalEnd => reason == MpvEndFileReason.eof;
+
   @override
   String toString() =>
       'MpvFileEndedEvent(reason: $reason, error: $error, media: $media, '
@@ -259,16 +276,11 @@ final class MpvFileEndedEvent {
       'skippedSegments: $skippedSegments)';
 }
 
-/// Whether the file ended naturally and not because of a stop, error, redirect,
-/// or shutdown.
+/// [MpvFileEndedEvent.reachedNaturalEnd], which is a member of the class
+/// now. The extension stays so that code naming it still compiles.
 extension MpvFileEndedEventX on MpvFileEndedEvent {
-  /// `true` when [reason] is [MpvEndFileReason.eof].
-  ///
-  /// mpv also reports EOF when a network stream drops, so this means the
-  /// demuxer ran out of data, not that the track played to completion.
-  /// [MpvFileEndedEvent.readError] and [MpvFileEndedEvent.skippedSegments]
-  /// tell such ends apart.
-  bool get reachedNaturalEnd => reason == MpvEndFileReason.eof;
+  /// See [MpvFileEndedEvent.reachedNaturalEnd].
+  bool get reachedNaturalEnd => this.reachedNaturalEnd;
 }
 
 /// Why a file ended: mirrors `mpv_end_file_reason` from the C API.
@@ -309,12 +321,12 @@ enum MpvEndFileReason {
   static const _redirect = 5;
 
   /// Converts a raw mpv integer reason code to the corresponding enum value.
-  static MpvEndFileReason fromValue(int value) => switch (value) {
-    _eof => eof,
-    _stop => stop,
-    _quit => quit,
-    _error => error,
-    _redirect => redirect,
-    _ => eof,
-  };
+  /// A code this version does not know gives [error], so an unknown end
+  /// never reads as the natural end of the file.
+  static MpvEndFileReason fromValue(int value) {
+    for (final reason in values) {
+      if (reason.value == value) return reason;
+    }
+    return error;
+  }
 }

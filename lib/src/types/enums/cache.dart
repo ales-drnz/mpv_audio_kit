@@ -2,6 +2,8 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
+import 'mpv_value.dart';
+
 /// Network cache mode, mirroring `--cache=<auto|yes|no>`.
 enum Cache {
   /// Auto (mpv default): enabled for network sources, disabled for local files.
@@ -19,10 +21,6 @@ enum Cache {
   final String mpvValue;
 
   /// Maps a raw mpv-side value back to the enum. Unknown → [auto].
-  static Cache fromMpv(String raw) => switch (raw) {
-    'auto' => auto,
-    'yes' => yes,
-    'no' => no,
-    _ => auto,
-  };
+  static Cache fromMpv(String raw) =>
+      byMpvValue(values, raw, (v) => v.mpvValue) ?? auto;
 }

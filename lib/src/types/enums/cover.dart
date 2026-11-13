@@ -2,6 +2,8 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
+import 'mpv_value.dart';
+
 /// External cover-art auto-load behaviour, mirroring
 /// `--cover-art-auto=<no|exact|fuzzy|all>`.
 enum Cover {
@@ -26,11 +28,6 @@ enum Cover {
   final String mpvValue;
 
   /// Maps a raw mpv-side value back to the enum. Unknown → [no].
-  static Cover fromMpv(String raw) => switch (raw) {
-    'no' => no,
-    'exact' => exact,
-    'fuzzy' => fuzzy,
-    'all' => all,
-    _ => no,
-  };
+  static Cover fromMpv(String raw) =>
+      byMpvValue(values, raw, (v) => v.mpvValue) ?? no;
 }

@@ -2,6 +2,7 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
+import '../internals/equality.dart';
 import '../internals/unset_sentinel.dart';
 import '../types/enums/interruption_policy.dart';
 import '../types/enums/media_action.dart';
@@ -239,16 +240,9 @@ class MediaSession {
         other.desktopEntry != desktopEntry) {
       return false;
     }
-    if (!_sameActionsInOrder(other.actions, actions)) return false;
-    if (other.supportedPlaybackRates.length != supportedPlaybackRates.length) {
-      return false;
-    }
-    for (var i = 0; i < supportedPlaybackRates.length; i++) {
-      if (other.supportedPlaybackRates[i] != supportedPlaybackRates[i]) {
-        return false;
-      }
-    }
-    return true;
+    // The actions compare in order: it is the order the buttons take.
+    return iterableEq(other.actions, actions) &&
+        iterableEq(other.supportedPlaybackRates, supportedPlaybackRates);
   }
 
   @override
@@ -280,14 +274,4 @@ class MediaSession {
       'supportedPlaybackRates: $supportedPlaybackRates, '
       'autoApplyPlaylistNavigation: $autoApplyPlaylistNavigation, '
       'appName: $appName, desktopEntry: $desktopEntry)';
-}
-
-bool _sameActionsInOrder(Set<MediaAction> a, Set<MediaAction> b) {
-  if (a.length != b.length) return false;
-  final ait = a.iterator;
-  final bit = b.iterator;
-  while (ait.moveNext() && bit.moveNext()) {
-    if (ait.current != bit.current) return false;
-  }
-  return true;
 }

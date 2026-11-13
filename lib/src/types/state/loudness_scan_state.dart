@@ -2,6 +2,8 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
+import '../enums/mpv_value.dart';
+
 /// Lifecycle of the offline loudness scan observed on
 /// `PlayerStream.loudnessScan`.
 enum LoudnessScanState {
@@ -27,11 +29,6 @@ enum LoudnessScanState {
   String get mpvValue => name;
 
   /// Parses an mpv wire value; unknown values fall back to [idle].
-  static LoudnessScanState fromMpv(String value) => switch (value) {
-    'scanning' => LoudnessScanState.scanning,
-    'ready' => LoudnessScanState.ready,
-    'failed' => LoudnessScanState.failed,
-    'unavailable' => LoudnessScanState.unavailable,
-    _ => LoudnessScanState.idle,
-  };
+  static LoudnessScanState fromMpv(String value) =>
+      byMpvValue(values, value, (v) => v.mpvValue) ?? idle;
 }

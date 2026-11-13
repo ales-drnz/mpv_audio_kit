@@ -195,9 +195,40 @@ void main() {
       }
     });
 
-    test('unknown values fall back to eof', () {
-      expect(MpvEndFileReason.fromValue(99), MpvEndFileReason.eof);
-      expect(MpvEndFileReason.fromValue(-1), MpvEndFileReason.eof);
+    test('unknown values fall back to error, not to a natural end', () {
+      expect(MpvEndFileReason.fromValue(99), MpvEndFileReason.error);
+      expect(MpvEndFileReason.fromValue(-1), MpvEndFileReason.error);
+      expect(MpvEndFileReason.fromValue(1), MpvEndFileReason.error);
+    });
+  });
+
+  group('the predicates are members, the extensions still resolve', () {
+    const failed = EndFileError(
+      reason: MpvEndFileReason.error,
+      code: MpvError.mpvErrorLoadingFailed,
+      message: '',
+    );
+    const ended = MpvFileEndedEvent(reason: MpvEndFileReason.eof, error: 0);
+
+    test('a dynamic receiver finds them', () {
+      // An extension getter does not exist for a dynamic call.
+      const dynamic error = failed;
+      const dynamic event = ended;
+      // ignore: avoid_dynamic_calls
+      expect(error.isLoadingError, isTrue);
+      // ignore: avoid_dynamic_calls
+      expect(error.isAudioOutputError, isFalse);
+      // ignore: avoid_dynamic_calls
+      expect(error.isFormatError, isFalse);
+      // ignore: avoid_dynamic_calls
+      expect(event.reachedNaturalEnd, isTrue);
+    });
+
+    test('code that names the extension gets the same answers', () {
+      expect(EndFileErrorX(failed).isLoadingError, isTrue);
+      expect(EndFileErrorX(failed).isAudioOutputError, isFalse);
+      expect(EndFileErrorX(failed).isFormatError, isFalse);
+      expect(MpvFileEndedEventX(ended).reachedNaturalEnd, isTrue);
     });
   });
 }

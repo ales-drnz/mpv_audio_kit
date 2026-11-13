@@ -4,10 +4,17 @@
 
 import 'package:mpv_audio_kit/src/types/enums/cache.dart';
 import 'package:mpv_audio_kit/src/types/enums/cover.dart';
+import 'package:mpv_audio_kit/src/types/enums/format.dart';
 import 'package:mpv_audio_kit/src/types/enums/gapless.dart';
+import 'package:mpv_audio_kit/src/types/enums/hls_bitrate.dart';
 import 'package:mpv_audio_kit/src/types/enums/hook.dart';
+import 'package:mpv_audio_kit/src/types/enums/log_level.dart';
+import 'package:mpv_audio_kit/src/types/enums/mpv_value.dart';
 import 'package:mpv_audio_kit/src/types/enums/replay_gain.dart';
+import 'package:mpv_audio_kit/src/types/enums/spdif.dart';
 import 'package:mpv_audio_kit/src/types/state/audio_output_state.dart';
+import 'package:mpv_audio_kit/src/types/state/loudness_scan_state.dart';
+import 'package:mpv_audio_kit/src/types/state/prefetch_state.dart';
 import 'package:test/test.dart';
 
 /// Pairs every enum the wrapper exposes via `setX(...)` / `state.X` / mpv
@@ -26,6 +33,18 @@ final _typed = <(List<dynamic>, dynamic Function(String), dynamic, String)>[
     AudioOutputState.closed,
     'AudioOutputState',
   ),
+  (HlsBitrate.values, HlsBitrate.fromMpv, HlsBitrate.max, 'HlsBitrate'),
+  (Format.values, Format.fromMpv, Format.auto, 'Format'),
+  (LogLevel.values, LogLevel.fromMpv, LogLevel.info, 'LogLevel'),
+  (PrefetchState.values, PrefetchState.fromMpv, PrefetchState.idle, 'Prefetch'),
+  (
+    LoudnessScanState.values,
+    LoudnessScanState.fromMpv,
+    LoudnessScanState.idle,
+    'LoudnessScanState',
+  ),
+  (Spdif.values, Spdif.fromMpv, null, 'Spdif'),
+  (Hook.values, Hook.fromMpv, null, 'Hook'),
 ];
 
 void main() {
@@ -48,6 +67,22 @@ void main() {
           reason: '$name fallback',
         );
         expect(fromMpv(''), fallback, reason: '$name empty fallback');
+      }
+    });
+  });
+
+  group('byMpvValue', () {
+    test('gives the value of a string, null for an unknown one', () {
+      String wire(Cover v) => v.mpvValue;
+      expect(byMpvValue(Cover.values, 'fuzzy', wire), Cover.fuzzy);
+      expect(byMpvValue(Cover.values, 'Fuzzy', wire), isNull);
+      expect(byMpvValue(const <Cover>[], 'fuzzy', wire), isNull);
+    });
+
+    test('no two values of an enum share a string', () {
+      for (final (variants, _, _, name) in _typed) {
+        final wires = [for (final v in variants) (v as dynamic).mpvValue];
+        expect(wires.toSet(), hasLength(wires.length), reason: name);
       }
     });
   });

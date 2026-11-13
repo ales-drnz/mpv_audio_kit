@@ -108,4 +108,23 @@ void main() {
       expect(Loop.values, containsAll([Loop.off, Loop.file, Loop.playlist]));
     });
   });
+  group('Playlist.current', () {
+    const a = Media('a.mp3');
+    const b = Media('b.mp3');
+
+    test('is the entry at the index', () {
+      expect(const Playlist([a, b]).current, a);
+      expect(const Playlist([a, b], index: 1).current, b);
+    });
+
+    test('is null for the empty playlist, whose index is 0', () {
+      expect(Playlist.empty.index, 0);
+      expect(Playlist.empty.current, isNull);
+    });
+
+    test('is null while no entry is active, or for an index out of range', () {
+      expect(const Playlist([a, b], index: -1).current, isNull);
+      expect(const Playlist([a, b], index: 2).current, isNull);
+    });
+  });
 }

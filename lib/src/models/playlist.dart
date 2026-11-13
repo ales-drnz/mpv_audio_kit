@@ -2,16 +2,8 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
+import '../internals/equality.dart';
 import 'media.dart';
-
-bool _listEq<T>(List<T> a, List<T> b) {
-  if (identical(a, b)) return true;
-  if (a.length != b.length) return false;
-  for (var i = 0; i < a.length; i++) {
-    if (a[i] != b[i]) return false;
-  }
-  return true;
-}
 
 /// An ordered list of [Media] items loaded into the [Player].
 ///
@@ -19,14 +11,22 @@ bool _listEq<T>(List<T> a, List<T> b) {
 /// and [index] match, useful when diffing playlists for re-render
 /// decisions.
 final class Playlist {
-  /// The ordered list of tracks.
+  /// The ordered list of tracks. The list of a playlist the player gives
+  /// (its state and streams) cannot be changed in place: change the queue
+  /// through the [Player].
   final List<Media> items;
 
   /// The index of the currently active track. `0` for an empty playlist,
   /// `-1` when entries exist but none is active yet (the append build-up
-  /// phase of [Player.openAll], before playback starts). Guard reads
-  /// with `index >= 0` before using it to address [items].
+  /// phase of [Player.openAll], before playback starts). An `index >= 0`
+  /// guard is not enough to address [items], since the empty playlist
+  /// has index `0`: read [current] for the active track.
   final int index;
+
+  /// The active track: the entry of [items] at [index], or `null` when
+  /// the playlist is empty or no entry is active yet.
+  Media? get current =>
+      index >= 0 && index < items.length ? items[index] : null;
 
   /// Creates a playlist from an ordered list of [items], with [index]
   /// marking the active track (defaults to the first).
@@ -46,7 +46,7 @@ final class Playlist {
       identical(this, other) ||
       (other is Playlist &&
           other.index == index &&
-          _listEq(items, other.items));
+          iterableEq(items, other.items));
 
   @override
   int get hashCode => Object.hash(Object.hashAll(items), index);

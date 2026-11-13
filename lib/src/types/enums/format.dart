@@ -2,6 +2,8 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
+import 'mpv_value.dart';
+
 /// Audio sample format passed to mpv's `audio-format` property.
 ///
 /// Set via [Player.setAudioFormat]; reset to mpv's auto-pick with
@@ -53,20 +55,6 @@ enum Format {
   final String mpvValue;
 
   /// Maps a raw mpv-side value back to the enum. Unknown or empty → [auto].
-  static Format fromMpv(String raw) => switch (raw) {
-    '' || 'no' => auto,
-    'u8' => u8,
-    'u8p' => u8Planar,
-    's16' => s16,
-    's16p' => s16Planar,
-    's32' => s32,
-    's32p' => s32Planar,
-    's64' => s64,
-    's64p' => s64Planar,
-    'float' => float32,
-    'floatp' => float32Planar,
-    'double' => float64,
-    'doublep' => float64Planar,
-    _ => auto,
-  };
+  static Format fromMpv(String raw) =>
+      raw.isEmpty ? auto : byMpvValue(values, raw, (v) => v.mpvValue) ?? auto;
 }
