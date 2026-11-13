@@ -346,6 +346,36 @@ jobs:
       - name: flutter test -x network (files that touch the host)
         run: flutter test -x network $(scripts/ci/platform_tests.sh)
 
+  # The files of Test (macOS), on Windows: the ones that name it in their
+  # @TestOn ran nowhere on it, and the Windows branch of the test resolver
+  # with them. This job has never run: it does not fail the run until it
+  # has passed once. Take continue-on-error away after its first green run.
+  test-windows:
+    name: Test (Windows)
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: windows-2025-vs2026
+    timeout-minutes: 45
+    continue-on-error: true
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/flutter
+        with:
+          cache: false
+      - name: Toolchain versions
+        continue-on-error: true
+        run: flutter --version
+      - uses: ./.github/actions/libmpv-from-run
+        with:
+          run-id: ${{ needs.changes.outputs.libmpv_run }}
+          token: ${{ secrets.LIBMPV_SCRIPTS_TOKEN }}
+          pubspecs: pubspec.yaml
+      - name: flutter test -x network (files that touch the host)
+        run: flutter test -x network $(scripts/ci/platform_tests.sh)
+
   # The web backend in Chrome, on libmpv built as WebAssembly. The module
   # is the web build of the libmpv the other jobs bundle, the run's when
   # the changes job found or was given one and the pinned release's
