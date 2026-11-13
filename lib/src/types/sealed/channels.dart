@@ -164,6 +164,17 @@ sealed class Channels {
   /// The wire-level string mpv expects on the `audio-channels` property.
   String get mpvValue;
 
+  /// Two layouts are equal when their [mpvValue] is: a
+  /// [Channels.custom] holding a named layout's string equals that
+  /// named layout, which is what the state holds for it.
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Channels && other.mpvValue == mpvValue);
+
+  @override
+  int get hashCode => mpvValue.hashCode;
+
   // ── Special modes ──────────────────────────────────────────────────
 
   /// Defer to mpv's automatic channel-layout choice. `audio-channels=auto`.
@@ -337,13 +348,6 @@ final class _StdChannels extends Channels {
   String get mpvValue => name.mpvValue;
 
   @override
-  bool operator ==(Object other) =>
-      identical(this, other) || (other is _StdChannels && other.name == name);
-
-  @override
-  int get hashCode => name.hashCode;
-
-  @override
   String toString() => 'Channels.${name.name}';
 }
 
@@ -359,14 +363,6 @@ final class ChannelsCustom extends Channels {
 
   @override
   String get mpvValue => mpvLayout;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is ChannelsCustom && other.mpvLayout == mpvLayout);
-
-  @override
-  int get hashCode => Object.hash(ChannelsCustom, mpvLayout);
 
   @override
   String toString() => 'Channels.custom($mpvLayout)';
