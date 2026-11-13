@@ -49,6 +49,9 @@ else()
     "${out}"
     EXPECTED_HASH SHA256=${MAK_LIBMPV_SHA256}
     TLS_VERIFY ON
+    # A connection that stalls must fail the configure step, not hang it.
+    INACTIVITY_TIMEOUT 60
+    TIMEOUT 900
     STATUS status)
   list(GET status 0 code)
   if(NOT code EQUAL 0)
