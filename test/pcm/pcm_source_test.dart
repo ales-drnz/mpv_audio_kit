@@ -92,6 +92,26 @@ void main() {
       expect(native.sources.values.single.capacity, lessThanOrEqualTo(1 << 30));
     });
 
+    test('create rejects a buffer whose size passes 64 bits', () {
+      // Its microseconds times the rate wrap to a negative int: the size
+      // read as under 1 GiB, and ready held back after one frame.
+      const wide = PcmFormat(
+        sampleRate: 384000,
+        channels: 8,
+        encoding: PcmEncoding.f32le,
+      );
+      for (final days in [300, 400, 100000]) {
+        expect(
+          () => PcmSource.create(wide, maxBuffered: Duration(days: days)),
+          throwsA(
+            isA<ArgumentError>().having((e) => e.name, 'name', 'maxBuffered'),
+          ),
+          reason: '$days days',
+        );
+      }
+      expect(native.sources, isEmpty);
+    });
+
     test('create needs MpvAudioKit.ensureInitialized', () {
       debugPcmNativeOverride = null;
       expect(() => PcmSource.create(_mono), throwsStateError);

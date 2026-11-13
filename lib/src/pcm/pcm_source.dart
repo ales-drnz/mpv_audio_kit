@@ -707,9 +707,19 @@ String? pcmLoadOptions(String uri) {
 }
 
 extension on PcmFormat {
-  int durationBytes(Duration d) =>
-      d.inMicroseconds *
-      sampleRate ~/
-      Duration.microsecondsPerSecond *
-      bytesPerFrame;
+  /// The bytes of [d] of audio, whole frames. Past [_durationFramesCap]
+  /// frames it stops growing, far above the 1 GiB a source holds, so no
+  /// duration wraps it to a negative size.
+  int durationBytes(Duration d) {
+    const second = Duration.microsecondsPerSecond;
+    final us = d.inMicroseconds;
+    // The seconds and the rest apart: their sum is the frames of the
+    // whole, and neither product passes 64 bits.
+    final frames =
+        us ~/ second * sampleRate + us.remainder(second) * sampleRate ~/ second;
+    return math.min(frames, _durationFramesCap) * bytesPerFrame;
+  }
 }
+
+/// The most frames `durationBytes` counts: 2^40, about a month at 384 kHz.
+const int _durationFramesCap = 1 << 40;
