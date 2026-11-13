@@ -283,7 +283,7 @@ mixin _OpenModule on _PlayerBase, _FfiModule {
     _entries.retained = null;
     if (!kept) return null;
     return _entries.retained = int.tryParse(
-      await getRawProperty('playlist/0/id') ?? '',
+      await _readString('playlist/0/id') ?? '',
     );
   }
 
@@ -311,7 +311,7 @@ mixin _OpenModule on _PlayerBase, _FfiModule {
     await _calls.command(['playlist-clear']);
     if (load.superseded) return null;
     final retainedCount =
-        int.tryParse(await getRawProperty('playlist-count') ?? '') ?? 0;
+        int.tryParse(await _readString('playlist-count') ?? '') ?? 0;
     if (load.superseded) return null;
     var parkedAtEof = false;
     if (retainedCount > 0) {
@@ -337,7 +337,7 @@ mixin _OpenModule on _PlayerBase, _FfiModule {
         // the exact transient this flow eliminates. Idle lands within a
         // playloop iteration; the bound only guards a wedged core.
         for (var i = 0; i < 100; i++) {
-          if (await getRawProperty('idle-active') == 'yes') break;
+          if (await _readString('idle-active') == 'yes') break;
           if (load.superseded) return null;
           await Future<void>.delayed(const Duration(milliseconds: 5));
         }

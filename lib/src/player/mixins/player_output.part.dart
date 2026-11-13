@@ -118,7 +118,7 @@ mixin _OutputModule on _PlayerBase {
         // The browser refused the rate and kept its output at the rate
         // before: mpv and the state go back to it too, unless another
         // call wrote a rate since, which stands.
-        if (await getRawProperty('audio-samplerate') == rate.toString()) {
+        if (await _readString('audio-samplerate') == rate.toString()) {
           await _calls.prop('audio-samplerate', before.toString());
           _updateField(
             (s) => s.copyWith(audioSampleRate: before),

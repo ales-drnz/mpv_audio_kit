@@ -466,11 +466,15 @@ abstract class _PlayerBase {
   void _validateLoadOptions(Media media);
   void _rejectPcm(Media media, String name);
 
-  /// See `_FfiModule`: the raw property escape hatches, redeclared here
-  /// so the source-resolver driver in `_HooksModule` can read and rewrite
-  /// `stream-open-filename` across the part boundary.
-  Future<String?> getRawProperty(String name);
-  Future<void> setRawProperty(String name, String value);
+  /// Reads the mpv property [name] as a string for a call already past
+  /// [_gate]: `null` when the read fails, also once dispose closed the
+  /// session. Unlike the public `getRawProperty` it does not refuse a
+  /// disposed player, so a call under way at dispose ends without effect,
+  /// as its writes do, instead of throwing from the middle.
+  Future<String?> _readString(String name) async {
+    final (rc, value) = await _calls.get(name, MpvFormat.mpvFormatString);
+    return rc < 0 ? null : value as String?;
+  }
 
   /// See `_HooksModule` (player_hooks.part.dart): called by the dispatch
   /// layer for every MPV_EVENT_HOOK: runs the source resolver when one is

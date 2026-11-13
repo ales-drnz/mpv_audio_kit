@@ -268,7 +268,7 @@ mixin _HooksModule on _PlayerBase {
       // resolver runs supersedes the URL it gives for the prefetch.
       final asked = _transport.snapshotLoad();
       final current =
-          await getRawProperty(
+          await _readString(
             early ? 'prefetch-open-filename' : 'stream-open-filename',
           ) ??
           '';
@@ -302,7 +302,7 @@ mixin _HooksModule on _PlayerBase {
         return;
       }
       if (isRetry) _resolverRetried = true;
-      await setRawProperty('stream-open-filename', target);
+      await _calls.prop('stream-open-filename', target);
       // Keep the original Media reachable under the rewritten URL, so a
       // later `on_load_fail` on this entry (expired token on the resolved
       // URL) still hands the resolver the same Media and extras.
