@@ -310,6 +310,15 @@ void MediaSessionChannelWin::HandleMethodCall(
         result->Error("bad_args", "enable expects a map");
         return;
       }
+      // The arguments first: nothing below reads them once the session is
+      // taken.
+      const EncodableMap* cfg = SubMap(*args, "config");
+      const EncodableMap* meta = SubMap(*args, "metadata");
+      const EncodableMap* pb = SubMap(*args, "playback");
+      SmtcConfig parsed = cfg ? ParseConfig(*cfg) : SmtcConfig{};
+      SmtcMetadata metadata = meta ? ParseMetadata(*meta) : SmtcMetadata{};
+      SmtcPlayback playback = pb ? ParsePlayback(*pb) : SmtcPlayback{};
+      const bool owned_before = hub.engines().MayUpdate(this);
       if (!hub.engines().TryEnable(this)) {
         // Dart throws a StateError and leaves its state off.
         result->Error("already_owned",
@@ -317,15 +326,23 @@ void MediaSessionChannelWin::HandleMethodCall(
                       "session.");
         return;
       }
-      const EncodableMap* cfg = SubMap(*args, "config");
-      const EncodableMap* meta = SubMap(*args, "metadata");
-      const EncodableMap* pb = SubMap(*args, "playback");
-      SmtcConfig parsed = cfg ? ParseConfig(*cfg) : SmtcConfig{};
-      // Set the process AUMID (from app_name) before the SMTC is created inside
-      // Enable() → EnsureCreated(); no-op after the first call.
-      EnsureProcessIdentity(parsed.app_name);
-      controller.Enable(parsed, meta ? ParseMetadata(*meta) : SmtcMetadata{},
-                        pb ? ParsePlayback(*pb) : SmtcPlayback{});
+      try {
+        // Set the process AUMID (from app_name) before the SMTC is created
+        // inside Enable() → EnsureCreated(); no-op after the first call.
+        EnsureProcessIdentity(parsed.app_name);
+        controller.Enable(parsed, metadata, playback);
+      } catch (...) {
+        // Dart hears the error below and keeps its state off: an engine
+        // that took the session with this enable gives it back, or every
+        // other engine would be refused for a session nobody has.
+        if (hub.engines().OnEnableFailed(this, owned_before)) {
+          try {
+            controller.Disable();
+          } catch (...) {
+          }
+        }
+        throw;
+      }
       result->Success();
     } else if (method == "updateConfig") {
       // Only the owner's: another engine's Player never had the session.
