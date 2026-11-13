@@ -116,8 +116,6 @@ extension type MpvExports._(JSObject _) implements JSObject {
   external int mpvHookContinue(int ctx, JSBigInt id);
   @JS('_mpv_error_string')
   external int mpvErrorString(int error);
-  @JS('_mpv_wakeup')
-  external void mpvWakeup(int ctx);
   @JS('_mak_web_wakeup_attach')
   external int wakeupAttach(int ctx);
   @JS('_mak_web_wakeup_detach')
