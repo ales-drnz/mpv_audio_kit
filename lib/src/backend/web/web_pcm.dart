@@ -24,11 +24,17 @@ final class WebPcmNative implements PcmNative {
       bigIntValue(_m.c.pcmCreate(bigInt(capacityBytes)));
 
   // The bytes are copied into the module's memory for the call: the FIFO
-  // copies what it takes before the call returns.
+  // copies what it takes before the call returns. Without room for the
+  // copy the answer is the native one's, and the source keeps the chunk.
   @override
   int write(int id, Uint8List data) {
     if (data.isEmpty) return 0;
-    final buffer = _m.malloc(data.length);
+    final int buffer;
+    try {
+      buffer = _m.malloc(data.length);
+    } on WebOutOfMemory {
+      return PcmNative.errNoMemory;
+    }
     try {
       _m.writeBytes(buffer, data);
       return bigIntValue(

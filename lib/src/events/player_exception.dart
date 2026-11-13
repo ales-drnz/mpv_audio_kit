@@ -11,7 +11,7 @@
 /// } on PlayerException catch (e) {
 ///   switch (e) {
 ///     case PlayerDisposedException():
-///     case PlayerInitException(:final message):
+///     case PlayerInitException(:final message, :final cause):
 ///     case MpvCommandException(:final name, :final code):
 ///     case SourceException(:final uri):
 ///   }
@@ -42,12 +42,19 @@ final class PlayerDisposedException extends PlayerException {
 /// not of the release this package pins, or the page cannot run it. Every
 /// call on that player throws it.
 final class PlayerInitException extends PlayerException {
-  /// Creates the exception with the reason bring-up failed.
-  const PlayerInitException(this.message);
+  /// Creates the exception with the reason bring-up failed, and the error
+  /// behind it when there is one.
+  const PlayerInitException(this.message, {this.cause});
 
   /// Why bring-up failed, as reported by the loader, the release check or
   /// libmpv.
   final String message;
+
+  /// The error bring-up failed with, when one was caught: on the web, what
+  /// the load of the module or the calls into it threw. `null` when
+  /// [message] is all there is (a libmpv of another release, an
+  /// `mpv_initialize` that returned an error).
+  final Object? cause;
 
   @override
   String toString() => 'PlayerInitException: $message';
