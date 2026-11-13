@@ -75,7 +75,6 @@ class SpectrumPipeline {
   Stream<PcmFrame> get pcmStream => _pcmCtrl.stream;
 
   SpectrumSettings _settings = SpectrumSettings.defaults;
-  SpectrumSettings get settings => _settings;
 
   bool _fftActive = false;
   bool _pcmActive = false;
