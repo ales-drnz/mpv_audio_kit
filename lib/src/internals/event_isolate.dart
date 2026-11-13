@@ -651,9 +651,14 @@ class MpvEventIsolate {
   /// teardown. [Isolate.kill] is never used for the same reason (killing
   /// mid-FFI to libmpv is a non-deterministic crash).
   ///
+  /// After a `false` the exit listener stays armed: a later call waits for
+  /// the same exit again, with the same bound, and answers `true` once the
+  /// worker has left. The caller destroys the handle then.
+  ///
   /// The native stop flag is freed ONLY on confirmed exit, when no parked
-  /// reader can survive the free; on the timeout branch it is intentionally
-  /// leaked (4 bytes, bounded by live Player count, reclaimed at process exit).
+  /// reader can survive the free; until then it stays allocated (4 bytes,
+  /// bounded by live Player count, reclaimed at process exit when the
+  /// worker never leaves).
   Future<bool> stop() async {
     // Publish the stop intent unconditionally: callers that have no
     // (lib, handle) pair for [requestStop] (teardown before bring-up
@@ -668,35 +673,35 @@ class MpvEventIsolate {
     if (!_events.isClosed) unawaited(_events.close());
 
     final exitPort = _exitPort;
-    final isolate = _isolate;
-    if (isolate == null || exitPort == null) {
+    if (_isolate == null || exitPort == null) {
       _toIsolate = null;
       _exitPort = null;
       _freeStopFlag();
       return true;
     }
-
-    _isolate = null;
     _toIsolate = null;
-    _exitPort = null;
 
     // The exit listener was armed in `start()` before the isolate could
     // possibly tear down. The 2 s timeout is a safety net for a pathologically
     // stuck libmpv: clean exits land in single-digit ms via `mpv_wakeup`.
+    // One listen for every call: the port closes with its first message.
+    final exit = _exit ??= exitPort.first;
     try {
-      await exitPort.first.timeout(_kIsolateExitTimeout);
-      _freeStopFlag();
-      return true;
+      await exit.timeout(_kIsolateExitTimeout);
     } on TimeoutException {
-      // Leaked on purpose: drop the pointer so a later stop() (dispose
-      // after a timed-out bring-up teardown) cannot free it under the
-      // worker that may still read it.
-      _stopFlag = null;
+      // The flag and the listener stay for the next call: the worker may
+      // still read the one and has yet to trigger the other.
       return false;
-    } finally {
-      exitPort.close();
     }
+    _isolate = null;
+    _exitPort = null;
+    _exit = null;
+    _freeStopFlag();
+    return true;
   }
+
+  /// The worker's exit, listened to by the first [stop] that waits for it.
+  Future<Object?>? _exit;
 
   void _freeStopFlag() {
     final flag = _stopFlag;

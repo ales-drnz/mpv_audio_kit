@@ -789,8 +789,8 @@ abstract class _PlayerBase {
   ///    then release the held `content://` descriptors. Destroying the
   ///    handle while the isolate is still inside `mpv_wait_event` would
   ///    race the event-loop thread and crash libmpv when the handle is
-  ///    freed mid-syscall; on an unconfirmed exit we skip destroy and let
-  ///    the OS reclaim the handle.
+  ///    freed mid-syscall; on an unconfirmed exit dispose goes on without
+  ///    the destroy, which follows once the pump has stopped.
   /// 7. **Close all reactive properties + controllers**. Order within
   ///    this group does not matter for correctness (they tolerate
   ///    `close()` while a listener is attached); grouping by ownership
@@ -865,13 +865,14 @@ abstract class _PlayerBase {
         }
       } else {
         // The worker did not confirm it left mpv_wait_event within the bound.
-        // Skip mpv_terminate_destroy: freeing the handle while the isolate may
-        // still be inside the syscall would SIGSEGV. The OS reclaims the handle
-        // (and the leaked stop flag) at process exit.
+        // No mpv_terminate_destroy now: freeing the handle while the isolate
+        // may still be inside the syscall would SIGSEGV. The destroy follows
+        // once the worker has left, without holding dispose.
         debugLog(
-          'mpv_audio_kit: event isolate did not confirm exit; skipping '
-          'mpv_terminate_destroy to avoid a parked-handle crash.',
+          'mpv_audio_kit: event isolate did not confirm exit; '
+          'mpv_terminate_destroy waits for it.',
         );
+        unawaited(_destroyOnceStopped());
       }
     } else {
       // Bring-up never completed: either init failed, or this dispose
@@ -902,6 +903,32 @@ abstract class _PlayerBase {
     }
 
     await _closeStreams();
+  }
+
+  /// Destroys a core [dispose] had to leave alone, once its event pump has
+  /// stopped and no hook registration runs against it: an event isolate
+  /// held in a read behind a busy core (an output that takes seconds to
+  /// open) exits after the bound of [MpvSession.stop]. Asks again for about
+  /// a minute, then leaves the core to the process exit.
+  Future<void> _destroyOnceStopped() async {
+    try {
+      for (var tries = 0; tries < 30; tries++) {
+        if (await _session.stop() &&
+            await _session.settleHookAdds(const Duration(seconds: 2))) {
+          await _session.terminateDestroy();
+          for (final release in _entries.takeAll()) {
+            await release();
+          }
+          return;
+        }
+      }
+      debugLog(
+        'mpv_audio_kit: event isolate never confirmed exit; the core is '
+        'left to the process exit.',
+      );
+    } catch (e) {
+      debugLog('mpv_audio_kit: late destroy of the core failed: $e');
+    }
   }
 
   /// The last step of [dispose]: closes every reactive property and stream
