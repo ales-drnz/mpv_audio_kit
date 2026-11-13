@@ -686,6 +686,19 @@ jobs:
             xvfb-run -a dbus-run-session -- \
               flutter test -d linux -r expanded "integration_test/$f.dart"
           done
+      # The playback through the running app, which ran on the phones
+      # alone: libmpv loads from the bundle, a file opens, plays and seeks
+      # (smoke_test), and each codec of the fixtures decodes
+      # (codec_coverage_test). dispose_mid_playback_test is for macOS.
+      - name: Playback integration tests
+        if: matrix.name == 'Linux'
+        timeout-minutes: 15
+        working-directory: test_app
+        run: |
+          for f in smoke_test codec_coverage_test; do
+            xvfb-run -a dbus-run-session -- \
+              flutter test -d linux -r expanded "integration_test/$f.dart"
+          done
       # media_session_test reads the plugin's probe, windows_smtc_test what
       # the SystemMediaTransportControls themselves hold.
       - name: Media session integration tests
