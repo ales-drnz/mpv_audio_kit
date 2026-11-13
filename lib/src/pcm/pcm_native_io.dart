@@ -56,9 +56,6 @@ final class _BundledPcmNative implements PcmNative {
   int buffered(int id) => _buffered(id);
 
   @override
-  int consumed(int id) => _consumed(id);
-
-  @override
   int state(int id) => _state(id);
 
   @override
@@ -91,10 +88,6 @@ final class _LookupPcmNative implements PcmNative {
         'mak_pcm_buffered',
         isLeaf: true,
       ),
-      _n = lib.lookupFunction<Int64 Function(Int64), int Function(int)>(
-        'mak_pcm_consumed',
-        isLeaf: true,
-      ),
       _s = lib.lookupFunction<Int32 Function(Int64), int Function(int)>(
         'mak_pcm_state',
         isLeaf: true,
@@ -113,7 +106,6 @@ final class _LookupPcmNative implements PcmNative {
   final int Function(int) _f;
   final int Function(int) _a;
   final int Function(int) _b;
-  final int Function(int) _n;
   final int Function(int) _s;
   final int Function(int) _r;
   final void Function() _all;
@@ -157,9 +149,6 @@ final class _LookupPcmNative implements PcmNative {
   int buffered(int id) => _b(id);
 
   @override
-  int consumed(int id) => _n(id);
-
-  @override
   int state(int id) => _s(id);
 
   @override
@@ -190,9 +179,6 @@ external int _abort(int id);
 
 @Native<Int64 Function(Int64)>(symbol: 'mak_pcm_buffered', isLeaf: true)
 external int _buffered(int id);
-
-@Native<Int64 Function(Int64)>(symbol: 'mak_pcm_consumed', isLeaf: true)
-external int _consumed(int id);
 
 @Native<Int32 Function(Int64)>(symbol: 'mak_pcm_state', isLeaf: true)
 external int _state(int id);
