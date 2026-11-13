@@ -13,14 +13,21 @@ which has its own guide for the native patches (`doc/developing.md` there).
   release for the target and checks its SHA-256 against the `_sha256`
   table. pub.dev takes nothing else in `hook/` but `build.dart` and
   `link.dart`.
-- `android/`, `ios/`, `macos/`, `tvos/`, `windows/`, `linux/`: the plugin's
-  platform code (media session, audio focus, passthrough).
+- `android/`, `darwin/` (iOS and macOS), `tvos/`, `windows/`, `linux/`,
+  `webos/`: the plugin's platform code (media session, audio focus,
+  passthrough). `native_common/` is what the Windows and Linux plugins
+  share.
+- `web/`: the web module of libmpv, published with the package and out of
+  git. `scripts/update_libmpv.sh` installs it.
 - `test/`: unit tests in the folders named after `lib/src/`, and the runtime
   tests, which load libmpv, in `test/runtime/` and `test/runtime_extended/`.
   Shared helpers are in `test/_helpers/`.
 - `test_app/`: the app of the integration tests on Android, iOS and the
   desktops, run by CI and by libmpv-scripts' check of the kit.
-- `tool/`: code generation, the metrics ratchet, the diagrams of the README.
+- `tool/`: code generation, the metrics ratchet, the generator of the data
+  classes, mutation testing, the diagrams of the README.
+- `scripts/`: the release scripts, and under `scripts/ci/` the ones the
+  workflows run, tested in `test/ci/`.
 - `doc/`: the guides published as dartdoc topics, and `doc/adr/`, the
   decision records.
 
@@ -48,6 +55,21 @@ the tests that expect a missing libmpv skip. `flutter test` and
 `flutter analyze` can rewrite `analysis_options.yaml` and
 `test_app/pubspec.lock`: put them back before a commit.
 
+`flutter analyze` reads `test_app/` and the Dart packages under `tool/`
+too, each with dependencies of its own. Without them it reports imports it
+cannot resolve there:
+
+```bash
+(cd test_app && flutter pub get)
+for package in metrics data_classes mutation; do dart pub get -C tool/$package; done
+```
+
+The scripts of CI have tests of their own, plain bash:
+
+```bash
+for t in test/ci/*_test.sh; do bash "$t"; done
+```
+
 On Linux the runtime tests need a sound server or a null sink: CI starts
 PulseAudio with one (`.github/workflows/ci.yml`, job Test (Linux)).
 
@@ -57,21 +79,55 @@ PulseAudio with one (`.github/workflows/ci.yml`, job Test (Linux)).
 pull requests, and by hand on any branch
 (`gh workflow run CI --ref <branch>`):
 
-- **Analyze**: `dart format`, `flutter analyze`, a publish dry run and the
-  drift of the generated code, on the declared floor of Flutter and on the
-  current stable.
-- **Quality**: the metrics ratchet (`tool/metrics`, see its README), the red
-  and green of each fix commit (`scripts/ci/check_trailers.sh` and
-  `scripts/ci/verify_red.sh`) and the API against the version on pub.dev.
-- **Test** on Linux, macOS and the web, and a build of the example on
-  each platform.
+- **Analyze**: `flutter analyze` on three versions of Flutter: the floor
+  `pubspec.yaml` declares, the stable pinned in `.github/flutter-version`,
+  and the stable of the day, which reports and does not fail the run. On
+  the pinned stable also `dart format`, the versions of the platform files
+  against `pubspec.yaml`, a publish dry run, the drift of the generated
+  code, the tests of the CI scripts (`test/ci/`) and the tvOS sources
+  against the darwin ones.
+- **Quality**: the metrics ratchet (`tool/metrics`, see its README), the
+  drift of the data classes, the API docs, the red and green of each fix
+  commit (`scripts/ci/check_trailers.sh` and `scripts/ci/verify_red.sh`)
+  and the API against the version on pub.dev.
+- **Test (Linux)**: the whole suite but the tag `network`, with the line
+  coverage of lib against its floor (`scripts/ci/coverage.sh`).
+- **Test (macOS)** and **Test (Windows)**: the test files whose result can
+  depend on the host (`scripts/ci/platform_tests.sh`).
+- **Test (Flutter floor)**: the whole suite on the oldest Flutter the
+  package declares, then the build hook on the oldest version of each
+  dependency (`flutter pub downgrade`).
+- **Test (Web)**: the browser tests of `test/web/`, in Chrome, on the web
+  module of the pinned libmpv.
+- **Build**: `test_app/` built for Android, Linux, Windows, macOS and iOS
+  (the last two with Swift Package Manager and with CocoaPods), with the
+  integration tests that run on a runner: the media session on Linux and
+  Windows, the smoke and codec ones on Linux.
 
-The ratchet fails when a number gets worse: the lines of lib, the lines of
-test per line of lib, the complexity of a function, the fields of the
-player, and any change of the public API (`tool/metrics/api_surface.txt`).
-A change that makes one worse on purpose writes the baseline again with
-`dart tool/metrics/bin/metrics.dart --write` in the same commit, and says
-why.
+Flutter moves in CI with a commit: the stable of every job is the version
+in `.github/flutter-version`. Every action is pinned by its commit and
+every job has a timeout; `test/ci/workflows_test.sh` holds both.
+
+Three more workflows do not run on pull requests. `tizen-emulator.yml` and
+`webos-headless.yml` build and start the package on the TVs, on the
+`release/*` and `wip/*-tv` branches when their files change. `network.yml`
+(the tests tagged `network`, weekly) and `mutation.yml` (mutation testing
+of the hot files, weekly) report and gate nothing.
+
+The ratchet fails when a number gets worse: the lines of test per line of
+lib, the complexity of a function, the fields of the player, and any
+change of the public API (`tool/metrics/api_surface.txt`). A growth of lib
+past 300 lines warns. A change that makes one worse on purpose writes the
+baseline again with `dart tool/metrics/bin/metrics.dart --write` in the
+same commit, and says why. A cleanup that removes tests lowers the lines
+of test per line of lib: `--write` takes it only with its reason,
+`--test-ratio-drop="<why>"`.
+
+The coverage counts every file of lib. One no test of the VM loads fails
+the step until `tool/metrics/coverage_unmeasured.txt` lists it: `web` for
+a file that runs in the browser alone, counted as not covered, or `none`
+for one without a line to cover. The better answer is a test that loads
+it.
 
 ## Commits
 
@@ -106,6 +162,9 @@ A release of the package with a new libmpv:
    writes the version into every platform file.
 4. The CHANGELOG gets the version and date in its title.
 5. On `main`: the commit of the release closes its issues with
-   `closes #N`, the tag is `vX.Y.Z`, and `flutter pub publish` runs from a
-   checkout where `scripts/update_libmpv.sh rN` has run, so `web/` holds the
-   module.
+   `closes #N`. `scripts/publish.sh` publishes from a checkout where
+   `scripts/update_libmpv.sh rN` has run, so `web/` holds the module: it
+   refuses when a file of the module is missing or is not the manifest's,
+   the tree is not clean, a platform file has another version, or the tag
+   is already there (`--check` only checks, `--dry-run` stops at the dry
+   run). The tag `vX.Y.Z` comes after.

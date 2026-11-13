@@ -43,5 +43,12 @@ What it reads:
   `Union` classes of `mpv_bindings.dart`, and the wasm32 table of
   `web_layout.dart`. Any change fails.
 
+Beside the ratchet, Test (Linux) holds the **line coverage** of the same
+files of lib (`scripts/ci/coverage.sh`) over `coverage_floor.txt`, a
+percentage that may rise, by hand, and never fall. Every file counts: one
+the lcov does not hold must be in `coverage_unmeasured.txt`, as `web` (it
+runs in the browser alone, and counts as lines not covered, estimated) or
+`none` (it has no line to cover).
+
 The numbers are this tool's own: another script that counts the same
 things can give others. Compare a version only with this tool.
