@@ -79,6 +79,9 @@ class MprisServer {
   void FlushChanged();
   void RepublishAll();
   GVariant* PlayerPropertyValue(const char* property);
+  bool HasAction(const char* action) const;
+  bool CanPlayAction() const;
+  bool CanPauseAction() const;
   GVariant* BuildMetadata();
   void Emit(const gchar* type);
   void EmitWith(FlValue* command);  // takes ownership of command

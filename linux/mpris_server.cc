@@ -287,13 +287,21 @@ void MprisServer::PlayerMethodCall(GDBusConnection*, const gchar*, const gchar*,
   } else if (!strcmp(method, "Previous")) {
     if (self->actions_.count("previous") > 0) self->Emit("previous");
   } else if (!strcmp(method, "Pause")) {
-    self->Emit("pause");
+    if (self->CanPauseAction()) self->Emit("pause");
   } else if (!strcmp(method, "Play")) {
-    self->Emit("play");
+    if (self->CanPlayAction()) self->Emit("play");
   } else if (!strcmp(method, "PlayPause")) {
-    self->Emit("playPause");
+    // The toggle itself when it is declared. With play or pause alone, the
+    // one of the two this state calls for, if it is declared.
+    if (self->HasAction("playPause")) {
+      self->Emit("playPause");
+    } else if (self->playing_) {
+      if (self->HasAction("pause")) self->Emit("pause");
+    } else if (self->HasAction("play")) {
+      self->Emit("play");
+    }
   } else if (!strcmp(method, "Stop")) {
-    self->Emit("stop");
+    if (self->HasAction("stop")) self->Emit("stop");
   } else if (!strcmp(method, "Seek")) {
     // Ignore (but still ack) when not seekable — CanSeek is advertised false.
     if (can_seek) {
@@ -320,8 +328,26 @@ void MprisServer::PlayerMethodCall(GDBusConnection*, const gchar*, const gchar*,
       self->EmitWith(m);
     }
   }
-  // Anything else: acknowledged, no-op.
+  // Anything else, and a method whose action is not declared: acknowledged,
+  // no-op.
   g_dbus_method_invocation_return_value(invocation, nullptr);
+}
+
+// The actions the app declared (MediaSession.actions). A command of the bus
+// reaches Dart only when its action is one of them, as on the other
+// platforms.
+bool MprisServer::HasAction(const char* action) const {
+  return actions_.count(action) > 0;
+}
+
+// Play and Pause, the two methods and the two halves of PlayPause: the
+// toggle declares both.
+bool MprisServer::CanPlayAction() const {
+  return HasAction("play") || HasAction("playPause");
+}
+
+bool MprisServer::CanPauseAction() const {
+  return HasAction("pause") || HasAction("playPause");
 }
 
 GVariant* MprisServer::PlayerPropertyValue(const char* property) {
@@ -352,12 +378,12 @@ GVariant* MprisServer::PlayerPropertyValue(const char* property) {
                                  has_prev_);
   }
   // CanPlay/CanPause require real content, not just an enabled session, so a
-  // pre-load shell doesn't advertise actionable transport.
+  // pre-load shell doesn't advertise actionable transport. And the action.
   if (!strcmp(property, "CanPlay")) {
-    return g_variant_new_boolean(enabled_ && has_title_);
+    return g_variant_new_boolean(enabled_ && has_title_ && CanPlayAction());
   }
   if (!strcmp(property, "CanPause")) {
-    return g_variant_new_boolean(enabled_ && has_title_);
+    return g_variant_new_boolean(enabled_ && has_title_ && CanPauseAction());
   }
   if (!strcmp(property, "CanSeek")) {
     return g_variant_new_boolean(enabled_ && seekable_ &&
@@ -383,9 +409,18 @@ GVariant* MprisServer::PlayerGetProperty(GDBusConnection*, const gchar*,
 gboolean MprisServer::PlayerSetProperty(GDBusConnection*, const gchar*,
                                         const gchar*, const gchar*,
                                         const gchar* property, GVariant* value,
-                                        GError**, gpointer user_data) {
+                                        GError** error, gpointer user_data) {
   auto* self = static_cast<MprisServer*>(user_data);
+  // GDBus wants the error set with every FALSE. A write whose action is not
+  // declared is refused, so the client hears that nothing changed.
+  auto refuse = [&](const char* action) {
+    g_set_error(error, G_DBUS_ERROR, G_DBUS_ERROR_NOT_SUPPORTED,
+                "%s cannot be set: the app does not declare %s", property,
+                action);
+    return FALSE;
+  };
   if (!strcmp(property, "LoopStatus")) {
+    if (!self->HasAction("setRepeatMode")) return refuse("setRepeatMode");
     const gchar* s = g_variant_get_string(value, nullptr);
     FlValue* m = fl_value_new_map();
     fl_value_set_string_take(m, "type", fl_value_new_string("setRepeatMode"));
@@ -395,22 +430,24 @@ gboolean MprisServer::PlayerSetProperty(GDBusConnection*, const gchar*,
     return TRUE;
   }
   if (!strcmp(property, "Rate")) {
+    if (!self->HasAction("setPlaybackRate")) return refuse("setPlaybackRate");
     double r = g_variant_get_double(value);
-    FlValue* m = fl_value_new_map();
     if (r <= 0.0) {
       // MPRIS: a Rate of 0.0 is equivalent to pausing.
-      fl_value_set_string_take(m, "type", fl_value_new_string("pause"));
-    } else {
-      if (r < self->min_rate_) r = self->min_rate_;
-      if (r > self->max_rate_) r = self->max_rate_;
-      fl_value_set_string_take(m, "type",
-                               fl_value_new_string("setPlaybackRate"));
-      fl_value_set_string_take(m, "rate", fl_value_new_float(r));
+      if (!self->CanPauseAction()) return refuse("pause");
+      self->Emit("pause");
+      return TRUE;
     }
+    if (r < self->min_rate_) r = self->min_rate_;
+    if (r > self->max_rate_) r = self->max_rate_;
+    FlValue* m = fl_value_new_map();
+    fl_value_set_string_take(m, "type", fl_value_new_string("setPlaybackRate"));
+    fl_value_set_string_take(m, "rate", fl_value_new_float(r));
     self->EmitWith(m);
     return TRUE;
   }
   if (!strcmp(property, "Shuffle")) {
+    if (!self->HasAction("setShuffle")) return refuse("setShuffle");
     FlValue* m = fl_value_new_map();
     fl_value_set_string_take(m, "type", fl_value_new_string("setShuffle"));
     fl_value_set_string_take(
@@ -421,6 +458,8 @@ gboolean MprisServer::PlayerSetProperty(GDBusConnection*, const gchar*,
   // No volume command exists in the wire protocol, so Volume is not advertised
   // at all (removed from the introspection XML) rather than exposed as a dead
   // read-only slider. Reject any other write defensively.
+  g_set_error(error, G_DBUS_ERROR, G_DBUS_ERROR_NOT_SUPPORTED,
+              "%s cannot be set", property);
   return FALSE;
 }
 
