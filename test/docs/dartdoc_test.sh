@@ -10,7 +10,10 @@
 # ({@category Name}), and warns of nothing otherwise: each topic has one, or
 # the README's link to its page is a 404.
 # Nor does a reference point at a flat field of PlayerState, deprecated
-# until 0.8.0: [PlaybackState.position], not [PlayerState.position].
+# until 0.8.0: [PlaybackState.position], not [PlayerState.position]. Nor does
+# a doc comment of lib read one in its prose or in an example:
+# `state.playback.position`, not `state.position`. Who copies the example
+# gets a deprecation warning, and in 0.8.0 it no longer compiles.
 #
 #   bash test/docs/dartdoc_test.sh      (after flutter pub get)
 set -euo pipefail
@@ -22,9 +25,13 @@ grep -E '^ *(warning|error):' <<<"$out" || true
 flat="$(sed -nE "s/^ *@Deprecated\('Use [a-z]+\.([A-Za-z]+);.*/\1/p" lib/src/generated/player_state_data.dart | paste -sd'|')"
 deprecated="$(grep -rnE "\[PlayerState\.($flat)\]" lib --include='*.dart' | grep -v '/generated/' || true)"
 [[ -z "$deprecated" ]] || { echo "references to the deprecated flat fields:"; echo "$deprecated"; }
+# The files whose doc comments still read a flat field: none stays here.
+pending='^lib/src/(dsp/band_processor|pcm/pcm_source|generated/audio_effects_extensions)\.dart:'
+flat_docs="$(grep -rnE "^[[:space:]]*///.*\bstate\.($flat)\b" lib --include='*.dart' | grep -vE "$pending" || true)"
+[[ -z "$flat_docs" ]] || { echo "doc comments that read the deprecated flat fields:"; echo "$flat_docs"; }
 empty=""
 while read -r topic; do
   grep -rqF "{@category $topic}" lib --include='*.dart' || empty+="${empty:+, }$topic"
 done < <(sed -nE '/^  categories:/,/^  [a-zA-Z]+:$/s/^    "([^"]+)":$/\1/p' dartdoc_options.yaml)
 [[ -z "$empty" ]] || echo "topics with no element, so no page: $empty"
-[[ "$summary" == "Found 0 warnings and 0 errors." && -z "$deprecated" && -z "$empty" ]]
+[[ "$summary" == "Found 0 warnings and 0 errors." && -z "$deprecated" && -z "$flat_docs" && -z "$empty" ]]
