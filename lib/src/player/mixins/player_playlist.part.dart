@@ -59,29 +59,35 @@ mixin _PlaylistModule on _PlayerBase {
   /// inserts it at [at]. An index past the end, after a concurrent remove,
   /// appends in mpv.
   Future<void> _addEntry(Media media, _LoadTicket load, {int? at}) async {
-    _mediaCache[media.uri] = media;
-    final source = OwnedSource(await resolveUri(media.uri));
-    // Released on every way out unless mpv took the entry: a later load,
-    // or a refusal, after which nothing will ever read the source.
+    // Kept from the cache prune until mpv has the entry.
+    _entryLoads++;
     try {
-      if (load.superseded) return;
-      _mediaCache[source.uri] = media;
-      await _forgetFdResume(source.uri);
-      final opts = _buildLoadfileOptions(media);
-      await _loadfile(
-        [
-          'loadfile',
-          source.uri,
-          if (at == null) 'append' else 'insert-at',
-          // The options need the index argument (mpv 0.38+), -1 to append.
-          if (at != null) '$at' else if (opts.isNotEmpty) '-1',
-          if (opts.isNotEmpty) opts,
-        ],
-        media,
-        source,
-      );
+      _mediaCache[media.uri] = media;
+      final source = OwnedSource(await resolveUri(media.uri));
+      // Released on every way out unless mpv took the entry: a later load,
+      // or a refusal, after which nothing will ever read the source.
+      try {
+        if (load.superseded) return;
+        _mediaCache[source.uri] = media;
+        await _forgetFdResume(source.uri);
+        final opts = _buildLoadfileOptions(media);
+        await _loadfile(
+          [
+            'loadfile',
+            source.uri,
+            if (at == null) 'append' else 'insert-at',
+            // The options need the index argument (mpv 0.38+), -1 to append.
+            if (at != null) '$at' else if (opts.isNotEmpty) '-1',
+            if (opts.isNotEmpty) opts,
+          ],
+          media,
+          source,
+        );
+      } finally {
+        await source.release();
+      }
     } finally {
-      await source.release();
+      _entryLoads--;
     }
   }
 
@@ -249,72 +255,78 @@ mixin _PlaylistModule on _PlayerBase {
     final load = _transport.snapshotLoad();
     await _gate();
     if (await _checkPlaylistIndex(index, 'index') == null) return;
-    _mediaCache[media.uri] = media;
-    final source = OwnedSource(await resolveUri(media.uri));
-    // Until mpv takes the entry its source is this call's to release, on
-    // every way out: a later load, a command that fails. Once taken, it
-    // stays with [_entries] while mpv lists it.
+    // As in [_addEntry].
+    _entryLoads++;
     try {
-      if (load.superseded) return;
-      _mediaCache[source.uri] = media;
-      await _forgetFdResume(source.uri);
-      // Execute in-flight transport writes before the playlist surgery:
-      // see [CoreCalls.settleWrites].
-      await _calls.settleWrites();
-      if (load.superseded) return;
-      final (posErr, posValue) = await _calls.get(
-        'playlist-pos',
-        MpvFormat.mpvFormatString,
-      );
-      if (load.superseded) return;
-      final currentPos = posErr < 0
-          ? -1
-          : (int.tryParse(posValue as String? ?? '') ?? -1);
-      // mpv's index, against mpv's position: see [EntryTable.toCore].
-      final at = _entries.toCore(index);
-      final opts = _buildLoadfileOptions(media);
-      Future<void> insertAt(int at) {
-        if (opts.isEmpty) {
+      _mediaCache[media.uri] = media;
+      final source = OwnedSource(await resolveUri(media.uri));
+      // Until mpv takes the entry its source is this call's to release, on
+      // every way out: a later load, a command that fails. Once taken, it
+      // stays with [_entries] while mpv lists it.
+      try {
+        if (load.superseded) return;
+        _mediaCache[source.uri] = media;
+        await _forgetFdResume(source.uri);
+        // Execute in-flight transport writes before the playlist surgery:
+        // see [CoreCalls.settleWrites].
+        await _calls.settleWrites();
+        if (load.superseded) return;
+        final (posErr, posValue) = await _calls.get(
+          'playlist-pos',
+          MpvFormat.mpvFormatString,
+        );
+        if (load.superseded) return;
+        final currentPos = posErr < 0
+            ? -1
+            : (int.tryParse(posValue as String? ?? '') ?? -1);
+        // mpv's index, against mpv's position: see [EntryTable.toCore].
+        final at = _entries.toCore(index);
+        final opts = _buildLoadfileOptions(media);
+        Future<void> insertAt(int at) {
+          if (opts.isEmpty) {
+            return _loadfile(
+              ['loadfile', source.uri, 'insert-at', at.toString()],
+              media,
+              source,
+            );
+          }
+          // 4th-arg options require an explicit index argument (mpv 0.38+).
           return _loadfile(
-            ['loadfile', source.uri, 'insert-at', at.toString()],
+            ['loadfile', source.uri, 'insert-at', at.toString(), opts],
             media,
             source,
           );
         }
-        // 4th-arg options require an explicit index argument (mpv 0.38+).
-        return _loadfile(
-          ['loadfile', source.uri, 'insert-at', at.toString(), opts],
-          media,
-          source,
-        );
-      }
 
-      // Re-check the epoch between each of the multi-command surgeries
-      // below: every await now spans an event-isolate reply round-trip,
-      // during which a concurrent content-replacing call (stop, open,
-      // clearPlaylist) can claim the load epoch and own the queue. Without the
-      // guard, `playlist-next force` would RESTART playback a concurrent
-      // stop() meant to halt, and `playlist-remove` would delete a now-stale
-      // index. Bail and let the later call own the surgery, matching the
-      // open() family's per-await discipline.
-      if (currentPos == at) {
-        // Currently-playing entry: insert the replacement right after
-        // the active position, then advance: with prefetch on (see
-        // [setPrefetchPlaylist]) mpv has the next entry open ahead, so the
-        // switch is gapless for typical music files. Finally drop the
-        // original.
-        await insertAt(at + 1);
-        if (load.superseded) return;
-        await _calls.commandChecked(['playlist-next', 'force']);
-        if (load.superseded) return;
-        await _calls.commandChecked(['playlist-remove', at.toString()]);
-      } else {
-        await _calls.commandChecked(['playlist-remove', at.toString()]);
-        if (load.superseded) return;
-        await insertAt(at);
+        // Re-check the epoch between each of the multi-command surgeries
+        // below: every await now spans an event-isolate reply round-trip,
+        // during which a concurrent content-replacing call (stop, open,
+        // clearPlaylist) can claim the load epoch and own the queue. Without the
+        // guard, `playlist-next force` would RESTART playback a concurrent
+        // stop() meant to halt, and `playlist-remove` would delete a now-stale
+        // index. Bail and let the later call own the surgery, matching the
+        // open() family's per-await discipline.
+        if (currentPos == at) {
+          // Currently-playing entry: insert the replacement right after
+          // the active position, then advance: with prefetch on (see
+          // [setPrefetchPlaylist]) mpv has the next entry open ahead, so the
+          // switch is gapless for typical music files. Finally drop the
+          // original.
+          await insertAt(at + 1);
+          if (load.superseded) return;
+          await _calls.commandChecked(['playlist-next', 'force']);
+          if (load.superseded) return;
+          await _calls.commandChecked(['playlist-remove', at.toString()]);
+        } else {
+          await _calls.commandChecked(['playlist-remove', at.toString()]);
+          if (load.superseded) return;
+          await insertAt(at);
+        }
+      } finally {
+        await source.release();
       }
     } finally {
-      await source.release();
+      _entryLoads--;
     }
   }
 
@@ -341,6 +353,7 @@ mixin _PlaylistModule on _PlayerBase {
         ? playlist.items.elementAtOrNull(playlist.index)
         : null;
     _mediaCache.removeWhere((_, media) => current == null || media != current);
+    _resolvedKeys.retainAll(_mediaCache.keys);
     // Execute in-flight transport writes first; see [CoreCalls.settleWrites].
     await _calls.settleWrites();
     if (load.superseded) return;

@@ -62,6 +62,12 @@ Future<void> Function()? debugBeforePcmCutRemove;
 @visibleForTesting
 Future<void> Function()? debugBeforeRetainedRemove;
 
+/// Test only: the keys of the [Media] cache of [player]. Not exported, as
+/// [debugBeforePcmCutRemove].
+@visibleForTesting
+Set<String> debugMediaCacheKeys(Player player) =>
+    player._mediaCache.keys.toSet();
+
 /// The `loadfile` of a [Media] with its entry bookkeeping (the entry in
 /// [_PlayerBase._entries], the cut of an aborted live source), and the
 /// public raw escape hatches (property reads and writes, commands, log

@@ -488,6 +488,7 @@ mixin _DispatchModule on _PlayerBase {
       // appended after this node was taken (a batch of appends replies
       // ahead of the playlist notifications): it stays.
       _entries.onPlaylist(raw);
+      _pruneMediaCache(raw);
       // The entry openAll still holds in mpv after its jump is left out.
       final hidden = retainedEntryAt(raw, _entries.retained);
       final playlist = parsePlaylistNode(
@@ -504,6 +505,33 @@ mixin _DispatchModule on _PlayerBase {
     } catch (e) {
       _internalLog('Failed to parse playlist: $e', level: LogLevel.warn);
     }
+  }
+
+  /// Drops from [_mediaCache] the keys of entries mpv no longer lists in
+  /// the playlist [raw]: without it a queue fed by add and remove, never
+  /// opened again, kept a key for every URL it ever held. A key stays
+  /// while its [Media] is one of an entry, while mpv lists it as a
+  /// filename, and while it is a resolver's ([_cacheResolved] turns those
+  /// over). Not while a load is under way: its keys are written before
+  /// mpv has the entry.
+  void _pruneMediaCache(Object? raw) {
+    if (_mediaCache.isEmpty ||
+        _entryLoads > 0 ||
+        _transport.loadsInFlight > 0 ||
+        raw is! List) {
+      return;
+    }
+    final live = Set<Media>.identity()..addAll(_entries.media.values);
+    final listed = <Object?>{
+      for (final entry in raw)
+        if (entry is Map) entry['filename'],
+    };
+    _mediaCache.removeWhere(
+      (key, media) =>
+          !live.contains(media) &&
+          !listed.contains(key) &&
+          !_resolvedKeys.contains(key),
+    );
   }
 
   @override

@@ -30,6 +30,7 @@ mixin _OpenModule on _PlayerBase, _FfiModule {
     final previousIntent = _state.playback.playWhenReady;
     final intent = _transport.claimIntent(shouldPlay);
     _mediaCache.clear();
+    _resolvedKeys.clear();
     _mediaCache[media.uri] = media;
     final OwnedSource source;
     try {
@@ -211,6 +212,7 @@ mixin _OpenModule on _PlayerBase, _FfiModule {
     final old = _state.playback.playlist;
     final index = old.index;
     _mediaCache.clear();
+    _resolvedKeys.clear();
     if (index < 0 || index >= old.items.length) return;
     final current = old.items[index];
     _mediaCache[current.uri] = current;
@@ -413,6 +415,7 @@ mixin _OpenModule on _PlayerBase, _FfiModule {
     final previousIntent = _state.playback.playWhenReady;
     final intent = _transport.claimIntent(shouldPlay);
     _mediaCache.clear();
+    _resolvedKeys.clear();
     final OwnedSource source;
     try {
       source = OwnedSource(await resolveUri(playlist.uri));

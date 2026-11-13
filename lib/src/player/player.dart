@@ -308,6 +308,14 @@ abstract class _PlayerBase {
 
   final Map<String, Media> _mediaCache = {};
 
+  /// The keys of [_mediaCache] a source resolver gave, which
+  /// `_cacheResolved` turns over at each load.
+  final Set<String> _resolvedKeys = {};
+
+  /// How many add, insert and replace calls are between their first write
+  /// to [_mediaCache] and mpv's answer: the cache is not pruned meanwhile.
+  int _entryLoads = 0;
+
   /// The playlist entries this player loaded, by mpv's `playlist_entry_id`:
   /// their [Media] (unlike [_mediaCache], two entries with the same URI keep
   /// their own `extras`), and the live PCM sources and `fd://` descriptors
