@@ -32,8 +32,8 @@ jobs:
     timeout-minutes: 360
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v7
-      - uses: subosito/flutter-action@v2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
           channel: stable
           cache: true
@@ -66,7 +66,7 @@ jobs:
           dart pub get -C tool/mutation
           dart tool/mutation/bin/mutation.dart --coverage coverage/lcov.info
       - if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: mutation-test-report
           path: mutation-test-report
