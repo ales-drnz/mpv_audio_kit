@@ -55,7 +55,9 @@ final class FakeModule {
       if (p != 0) bytes.setAll(p, [...encoded, 0]);
       return p.toJS;
     }).toJS;
+    _export('_mpv_create', 0, (_) => 1);
     const arities = {
+      '_mpv_set_option_string': 3,
       '_mpv_command_string': 2,
       '_mpv_destroy': 1,
       '_mpv_terminate_destroy': 1,
@@ -134,7 +136,8 @@ final class FakeModule {
     instance[name] = switch (arity) {
       0 => (() => run([])).toJS,
       1 => ((JSNumber a) => run([a])).toJS,
-      _ => ((JSNumber a, JSNumber b) => run([a, b])).toJS,
+      2 => ((JSNumber a, JSNumber b) => run([a, b])).toJS,
+      _ => ((JSNumber a, JSNumber b, JSNumber c) => run([a, b, c])).toJS,
     };
   }
 }

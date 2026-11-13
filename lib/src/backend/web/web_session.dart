@@ -109,8 +109,8 @@ final class WebSession implements MpvSession {
     _events.stream.listen(onEvent);
     try {
       _m = await _module();
-    } catch (e) {
-      throw PlayerInitException('$e');
+    } catch (e, st) {
+      Error.throwWithStackTrace(PlayerInitException('$e', cause: e), st);
     }
     final c = _m.c;
     final h = timedCall('mpv_create', () => c.mpvCreate());
@@ -170,7 +170,10 @@ final class WebSession implements MpvSession {
       if (_reads != 0) c.mpvDestroy(_reads);
       _reads = 0;
       timedCall('mpv_terminate_destroy', () => c.mpvTerminateDestroy(h));
-      throw PlayerInitException('init crashed: $e\n$st');
+      Error.throwWithStackTrace(
+        PlayerInitException('init crashed: $e', cause: e),
+        st,
+      );
     }
     _handle = h;
     _client = WebClient(_m, h);
