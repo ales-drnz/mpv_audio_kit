@@ -52,8 +52,8 @@ abstract final class OwnerWatch {
   static Future<int> _start() async {
     final word = calloc<Int32>();
     if (!enabled) return word.address;
+    final ready = ReceivePort();
     try {
-      final ready = ReceivePort();
       await Isolate.spawn(_watch, (
         ready.sendPort,
         word.address,
@@ -62,6 +62,8 @@ abstract final class OwnerWatch {
       // Registered from the owner itself, before any player of it runs.
       Isolate.current.addOnExitListener(watch);
     } catch (e) {
+      // No watch will answer: an open port would keep the isolate alive.
+      ready.close();
       debugLog('mpv_audio_kit: cannot watch the owner isolate: $e');
     }
     return word.address;

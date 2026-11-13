@@ -339,12 +339,21 @@ mixin _OpenModule on _PlayerBase, _FfiModule {
         // entry 0), which would start the incoming album's first track:
         // the exact transient this flow eliminates. Idle lands within a
         // playloop iteration; the bound only guards a wedged core.
+        var idle = false;
         for (var i = 0; i < 100; i++) {
-          if (await _readString('idle-active') == 'yes') break;
+          idle = await _readString('idle-active') == 'yes';
           if (load.superseded) return null;
+          if (idle) break;
           await Future<void>.delayed(const Duration(milliseconds: 5));
         }
         if (load.superseded) return null;
+        if (!idle) {
+          _internalLog(
+            'openAll: the core did not reach idle after the removal of the '
+            'parked entry; the first new entry may start before the jump',
+            level: LogLevel.warn,
+          );
+        }
       }
     }
     return retainedCount > 0 && !parkedAtEof;
