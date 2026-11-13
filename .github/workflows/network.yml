@@ -1,0 +1,62 @@
+name: Network
+
+# The tests that reach hosts on the public internet (the tag network of
+# dart_test.yaml: streams, the embedded CA bundle against real servers, a
+# live waveform), which every other job leaves out with -x network. Once a
+# week and by hand. Reads, never gates: a host that is down is not a
+# regression of the package, so the job does not fail the run, and its
+# result is read in the log.
+
+on:
+  schedule:
+    # Mondays at 04:23 UTC.
+    - cron: '23 4 * * 1'
+  workflow_dispatch:
+    inputs:
+      libmpv_scripts_run:
+        description: libmpv-scripts run whose libmpv-release artifact the job bundles (empty for the Build found by itself)
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: network-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  network:
+    name: Test (network)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/flutter
+        with:
+          cache: true
+      - name: libmpv-scripts run
+        id: libmpv
+        env:
+          LIBMPV_SCRIPTS_RUN: ${{ inputs.libmpv_scripts_run || vars.LIBMPV_SCRIPTS_RUN }}
+          GH_TOKEN: ${{ secrets.LIBMPV_SCRIPTS_TOKEN }}
+          RELEASE_TOKEN: ${{ github.token }}
+        run: |
+          run="$(scripts/ci/resolve_libmpv_run.sh)"
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+      - uses: ./.github/actions/libmpv-from-run
+        with:
+          run-id: ${{ steps.libmpv.outputs.run }}
+          token: ${{ secrets.LIBMPV_SCRIPTS_TOKEN }}
+          pubspecs: pubspec.yaml
+      - name: Install libmpv runtime dependencies
+        run: sudo apt-get update && sudo apt-get install -y libasound2t64 pulseaudio pulseaudio-utils
+      - name: PulseAudio null sink
+        run: |
+          pulseaudio --start --exit-idle-time=-1
+          pactl load-module module-null-sink sink_name=ci_null norewinds=1
+          pactl set-default-sink ci_null
+      - name: flutter test -t network
+        run: flutter test -t network -r expanded

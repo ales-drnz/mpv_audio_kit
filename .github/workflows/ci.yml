@@ -63,12 +63,13 @@ jobs:
   changes:
     name: Changes
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     outputs:
       code: ${{ steps.diff.outputs.code }}
       # The libmpv-scripts run the jobs bundle, empty for the pinned release.
       libmpv_run: ${{ steps.libmpv.outputs.run }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           filter: blob:none
@@ -104,47 +105,66 @@ jobs:
           FORK: ${{ github.event.pull_request.head.repo.fork }}
         run: scripts/ci/preflight.sh
 
+  # Flutter comes from .github/actions/flutter in every job: stable is the
+  # version of .github/flutter-version, floor the lower bound pubspec.yaml
+  # declares, latest the stable of the day. The format and the drift of the
+  # generated code are checked on stable alone, so a new Flutter cannot turn
+  # them red without a commit. latest only tells what the next one brings:
+  # it does not fail the run.
   analyze:
     name: Analyze (Flutter ${{ matrix.flutter }})
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    continue-on-error: ${{ matrix.flutter == 'latest' }}
     strategy:
       fail-fast: false
       matrix:
-        # The declared floor and the current stable.
-        flutter: ['3.38.x', 'any']
+        flutter: [floor, stable, latest]
     steps:
-      - uses: actions/checkout@v7
-      - uses: subosito/flutter-action@v2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/flutter
         with:
-          channel: stable
-          flutter-version: ${{ matrix.flutter }}
+          version: ${{ matrix.flutter }}
           cache: true
       - run: flutter pub get
       - run: flutter pub get
         working-directory: test_app
+      # flutter analyze reads the packages of tool too (analysis_options.yaml
+      # leaves out tool/codegen alone), each with its own dependencies.
+      - name: Dependencies of the tool packages
+        run: |
+          for package in metrics data_classes mutation; do
+            dart pub get -C "tool/$package"
+          done
       - name: Format
-        if: matrix.flutter == 'any'
+        if: matrix.flutter == 'stable'
         run: dart format --output=none --set-exit-if-changed lib test example test_app/lib test_app/integration_test hook tool
       - run: flutter analyze
+      # The dry run of a checkout without the web module, which is out of
+      # git: what goes to pub.dev is checked by scripts/publish.sh, on the
+      # checkout it is published from. Its check of the versions (pubspec,
+      # podspec, gradle, README, CHANGELOG) runs here.
       - name: Publish dry run
-        if: matrix.flutter == 'any'
-        run: flutter pub publish --dry-run
+        if: matrix.flutter == 'stable'
+        run: |
+          scripts/publish.sh --versions
+          flutter pub publish --dry-run
       # The FFmpeg tarball the generator parses comes from the cache, not
       # from ffmpeg.org on every run: fetch_ffmpeg_src.sh keeps it and checks
       # its SHA-256 either way.
       - name: FFmpeg version of the codegen
         id: ffmpeg
-        if: matrix.flutter == 'any'
+        if: matrix.flutter == 'stable'
         run: echo "version=$(jq -r .ffmpeg tool/codegen/libmpv_manifest.json)" >> "$GITHUB_OUTPUT"
-      - if: matrix.flutter == 'any'
-        uses: actions/cache@v6
+      - if: matrix.flutter == 'stable'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: tool/codegen/.ffmpeg-src/ffmpeg-${{ steps.ffmpeg.outputs.version }}.tar.gz
           key: codegen-ffmpeg-${{ steps.ffmpeg.outputs.version }}
       # The generated effects API must be exactly what tool/codegen emits.
       # git status, not git diff: a file the generator adds is untracked.
       - name: Codegen drift
-        if: matrix.flutter == 'any'
+        if: matrix.flutter == 'stable'
         run: |
           tool/codegen/regen.sh
           drift=$(git status --porcelain -- lib/src/generated test/generated)
@@ -154,10 +174,21 @@ jobs:
             git diff -- lib/src/generated test/generated | head -200
             exit 1
           fi
-      # The scripts of the changes job, against a fake gh (test/ci).
+      # The scripts of CI against a fake gh and made-up trees, and the
+      # workflows themselves (test/ci).
       - name: CI script tests
-        if: matrix.flutter == 'any'
+        if: matrix.flutter == 'stable'
         run: for t in test/ci/*_test.sh; do bash "$t"; done
+      # tvos/ holds copies of the darwin sources: the script that writes
+      # them says whether they are current.
+      - name: tvOS sources in sync
+        if: matrix.flutter == 'stable'
+        run: |
+          if [[ ! -f scripts/sync_tvos_sources.sh ]]; then
+            echo "::warning::No scripts/sync_tvos_sources.sh: the tvOS sources are not checked against the darwin ones."
+            exit 0
+          fi
+          bash scripts/sync_tvos_sources.sh --check
 
   # The quality ratchet: the metrics of tool/metrics against their
   # baseline, the API against the version on pub.dev, and the red and
@@ -165,14 +196,14 @@ jobs:
   quality:
     name: Quality
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           filter: blob:none
-      - uses: subosito/flutter-action@v2
+      - uses: ./.github/actions/flutter
         with:
-          channel: stable
           cache: true
       - name: Metrics
         run: |
@@ -224,11 +255,13 @@ jobs:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
+    # The tests load libmpv through FFI: the timeout of a Dart test does
+    # not end a native deadlock, and the job's default is six hours.
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v7
-      - uses: subosito/flutter-action@v2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/flutter
         with:
-          channel: stable
           cache: true
       # The multi engine rule of the Windows and Linux plugins, the header
       # they share (native_common/engine_ownership.h), built with g++.
@@ -273,7 +306,7 @@ jobs:
           set -o pipefail
           scripts/ci/coverage.sh coverage/lcov.info | tee -a "$GITHUB_STEP_SUMMARY"
       - if: success() || failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: coverage-linux
           path: coverage/lcov.info
@@ -299,14 +332,14 @@ jobs:
     # The toolchain each job got is printed, since an image can still
     # update within its label.
     runs-on: macos-26
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # No Flutter cache off Linux: the macOS and Windows entries weigh 1.5
       # to 2 GB each and pushed the NDK and Gradle caches out of the 10 GB
       # the repository gets.
-      - uses: subosito/flutter-action@v2
+      - uses: ./.github/actions/flutter
         with:
-          channel: stable
           cache: false
       - name: Toolchain versions
         continue-on-error: true
@@ -323,6 +356,73 @@ jobs:
       # give here what they give on Linux, which runs them all.
       - name: flutter test -x network (files that touch the host)
         run: flutter test -x network $(scripts/ci/platform_tests.sh)
+
+  # The files of Test (macOS), on Windows: the ones that name it in their
+  # @TestOn ran nowhere on it, and the Windows branch of the test resolver
+  # with them. This job has never run: it does not fail the run until it
+  # has passed once. Take continue-on-error away after its first green run.
+  test-windows:
+    name: Test (Windows)
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: windows-2025-vs2026
+    timeout-minutes: 45
+    continue-on-error: true
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/flutter
+        with:
+          cache: false
+      - name: Toolchain versions
+        continue-on-error: true
+        run: flutter --version
+      - uses: ./.github/actions/libmpv-from-run
+        with:
+          run-id: ${{ needs.changes.outputs.libmpv_run }}
+          token: ${{ secrets.LIBMPV_SCRIPTS_TOKEN }}
+          pubspecs: pubspec.yaml
+      - name: flutter test -x network (files that touch the host)
+        run: flutter test -x network $(scripts/ci/platform_tests.sh)
+
+  # The whole suite on the oldest Flutter pubspec.yaml declares, where
+  # Analyze alone ran, and then the hook on the oldest version of each
+  # dependency the constraints allow: code_assets and hooks, which the
+  # build hook runs on, differ between versions.
+  test-floor:
+    name: Test (Flutter floor)
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/flutter
+        with:
+          version: floor
+          cache: true
+      - uses: ./.github/actions/libmpv-from-run
+        with:
+          run-id: ${{ needs.changes.outputs.libmpv_run }}
+          token: ${{ secrets.LIBMPV_SCRIPTS_TOKEN }}
+          pubspecs: pubspec.yaml
+      # As in Test (Linux): ALSA for libmpv, and a null sink as an output.
+      - name: Install libmpv runtime dependencies
+        run: sudo apt-get update && sudo apt-get install -y libasound2t64 pulseaudio pulseaudio-utils
+      - name: PulseAudio null sink
+        run: |
+          pulseaudio --start --exit-idle-time=-1
+          pactl load-module module-null-sink sink_name=ci_null norewinds=1
+          pactl set-default-sink ci_null
+      - name: flutter test -x network
+        run: flutter test -x network
+      - name: The hook on the oldest dependencies
+        run: |
+          flutter pub downgrade
+          flutter analyze lib hook
+          flutter test test/packaging/hook_*_test.dart
 
   # The web backend in Chrome, on libmpv built as WebAssembly. The module
   # is the web build of the libmpv the other jobs bundle, the run's when
@@ -357,9 +457,8 @@ jobs:
           LIBMPV_SCRIPTS_RUN: ${{ needs.changes.outputs.libmpv_run }}
         run: scripts/ci/web_module.sh
       - if: steps.module.outputs.ready == 'true'
-        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        uses: ./.github/actions/flutter
         with:
-          channel: stable
           cache: true
       # A compile error in a browser test leaves flutter test waiting on
       # the page instead of failing: the analyzer reports it first.
@@ -433,6 +532,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -485,8 +585,8 @@ jobs:
               flutter build ios --simulator --debug &&
               ../scripts/ci/check_apple_frameworks.sh --expect-plugin build/ios/iphonesimulator/Runner.app/Frameworks
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-java@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         if: matrix.name == 'Android'
         with:
           distribution: temurin
@@ -498,9 +598,8 @@ jobs:
             test_app/android/gradle/wrapper/gradle-wrapper.properties
             android/*.gradle*
       # Flutter is cached on Linux only, as in Test (macOS).
-      - uses: subosito/flutter-action@v2
+      - uses: ./.github/actions/flutter
         with:
-          channel: stable
           cache: ${{ runner.os == 'Linux' }}
       - name: Toolchain versions
         if: runner.os == 'macOS'
@@ -540,7 +639,7 @@ jobs:
           echo "sdk=${ANDROID_HOME:-$ANDROID_SDK_ROOT}" >> "$GITHUB_OUTPUT"
       - id: ndk-cache
         if: matrix.name == 'Android' && steps.ndk.outputs.version != ''
-        uses: actions/cache/restore@v6
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             ${{ steps.ndk.outputs.sdk }}/ndk/${{ steps.ndk.outputs.version }}
@@ -559,7 +658,7 @@ jobs:
           done
           exit 1
       - if: matrix.name == 'Android' && steps.ndk.outputs.version != '' && steps.ndk-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v6
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             ${{ steps.ndk.outputs.sdk }}/ndk/${{ steps.ndk.outputs.version }}
@@ -595,6 +694,19 @@ jobs:
         # start the app on the desktop ("Unable to start the app").
         run: |
           for f in media_session_test linux_mpris_test; do
+            xvfb-run -a dbus-run-session -- \
+              flutter test -d linux -r expanded "integration_test/$f.dart"
+          done
+      # The playback through the running app, which ran on the phones
+      # alone: libmpv loads from the bundle, a file opens, plays and seeks
+      # (smoke_test), and each codec of the fixtures decodes
+      # (codec_coverage_test). dispose_mid_playback_test is for macOS.
+      - name: Playback integration tests
+        if: matrix.name == 'Linux'
+        timeout-minutes: 15
+        working-directory: test_app
+        run: |
+          for f in smoke_test codec_coverage_test; do
             xvfb-run -a dbus-run-session -- \
               flutter test -d linux -r expanded "integration_test/$f.dart"
           done

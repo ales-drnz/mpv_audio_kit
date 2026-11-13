@@ -20,9 +20,6 @@ coverage/
 # A libmpv of your own for tvOS (tvos/Package.swift)
 /tvos/libmpv.xcframework/
 
-# Docs
-/docs/
-
 # AI tooling
 .claude/
 CLAUDE.md

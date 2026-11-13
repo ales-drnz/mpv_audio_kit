@@ -1,0 +1,35 @@
+name: Flutter
+description: >-
+  Installs the Flutter of a CI job: the pinned stable of
+  .github/flutter-version, the floor pubspec.yaml declares, or the stable
+  of the day (scripts/ci/flutter_version.sh). Every job takes Flutter from
+  here, so the stable moves with a commit to that one file.
+inputs:
+  version:
+    description: stable, floor or latest.
+    required: false
+    default: stable
+  cache:
+    description: Whether to cache the SDK ('true' or 'false').
+    required: false
+    default: 'false'
+outputs:
+  version:
+    description: The version asked of flutter-action, "any" for latest.
+    value: ${{ steps.version.outputs.version }}
+runs:
+  using: composite
+  steps:
+    - id: version
+      shell: bash
+      env:
+        WANT: ${{ inputs.version }}
+      run: |
+        version="$(bash scripts/ci/flutter_version.sh "$WANT")"
+        echo "Flutter $WANT: $version"
+        echo "version=$version" >> "$GITHUB_OUTPUT"
+    - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+      with:
+        channel: stable
+        flutter-version: ${{ steps.version.outputs.version }}
+        cache: ${{ inputs.cache }}

@@ -10,6 +10,16 @@
 // Run from the root of the package. The check fails when a metric gets
 // worse than the baseline; a change that makes one worse on purpose writes
 // the baseline again in the same commit, where the review sees it.
+//
+// The tests per line of lib fall when tests are cleaned up (duplicates
+// removed, a file of cases turned into a table), which is no loss. Such a
+// fall is declared, with its reason:
+//
+//   dart tool/metrics/bin/metrics.dart --write --test-ratio-drop="<why>"
+//
+// writes the baseline with the reason in it (test_per_lib_drop), and
+// without the flag --write refuses to lower the ratio. The check takes the
+// same flag, and then warns with the reason instead of failing.
 
 import 'dart:convert';
 import 'dart:io';
@@ -28,6 +38,21 @@ const baselinePath = 'tool/metrics/baseline.json';
 const apiPath = 'tool/metrics/api_surface.txt';
 const structsPath = 'tool/metrics/struct_layout.txt';
 
+/// The flag that declares a fall of the tests per line of lib.
+const testRatioDropFlag = '--test-ratio-drop';
+
+/// The reason [args] give for a fall of the tests per line of lib: null
+/// without the flag, and empty when the flag says nothing.
+String? testRatioDropReason(List<String> args) {
+  for (final arg in args) {
+    if (arg == testRatioDropFlag) return '';
+    if (arg.startsWith('$testRatioDropFlag=')) {
+      return arg.substring(testRatioDropFlag.length + 1).trim();
+    }
+  }
+  return null;
+}
+
 /// Files of lib the metrics leave out: generated code and the license texts.
 bool excluded(String path) =>
     path.startsWith('lib/src/generated/') ||
@@ -40,6 +65,14 @@ CompilationUnit parse(String path) => parseFile(
 
 Future<void> main(List<String> args) async {
   final write = args.contains('--write');
+  final dropReason = testRatioDropReason(args);
+  if (dropReason != null && dropReason.isEmpty) {
+    stderr.writeln(
+      'metrics: $testRatioDropFlag needs its reason: '
+      '$testRatioDropFlag="<why the ratio falls>"',
+    );
+    exit(2);
+  }
   final files =
       Directory('lib')
           .listSync(recursive: true)
@@ -98,8 +131,22 @@ Future<void> main(List<String> args) async {
   };
 
   if (write) {
+    final Map<String, Object> written;
+    try {
+      written = baselineToWrite(
+        File(baselinePath).existsSync()
+            ? jsonDecode(File(baselinePath).readAsStringSync())
+                  as Map<String, Object?>
+            : null,
+        current,
+        testRatioDrop: dropReason,
+      );
+    } on StateError catch (e) {
+      stderr.writeln('metrics: ${e.message}');
+      exit(1);
+    }
     File(baselinePath).writeAsStringSync(
-      '${const JsonEncoder.withIndent('  ').convert(current)}\n',
+      '${const JsonEncoder.withIndent('  ').convert(written)}\n',
     );
     File(apiPath).writeAsStringSync('${api.join('\n')}\n');
     File(structsPath).writeAsStringSync('${structs.join('\n')}\n');
@@ -111,7 +158,7 @@ Future<void> main(List<String> args) async {
   final baseline =
       jsonDecode(File(baselinePath).readAsStringSync()) as Map<String, Object?>;
   final failures = <String>[
-    ...compare(baseline, current),
+    ...compare(baseline, current, testRatioDrop: dropReason),
     ...compareLines('API', File(apiPath).readAsLinesSync(), api),
     ...compareLines(
       'struct layout',
@@ -148,12 +195,46 @@ void printSummary(Map<String, Object> m) {
   }
 }
 
+/// The baseline to write for [current] over the [previous] one, if any.
+///
+/// A fall of the tests per line of lib needs [testRatioDrop], its reason,
+/// which the baseline then keeps under `test_per_lib_drop` with the two
+/// numbers, so the review reads it in the diff. Throws a [StateError]
+/// without one. A baseline written with no fall carries no reason.
+Map<String, Object> baselineToWrite(
+  Map<String, Object?>? previous,
+  Map<String, Object> current, {
+  String? testRatioDrop,
+}) {
+  final was = previous?['test_per_lib_permille'] as int? ?? 0;
+  final now = current['test_per_lib_permille']! as int;
+  if (now >= was) return current;
+  if (testRatioDrop == null || testRatioDrop.isEmpty) {
+    throw StateError(
+      'test_per_lib_permille would go from $was to $now. If the tests were '
+      'cleaned up and nothing is checked less, write the baseline with '
+      '$testRatioDropFlag="<why>"',
+    );
+  }
+  return {
+    for (final MapEntry(:key, :value) in current.entries) ...{
+      key: value,
+      if (key == 'test_per_lib_permille')
+        'test_per_lib_drop': 'from $was to $now: $testRatioDrop',
+    },
+  };
+}
+
 /// What got worse from [baseline] to [current]: a count that grew, a
 /// function over 10 that grew, or a function new over 10.
+///
+/// A fall of the tests per line of lib is a failure unless
+/// [testRatioDrop] gives its reason: it is then a warning with the reason.
 List<String> compare(
   Map<String, Object?> baseline,
-  Map<String, Object> current,
-) {
+  Map<String, Object> current, {
+  String? testRatioDrop,
+}) {
   final failures = <String>[];
   // lib may grow with what it does: a warning past 300 lines, which the
   // body of the commit explains.
@@ -168,7 +249,18 @@ List<String> compare(
   final ratioWas = baseline['test_per_lib_permille'] as int? ?? 0;
   final ratioNow = current['test_per_lib_permille'] as int;
   if (ratioNow < ratioWas) {
-    failures.add('test_per_lib_permille went from $ratioWas to $ratioNow');
+    if (testRatioDrop != null && testRatioDrop.isNotEmpty) {
+      stdout.writeln(
+        '::warning title=metrics::test_per_lib_permille went from $ratioWas '
+        'to $ratioNow, declared: $testRatioDrop',
+      );
+    } else {
+      failures.add(
+        'test_per_lib_permille went from $ratioWas to $ratioNow. If the '
+        'tests were cleaned up and nothing is checked less, declare it: '
+        '--write $testRatioDropFlag="<why>"',
+      );
+    }
   }
   for (final k in [
     'complexity_over_15',
