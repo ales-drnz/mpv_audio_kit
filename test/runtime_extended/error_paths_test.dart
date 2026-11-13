@@ -128,8 +128,8 @@ void main() {
         expect(MpvEndFileReason.fromValue(3), MpvEndFileReason.quit);
         expect(MpvEndFileReason.fromValue(4), MpvEndFileReason.error);
         expect(MpvEndFileReason.fromValue(5), MpvEndFileReason.redirect);
-        // Forward-compat: unknown raw → eof (defensive fallback).
-        expect(MpvEndFileReason.fromValue(999), MpvEndFileReason.eof);
+        // Forward-compat: unknown raw → error (defensive fallback).
+        expect(MpvEndFileReason.fromValue(999), MpvEndFileReason.error);
       });
     });
   });

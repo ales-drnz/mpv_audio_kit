@@ -195,9 +195,10 @@ void main() {
       }
     });
 
-    test('unknown values fall back to eof', () {
-      expect(MpvEndFileReason.fromValue(99), MpvEndFileReason.eof);
-      expect(MpvEndFileReason.fromValue(-1), MpvEndFileReason.eof);
+    test('unknown values fall back to error, not to a natural end', () {
+      expect(MpvEndFileReason.fromValue(99), MpvEndFileReason.error);
+      expect(MpvEndFileReason.fromValue(-1), MpvEndFileReason.error);
+      expect(MpvEndFileReason.fromValue(1), MpvEndFileReason.error);
     });
   });
 }
