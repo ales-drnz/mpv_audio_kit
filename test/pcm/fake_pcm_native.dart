@@ -30,6 +30,9 @@ final class FakePcmNative implements PcmNative {
   int _next = firstId - 1;
   int releaseAllCalls = 0;
 
+  /// How many times [state] was read: once per poll of a live source.
+  int stateCalls = 0;
+
   FakeSource operator [](int id) => sources[id]!;
 
   FakeSource get last => sources[_next]!;
@@ -95,6 +98,7 @@ final class FakePcmNative implements PcmNative {
 
   @override
   int state(int id) {
+    stateCalls++;
     final s = sources[id];
     if (s == null || s.freed) return PcmNative.errUnknown;
     return s.state;
