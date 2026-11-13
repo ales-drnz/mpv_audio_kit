@@ -247,9 +247,14 @@ final class WebSession implements MpvSession {
     final id = _nextRead++;
     final reply = Completer<Object?>();
     _pendingReads[id] = reply;
-    final rc = _m.withStrings([
-      name,
-    ], (p) => _m.c.mpvGetPropertyAsync(_reads, bigInt(id), p[0], format));
+    int rc;
+    try {
+      rc = _m.withStrings([
+        name,
+      ], (p) => _m.c.mpvGetPropertyAsync(_reads, bigInt(id), p[0], format));
+    } on WebOutOfMemory {
+      rc = MpvError.mpvErrorNomem;
+    }
     if (rc < 0) {
       _pendingReads.remove(id);
       return Future.value();
@@ -359,16 +364,21 @@ final class WebSession implements MpvSession {
   /// harmless, and stands in for it where the player sent none (a module
   /// of another release).
   Future<void> _awaitShutdown(int reads, Duration bound) async {
-    _m.withStrings(['quit'], (p) {
-      final array = _m.malloc(8);
-      try {
-        _m.setU32(array, p[0]);
-        _m.setU32(array + 4, 0);
-        _m.c.mpvCommandAsync(reads, bigInt(0), array);
-      } finally {
-        _m.free(array);
-      }
-    });
+    try {
+      _m.withStrings(['quit'], (p) {
+        final array = _m.malloc(8);
+        try {
+          _m.setU32(array, p[0]);
+          _m.setU32(array + 4, 0);
+          _m.c.mpvCommandAsync(reads, bigInt(0), array);
+        } finally {
+          _m.free(array);
+        }
+      });
+    } on WebOutOfMemory {
+      // No room for the command: the player's own `quit` ends the core,
+      // or the destroys wait for it.
+    }
     final waited = Stopwatch()..start();
     while (waited.elapsed < bound) {
       var id = _m.i32(_m.c.mpvWaitEvent(reads, 0));

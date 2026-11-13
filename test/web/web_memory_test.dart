@@ -24,8 +24,12 @@ const int _mib = 1024 * 1024;
 
 /// Whether the module can allocate [bytes] at once; frees them again.
 bool _fits(MpvModule module, int bytes) {
-  final p = module.malloc(bytes);
-  if (p == 0) return false;
+  final int p;
+  try {
+    p = module.malloc(bytes);
+  } on WebOutOfMemory {
+    return false;
+  }
   module.free(p);
   return true;
 }

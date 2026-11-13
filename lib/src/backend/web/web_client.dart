@@ -170,9 +170,12 @@ final class WebClient implements MpvRequests {
     int Function(int id) enqueue,
   ) {
     final (id, reply) = tracker.open();
-    final int rc;
+    int rc;
     try {
       rc = enqueue(id);
+    } on WebOutOfMemory {
+      // No room for the arguments: mpv's own answer to that.
+      rc = MpvError.mpvErrorNomem;
     } catch (_) {
       // Settle the slot, or settleWrites would wait on it forever.
       tracker.reject(id, MpvError.mpvErrorGeneric);

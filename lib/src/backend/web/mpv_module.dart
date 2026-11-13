@@ -325,11 +325,20 @@ final class MpvModule implements CoreMemory {
   void setF64(int p, double value) => _view().setFloat64(p, value, true);
 
   /// A copy of [value] in the module's memory, NUL-terminated; free it with
-  /// [free].
-  int newString(String value) => _m.stringToNewUtf8(value.toJS);
+  /// [free]. Throws [WebOutOfMemory] when the module has no room for it.
+  int newString(String value) =>
+      _allocated(_m.stringToNewUtf8(value.toJS), value.length + 1);
 
-  /// Allocates [size] bytes of the module's memory.
-  int malloc(int size) => _m.malloc(size);
+  /// Allocates [size] bytes of the module's memory. Throws
+  /// [WebOutOfMemory] when the module has no room for them.
+  int malloc(int size) => _allocated(_m.malloc(size), size);
+
+  // The memory has a ceiling ([webModuleMemory]) and malloc returns NULL
+  // past it: a write there would land on the module's own low memory.
+  int _allocated(int pointer, int size) {
+    if (pointer == 0 && size > 0) throw WebOutOfMemory._(size);
+    return pointer;
+  }
 
   /// Frees [pointer], allocated with [malloc] or [newString].
   void free(int pointer) => _m.free(pointer);
@@ -337,8 +346,11 @@ final class MpvModule implements CoreMemory {
   /// Runs [body] with [values] copied to the module's memory as strings,
   /// freed when it returns.
   T withStrings<T>(List<String> values, T Function(List<int> pointers) body) {
-    final pointers = [for (final v in values) newString(v)];
+    final pointers = <int>[];
     try {
+      for (final v in values) {
+        pointers.add(newString(v));
+      }
       return body(pointers);
     } finally {
       for (final p in pointers) {
@@ -473,6 +485,17 @@ Future<JSAny?> _startModule(String url, String? wasmUrl) async {
   final memory = webModuleMemory();
   if (memory != null) options['wasmMemory'] = memory;
   return (factory.callAsFunction(null, options) as JSPromise).toDart;
+}
+
+/// The web module's malloc returned NULL: its memory reached the ceiling
+/// of [webModuleMemory], or the browser refused to grow it.
+@internal
+final class WebOutOfMemory extends StateError {
+  WebOutOfMemory._(int size)
+    : super(
+        'mpv_audio_kit: the web module is out of memory (an allocation of '
+        '$size bytes failed)',
+      );
 }
 
 /// The web module did not start within the time [loadMpvModule] waits.
