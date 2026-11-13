@@ -2,6 +2,8 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
+import 'mpv_value.dart';
+
 /// Lifecycle hook fired by mpv during file loading and unloading.
 ///
 /// Seven phases you can intercept to lazily resolve a URL, attach
@@ -91,14 +93,6 @@ enum Hook {
   /// unknown values, forward-compat with future mpv builds that may
   /// add new hook phases (a warning is logged and the hook auto-
   /// continues so mpv never stalls).
-  static Hook? fromMpv(String raw) => switch (raw) {
-    'on_before_start_file' => beforeStartFile,
-    'on_load' => load,
-    'on_load_fail' => loadFail,
-    'on_preloaded' => preloaded,
-    'on_unload' => unload,
-    'on_after_end_file' => afterEndFile,
-    'on_prefetch' => prefetch,
-    _ => null,
-  };
+  static Hook? fromMpv(String raw) =>
+      byMpvValue(values, raw, (v) => v.mpvValue);
 }

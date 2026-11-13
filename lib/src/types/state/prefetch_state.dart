@@ -3,6 +3,8 @@
 // Use of this source code is governed by BSD 3-Clause license that can be
 // found in the LICENSE file.
 
+import '../enums/mpv_value.dart';
+
 /// Lifecycle phase of mpv's background playlist-prefetch.
 ///
 /// Emitted by [PlayerStream.prefetchState] whenever mpv transitions
@@ -56,10 +58,6 @@ enum PrefetchState {
   /// Parses the string emitted by mpv. Unknown values fall back to
   /// [idle] so future mpv additions don't crash clients; they just
   /// see the phase treated as "not actively prefetching".
-  static PrefetchState fromMpv(String value) {
-    for (final v in PrefetchState.values) {
-      if (v.mpvValue == value) return v;
-    }
-    return PrefetchState.idle;
-  }
+  static PrefetchState fromMpv(String value) =>
+      byMpvValue(values, value, (v) => v.mpvValue) ?? idle;
 }

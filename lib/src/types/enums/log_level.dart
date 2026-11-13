@@ -3,6 +3,8 @@
 // Use of this source code is governed by BSD 3-Clause license that can be
 // found in the LICENSE file.
 
+import 'mpv_value.dart';
+
 /// Severity threshold for the mpv log stream and library-side
 /// diagnostics. Mirrors mpv's `--msg-level` levels verbatim.
 ///
@@ -48,10 +50,6 @@ enum LogLevel {
   /// Maps a mpv-side level string to the typed enum. Returns [info] for
   /// unknown values, forward-compat with future mpv builds that may
   /// add new levels.
-  static LogLevel fromMpv(String value) {
-    for (final level in LogLevel.values) {
-      if (level.mpvValue == value) return level;
-    }
-    return LogLevel.info;
-  }
+  static LogLevel fromMpv(String value) =>
+      byMpvValue(values, value, (v) => v.mpvValue) ?? info;
 }

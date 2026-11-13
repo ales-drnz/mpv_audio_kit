@@ -311,12 +311,10 @@ enum MpvEndFileReason {
   /// Converts a raw mpv integer reason code to the corresponding enum value.
   /// A code this version does not know gives [error], so an unknown end
   /// never reads as the natural end of the file.
-  static MpvEndFileReason fromValue(int value) => switch (value) {
-    _eof => eof,
-    _stop => stop,
-    _quit => quit,
-    _error => error,
-    _redirect => redirect,
-    _ => error,
-  };
+  static MpvEndFileReason fromValue(int value) {
+    for (final reason in values) {
+      if (reason.value == value) return reason;
+    }
+    return error;
+  }
 }
