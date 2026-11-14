@@ -57,8 +57,9 @@ final class SpectrumSettings {
   /// Time between [FftFrame] and [PcmFrame] emissions. 33 ms ≈ 30 fps
   /// (default), 16 ms ≈ 60 fps. Range 8 ms (~120 fps) to 67 ms
   /// (~15 fps); the pipeline is gated by this independently of the
-  /// FFT block rate. [Player.setSpectrum] asserts it is at least 8 ms,
-  /// and a shorter value is polled every 8 ms.
+  /// FFT block rate, and an emit with less new audio than one FFT hop
+  /// sends its [PcmFrame] alone. [Player.setSpectrum] asserts it is at
+  /// least 8 ms, and a shorter value is polled every 8 ms.
   final Duration emitInterval;
 
   /// EMA smoothing coefficient applied when a band's new value is
@@ -91,12 +92,13 @@ final class SpectrumSettings {
   /// Overlap factor for the FFT loop: an FFT runs every
   /// `fftSize / overlapFactor` samples, the classic 75 % overlap at the
   /// default `4`, for visibly smoother visualizer motion at no extra
-  /// latency. Each emit feeds the processor the whole frame the tap
-  /// holds (4096 samples per channel), so at the defaults an emit runs
-  /// 8 FFTs, and 2 with `1`. The smoothing steps once per FFT, so this
-  /// factor also sets how fast the bands rise and fall. Higher values
-  /// trade CPU for smoother curves; values must be powers of two so
-  /// `fftSize / overlapFactor` is an integer hop.
+  /// latency. Each emit feeds the processor the audio that is new since
+  /// the emit before, so every sample is analyzed once: at the defaults
+  /// and 48 kHz that is about 94 FFTs a second, whatever [emitInterval].
+  /// The smoothing steps once per FFT, so this factor also sets how fast
+  /// the bands rise and fall. Higher values trade CPU for smoother
+  /// curves; values must be powers of two so `fftSize / overlapFactor`
+  /// is an integer hop.
   final int overlapFactor;
 
   /// Creates a spectrum-analyzer configuration. Defaults yield the
