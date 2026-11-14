@@ -20,7 +20,8 @@
 - `toString` of `Media`, `SourceResolveRequest` and `MediaSessionArtwork.uri` hides the values of a URL's query and keeps their names.
 - `MpvEndFileReason.fromValue` gives `error` for a code it does not know, where it gave `eof`.
 - `Channels.custom('stereo')` equals `Channels.stereo`: two layouts are equal when their mpv string is.
-- The spectrum analyzes each sample once, so a poll costs about 60 percent less at 30 fps. Its smoothing steps once per FFT hop of audio, whatever `emitInterval`: with the same `attackSmoothing` and `releaseSmoothing` the bands rise and fall more slowly.
+- The spectrum analyzes each sample once, so a poll costs about 60 percent less at 30 fps.
+- The bands of the spectrum rise and fall more slowly with the same `attackSmoothing` and `releaseSmoothing`: the smoothing steps once per FFT hop of audio, about 94 times a second at the defaults, where it stepped 8 times per poll. The defaults are unchanged. A release of about 0.24 and an attack of about 0.83 give the motion of 0.7.0 at 30 fps.
 - A cover download is cancelled when the track changes or the session goes off, ends 60 seconds after its start at the latest, and the last 4 covers are kept in memory.
 - `dispose` waits 5 seconds at most for the media session, and not at all on a player that never published one.
 
