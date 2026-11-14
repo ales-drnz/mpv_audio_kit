@@ -29,9 +29,14 @@ void main() {
       final url = Uri.file(path, windows: false).toString();
       expect(url, matches(RegExp(r'^file:///[\x21-\x7e]*$')));
       expect(fileUrlToPath(url, windows: false), path);
+      // As a POSIX host reads them: on Windows a host before a path with
+      // no drive makes a share (Test (Windows), run 43581359254).
       expect(
-        fileUrlToPath(url.replaceFirst('file://', 'FILE://localhost')),
-        fileUrlToPath(url),
+        fileUrlToPath(
+          url.replaceFirst('file://', 'FILE://localhost'),
+          windows: false,
+        ),
+        path,
         reason: 'the scheme in any case, and localhost for no host',
       );
       if (hostIsWindows) return;
