@@ -163,7 +163,10 @@ static uint64_t hold_ud;
 // with the same reply id, on its first call once it has handed the pump an
 // event of type defer_after since the knob was set. The pump makes that
 // call only after it sent the reads that event takes, so the reads land
-// ahead of the reply.
+// ahead of the reply. With defer_park the event is not enough: the pump
+// must also have read the keep-open park after it (a synchronous
+// `keep-open-parked` answering 1), which mpv can reach a few playloop
+// turns after the restart of a seek to the end.
 #define DEFER_MAX_ARGS 16
 // A request kept off mpv: its kind (SET_REPLY or COMMAND_REPLY, as below),
 // handle, reply id and arguments (a set: name, value), owned by the slot.
@@ -179,6 +182,8 @@ static int defer_skip;
 static int defer_state; // 0 off, 1 waiting for the request, 2 for the event,
                         // 3 to be sent
 static int defer_seen;  // the event went to the pump since the knob was set
+static int defer_park;  // the pump must also read the park after the event
+static int defer_ready; // what defer_park asks for has happened
 static struct kept_request deferred;
 static atomic_int deferred_sent;
 
@@ -414,9 +419,11 @@ void mak_shim_hold_reply(const char *name, int us) {
 // argument, or the property of a set) that comes after [skip] of them: it
 // reaches mpv only once mpv_wait_event has handed the pump an event of id
 // [after_event], from this call on, and the pump asked for the next one.
-// Counted in `deferred_sent` once sent.
+// With [park], only once the pump has also read the keep-open park after
+// that event. Counted in `deferred_sent` once sent.
 // A request an earlier call still defers goes to mpv now, as at a reset.
-void mak_shim_defer_request(const char *name, int after_event, int skip) {
+void mak_shim_defer_request(const char *name, int after_event, int skip,
+                            int park) {
   struct kept_request still;
   pthread_mutex_lock(&mu);
   int send = take_request(&deferred, &still);
@@ -425,6 +432,8 @@ void mak_shim_defer_request(const char *name, int after_event, int skip) {
   defer_skip = skip;
   defer_state = 1;
   defer_seen = 0;
+  defer_park = park;
+  defer_ready = 0;
   pthread_mutex_unlock(&mu);
   if (send) send_request(&still);
 }
@@ -482,7 +491,7 @@ static int defer(void *h, int kind, uint64_t ud, const char **args) {
       defer_skip--;
     } else {
       keep_request(&deferred, h, kind, ud, args);
-      defer_state = defer_seen ? 3 : 2;
+      defer_state = defer_ready ? 3 : 2;
       kept = 1;
     }
   }
@@ -656,6 +665,17 @@ int mpv_get_property(void *h, const char *n, int fmt, void *out) {
       stall(us);
     }
   }
+  // The pump read the park after the event a deferred request waits for:
+  // its next mpv_wait_event sends the request.
+  if (rc >= 0 && fmt == 3 && strcmp(n, "keep-open-parked") == 0 &&
+      *(int *)out == 1) {
+    pthread_mutex_lock(&mu);
+    if (defer_park && defer_seen && (defer_state == 1 || defer_state == 2)) {
+      defer_ready = 1;
+      if (defer_state == 2) defer_state = 3;
+    }
+    pthread_mutex_unlock(&mu);
+  }
   return rc;
 }
 
@@ -696,7 +716,10 @@ void *mpv_wait_event(void *h, double timeout) {
     if ((defer_state == 1 || defer_state == 2) &&
         ev->event_id == defer_after) {
       defer_seen = 1;
-      if (defer_state == 2) defer_state = 3;
+      if (!defer_park) {
+        defer_ready = 1;
+        if (defer_state == 2) defer_state = 3;
+      }
     }
     pthread_mutex_unlock(&mu);
   }

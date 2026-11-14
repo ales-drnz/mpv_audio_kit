@@ -437,8 +437,11 @@ void main() {
       // earlier seek lands on the end again, and the read of its restart
       // spends the intent, all before the seek of play() leaves for 0. The
       // shim holds the earlier seek until play() sends its own, and that
-      // one until the restart of the earlier seek has been read. The
-      // player then plays from the start, and the intent must say so.
+      // one until the park the earlier seek lands on has been read: the
+      // restart alone is not enough, mpv can send it a few turns of its
+      // playloop before it finds the end again, and the seek of play()
+      // would then leave before any park was read. The player then plays
+      // from the start, and the intent must say so.
       test('play() at a park with a seek to the end in flight plays from '
           'the start', () async {
         await openAndWaitForLoad(player, longFixture);
@@ -461,6 +464,7 @@ void main() {
           ..deferRequest(
             'seek',
             afterEvent: MpvEventId.mpvEventPlaybackRestart,
+            afterParkRead: true,
           );
         // To the end itself: a seek short of it leaves audio to play, which
         // keep-open-parked does not take for a park (libmpv-r22).
@@ -476,7 +480,9 @@ void main() {
         expect(
           shim().counter('deferred_sent'),
           1,
-          reason: 'the seek of play() must go after the restart of the first',
+          reason:
+              'the seek of play() must go after the park of the first was '
+              'read',
         );
         // The reads of the two restarts reach the stream after the reply of
         // play(), so they are waited for.
