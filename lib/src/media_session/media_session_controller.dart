@@ -503,10 +503,26 @@ class MediaSessionController {
         // A host, or no `//`: not a path of this machine as mpv reads it.
         return parsed?.toString();
       }
-      path = _unescape(uri.substring('file://'.length));
-      // `/C:/Music` names `C:/Music`, as mpv reads it on Windows.
-      if (_drivePath.hasMatch(path)) path = path.substring(1);
+      final bytes = _unescape(uri.substring('file://'.length));
+      path = utf8.decode(bytes, allowMalformed: true);
+      // On Windows `/C:/Music` names `C:/Music`, as mpv reads it there.
+      // Elsewhere it is the path it looks like, and so is `/a:b`.
+      final drive = _onWindows && _drivePath.hasMatch(path);
+      if (drive) path = path.substring(1);
+      if (!_isUtf8(bytes)) {
+        // A name that is not UTF-8 (Latin-1): no string holds its bytes,
+        // so the URI is written from them. The string stands in for the
+        // name where a path no URI can name is told.
+        if (_pathUri(path) == null) return null;
+        return 'file://${_encodePath(bytes, windows: drive)}';
+      }
     }
+    return _pathUri(path);
+  }
+
+  /// The path [path] as a `file:` URI, a relative one under the working
+  /// directory. `null` for a path no URI can name.
+  static String? _pathUri(String path) {
     final drive = Uri.tryParse(path)?.scheme.length == 1;
     try {
       return Uri.base
@@ -518,21 +534,75 @@ class MediaSessionController {
   }
 
   static final RegExp _drivePath = RegExp('^/[A-Za-z]:');
-  static final RegExp _escape = RegExp('%([0-9A-Fa-f]{2})');
+  static bool get _onWindows =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
 
-  /// [s] with each `%` and two hex digits decoded, the way mpv decodes a
-  /// `file:` URI. A `%` without them is kept.
-  static String _unescape(String s) {
+  /// The bytes of [s] with each `%` and two hex digits decoded, the way
+  /// mpv decodes a `file:` URI (and `fileUrlToPath` after it). A `%`
+  /// without them is kept with the two characters after it, so an escape
+  /// that starts inside those is not one: `%%41` stays as it is.
+  static List<int> _unescape(String s) {
+    final src = utf8.encode(s);
     final bytes = <int>[];
-    var i = 0;
-    for (final m in _escape.allMatches(s)) {
-      bytes
-        ..addAll(utf8.encode(s.substring(i, m.start)))
-        ..add(int.parse(m[1]!, radix: 16));
-      i = m.end;
+    for (var i = 0; i < src.length;) {
+      if (src[i] != 0x25 || i + 2 >= src.length) {
+        bytes.add(src[i++]);
+        continue;
+      }
+      final hi = _hexDigit(src[i + 1]);
+      final lo = _hexDigit(src[i + 2]);
+      if (hi >= 0 && lo >= 0) {
+        bytes.add(hi * 16 + lo);
+      } else {
+        bytes.addAll(src.sublist(i, i + 3));
+      }
+      i += 3;
     }
-    bytes.addAll(utf8.encode(s.substring(i)));
-    return utf8.decode(bytes, allowMalformed: true);
+    return bytes;
+  }
+
+  static bool _isUtf8(List<int> bytes) {
+    try {
+      utf8.decode(bytes);
+      return true;
+    } on FormatException {
+      return false;
+    }
+  }
+
+  /// The absolute path [bytes] as the path of a URI: what `Uri.file`
+  /// leaves as it is stays, every other byte is percent-encoded. On
+  /// [windows] a backslash separates, as a slash does.
+  static String _encodePath(List<int> bytes, {required bool windows}) {
+    const hex = '0123456789ABCDEF';
+    final out = StringBuffer();
+    for (final byte in bytes) {
+      if (windows && byte == 0x5c) {
+        out.write('/');
+      } else if (byte < 0x80 && _pathBytes.contains(byte)) {
+        out.writeCharCode(byte);
+      } else {
+        out
+          ..write('%')
+          ..write(hex[byte >> 4])
+          ..write(hex[byte & 0xf]);
+      }
+    }
+    return out.toString();
+  }
+
+  // The characters a URI path holds as they are, the ones `Uri.file`
+  // does not encode.
+  static final Set<int> _pathBytes =
+      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+              r"-._~!$&'()*+,;=:@/"
+          .codeUnits
+          .toSet();
+
+  static int _hexDigit(int c) {
+    if (c >= 0x30 && c <= 0x39) return c - 0x30;
+    final letter = c | 0x20;
+    return letter >= 0x61 && letter <= 0x66 ? letter - 0x61 + 10 : -1;
   }
 
   /// Whether [uri] is an `http(s)://` URL.

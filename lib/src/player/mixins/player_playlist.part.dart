@@ -190,8 +190,10 @@ mixin _PlaylistModule on _PlayerBase {
     try {
       if (await _checkPlaylistIndex(index, 'index') == null) return;
     } catch (_) {
-      // Out of range: nothing moved, so the intent goes back.
-      if (_transport.owns(intent)) _transport.writeIntent(previous);
+      // Out of range: nothing moved, so the intent goes back, as after a
+      // load that failed: put back off, it is off for the reply of an
+      // earlier play() or jump() still on its way too.
+      _transport.restoreIntent(_transport.snapshotLoad(), intent, previous);
       rethrow;
     }
     // See [next]: in-flight transport writes apply to the old entry.
@@ -211,9 +213,13 @@ mixin _PlaylistModule on _PlayerBase {
     // The jump leaves the park, as the seek of [play] does: its START_FILE
     // is queued behind this reply. A read of the park that spent the
     // intent since the call began is undone; an entry that parks at once
-    // opens a new park, whose read spends the intent.
+    // opens a new park, whose read spends the intent. A play() called
+    // since leaves the write to this reply, as it does to the reply of an
+    // earlier play(): away from the park it writes nothing after its
+    // claim. A pause() or a load that does not play, called since, keeps
+    // the intent off.
     _transport.takePark();
-    if (_transport.owns(intent)) _transport.writeIntent(true);
+    if (_transport.wantsPlay(intent)) _transport.writeIntent(true);
     if (parkedAtEof && _transport.intendedPlay(intent, true)) {
       await _calls.prop('pause', 'no');
     }
