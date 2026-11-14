@@ -6,6 +6,7 @@
 - NaN and infinite samples of a float file read as silence in the waveform, the loudness scan and the taps.
 - A waveform grown from playback drops the audio past its axis, which went into its last bin.
 - The PCM tap never makes the thread of the audio output wait.
+- The loudness scan no longer reads a channel layout left as the stack had it, which could end the process when a scan started.
 - The analysis of a file URL with percent escapes set by a source resolver works. It failed while the file played.
 - The Mozilla CA bundle is the one of 5-11-2026. In: two SECOM and two Telia roots. Out: Atos TrustedRoot 2011, Entrust Root Certification Authority, SecureSign Root CA12, ePKI Root Certification Authority and three emSign roots.
 
