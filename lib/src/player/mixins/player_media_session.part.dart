@@ -17,7 +17,7 @@ part of '../player.dart';
 ///   [MediaSessionController] that pushes state to the native side
 ///   and listens for inbound OS commands.
 /// - Subsequent non-null calls: reconfigure (controller stays alive,
-///   the new config flows through `state.mediaSession` → stream →
+///   the new config flows through `state.settings.mediaSession` → stream →
 ///   controller).
 /// - `null` call: tears the controller down, clears the static guard.
 ///

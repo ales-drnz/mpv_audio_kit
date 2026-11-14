@@ -239,12 +239,13 @@ mixin _FfiModule on _PlayerBase {
   /// Two properties are reserved and rejected:
   /// - `af`: owned by the effects chain (raw lavfi entries included, as
   ///   [RawAudioEffect] stages); a raw write would silently desync
-  ///   `state.audioEffects`. Use [setAudioEffects] or [updateAudioEffects].
+  ///   `state.settings.audioEffects`. Use [setAudioEffects] or
+  ///   [updateAudioEffects].
   /// - `pause`: owned by the transport intent axis. It is deliberately not
   ///   observed (see [PlaybackState.playWhenReady]), so a raw write would
-  ///   change actual playback while leaving `state.playWhenReady` (and the
-  ///   OS play-pause button bound to it) reporting the old intent. Use
-  ///   [play] or [pause].
+  ///   change actual playback while leaving
+  ///   `state.playback.playWhenReady` (and the OS play-pause button bound
+  ///   to it) reporting the old intent. Use [play] or [pause].
   ///
   /// Throws [PlayerDisposedException] if the player has been disposed,
   /// [ArgumentError] if [name] is reserved, or [MpvCommandException] if mpv

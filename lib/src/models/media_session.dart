@@ -39,7 +39,7 @@ import '../types/sealed/media_session_artwork.dart';
 ///
 /// // Override the title for the current track
 /// await player.setMediaSession(
-///   (player.state.mediaSession ?? const MediaSession())
+///   (player.state.settings.mediaSession ?? const MediaSession())
 ///       .copyWith(title: 'My Custom Title'),
 /// );
 ///

@@ -10,7 +10,7 @@ mixin _OutputModule on _PlayerBase {
   /// Sets the active audio output device.
   ///
   /// The `description` field of [device] is ignored: the description
-  /// is resolved from `state.audioDevices` (mpv's authoritative
+  /// is resolved from `state.output.audioDevices` (mpv's authoritative
   /// `audio-device-list`). Pass [Device]s built from that list, or use
   /// the `name` only.
   Future<void> setAudioDevice(Device device) async {

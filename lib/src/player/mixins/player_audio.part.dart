@@ -468,7 +468,7 @@ mixin _AudioModule on _PlayerBase {
   /// Mutates the spectrum settings with a Freezed-style copyWith
   /// mapper.
   ///
-  /// Convenience over `setSpectrum(state.spectrum.copyWith(...))`.
+  /// Convenience over `setSpectrum(state.settings.spectrum.copyWith(...))`.
   /// The mapper receives the current bundle and must return the new
   /// one: same semantics as `Player.updateAudioEffects`.
   ///

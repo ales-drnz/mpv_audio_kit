@@ -15,8 +15,13 @@ mixin _NetworkModule on _PlayerBase {
   ///
   /// Writes the six backing mpv properties (`cache`, `cache-secs`,
   /// `cache-on-disk`, `cache-pause`, `cache-pause-wait`, `cache-pause-initial`)
-  /// in one shot. Modify a single field via
-  /// `await player.setCache(state.cache.copyWith(secs: const Duration(seconds: 30)))`.
+  /// in one shot. Modify a single field with `copyWith`:
+  ///
+  /// ```dart
+  /// await player.setCache(
+  ///   player.state.settings.cache.copyWith(secs: const Duration(seconds: 30)),
+  /// );
+  /// ```
   ///
   /// During a live [PcmSource] entry, which plays with `cache-pause` off,
   /// a new `pause` holds only until that entry ends.
@@ -206,7 +211,7 @@ mixin _NetworkModule on _PlayerBase {
   /// caps are forwarded as raw byte counts (sub-MiB precision preserved), and
   /// the readahead is a fractional-seconds value (sub-second precision
   /// preserved). Modify a single field via
-  /// `await player.setDemuxer(state.demuxer.copyWith(maxBackBytes: 0))`.
+  /// `player.setDemuxer(state.settings.demuxer.copyWith(maxBackBytes: 0))`.
   Future<void> setDemuxer(DemuxerSettings settings) async {
     await _gate();
     final previous = state.settings.demuxer;

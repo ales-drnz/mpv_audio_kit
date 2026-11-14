@@ -8,7 +8,7 @@ import '../enums/cache.dart';
 /// `cache-on-disk`, `cache-pause`, `cache-pause-wait`, `cache-pause-initial`).
 ///
 /// Apply atomically via [Player.setCache]. For one-off tweaks use
-/// `state.cache.copyWith(...)`. Read the current configuration via
+/// `state.settings.cache.copyWith(...)`. Read the current configuration via
 /// [PlayerSettings.cache] or observe live changes via [PlayerStream.cache].
 ///
 /// {@category Network and cache}

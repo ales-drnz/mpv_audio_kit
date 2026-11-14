@@ -40,7 +40,7 @@ part '../generated/player_state_data.dart';
 /// Retrieve the current snapshot synchronously via `player.state`, or subscribe
 /// to individual fields via the typed streams in `player.stream`.
 ///
-/// The flat fields of 0.6 (`state.position`, `state.volume`, ...) still read
+/// The flat fields of 0.6 (`position`, `volume`, ... on the state) still read
 /// the same values from their groups, deprecated: they go in 0.8.0.
 /// [copyWith] takes the groups and every field of every group.
 ///
