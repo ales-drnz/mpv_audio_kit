@@ -1,6 +1,7 @@
 {
-  "loc": 16599,
-  "test_per_lib_permille": 2603,
+  "loc": 16653,
+  "test_per_lib_permille": 2602,
+  "test_per_lib_drop": "from 2603 to 2602: the fixes of the defects the property tests found added lines to lib",
   "complexity_over_15": 3,
   "complexity_over_10": 40,
   "player_base_fields": 54,

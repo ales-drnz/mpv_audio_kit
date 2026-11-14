@@ -534,8 +534,15 @@ class MediaSessionController {
   }
 
   static final RegExp _drivePath = RegExp('^/[A-Za-z]:');
+
+  /// Whether paths are read as Windows reads them: the platform the app
+  /// runs on, or the host whose rules `Uri.file` follows. The two differ
+  /// under `flutter test`, where the platform is Android on every host
+  /// while `Uri.file` still takes a backslash for a separator on Windows.
   static bool get _onWindows =>
-      !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.windows ||
+          Uri.file(r'a\b').pathSegments.length == 2);
 
   /// The bytes of [s] with each `%` and two hex digits decoded, the way
   /// mpv decodes a `file:` URI (and `fileUrlToPath` after it). A `%`
