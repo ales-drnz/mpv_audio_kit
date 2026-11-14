@@ -26,6 +26,8 @@
 // jump(), player_open.part.dart _open(), player_intent.part.dart
 // trackLoad()): a change of that protocol changes them.
 
+import 'dart:io';
+
 import 'package:kiri_check/kiri_check.dart';
 import 'package:kiri_check/stateful_test.dart';
 import 'package:mpv_audio_kit/src/internals/transport_machine.dart';
@@ -126,8 +128,9 @@ final class _Calls {
     // The check of the index.
     waiting.add((outOfRange) {
       if (outOfRange) {
-        if (m.owns(epoch)) {
-          intent = previous;
+        final write = m.restoreIntent(m.loadEpoch, epoch, previous);
+        if (write != null) {
+          intent = write.value;
           lastWord = previous;
         }
         return;
@@ -210,6 +213,19 @@ final class _Calls {
   /// What holds after every step.
   bool get sound =>
       (!intent || lastWord) && (!pausedLast || !intent) && !eventWroteOn;
+}
+
+/// The source of the player's jump(), its white space folded: the steps
+/// of the rigs are checked against it, so a change of the player without
+/// the rig fails here.
+String _jumpSource() {
+  final source = File(
+    '${Directory.current.path}/lib/src/player/mixins/'
+    'player_playlist.part.dart',
+  ).readAsStringSync();
+  final start = source.indexOf('Future<void> jump(int index) async {');
+  final end = source.indexOf('Future<void> move(', start);
+  return source.substring(start, end).replaceAll(RegExp(r'\s+'), ' ');
 }
 
 final class _Nothing {}
@@ -627,6 +643,33 @@ void main() {
         ..pause()
         ..answer(0, false);
       expect(c.intent, isFalse);
+    });
+
+    // The seek of the play() is still on its way when the pause() comes,
+    // then a jump() claims the intent and gives it back: its index is out
+    // of range. The reply of the seek must not take that for a play().
+    test('over a jump() out of range and the reply of an earlier seek', () {
+      final c = _Calls()
+        ..startFile()
+        ..play()
+        ..answer(0, true)
+        ..pause()
+        ..jump()
+        ..answer(1, true);
+      expect(c.intent, isFalse, reason: 'the jump() put the pause back');
+      c.answer(0, false);
+      expect(c.intent, isFalse, reason: 'the reply of the seek of play()');
+      expect(c.sound, isTrue);
+    });
+
+    test('the rig gives the intent back as jump() does', () {
+      expect(
+        _jumpSource(),
+        contains(
+          '_transport.restoreIntent(_transport.snapshotLoad(), intent, '
+          'previous);',
+        ),
+      );
     });
 
     test('over a load that fails after it', () {

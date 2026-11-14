@@ -190,8 +190,10 @@ mixin _PlaylistModule on _PlayerBase {
     try {
       if (await _checkPlaylistIndex(index, 'index') == null) return;
     } catch (_) {
-      // Out of range: nothing moved, so the intent goes back.
-      if (_transport.owns(intent)) _transport.writeIntent(previous);
+      // Out of range: nothing moved, so the intent goes back, as after a
+      // load that failed: put back off, it is off for the reply of an
+      // earlier play() or jump() still on its way too.
+      _transport.restoreIntent(_transport.snapshotLoad(), intent, previous);
       rethrow;
     }
     // See [next]: in-flight transport writes apply to the old entry.
