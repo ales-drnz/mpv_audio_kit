@@ -54,24 +54,9 @@ class WaveformPipeline extends AnalysisPollPipeline<WaveformData> {
 
   @override
   bool sameResult(WaveformData a, WaveformData b) =>
-      a.start == b.start &&
-      a.duration == b.duration &&
-      a.live == b.live &&
+      _sameEnvelope(a, b) &&
       a.decoding == b.decoding &&
-      a.coverageBins == b.coverageBins &&
-      _sameList(a.min, b.min) &&
-      _sameList(a.max, b.max) &&
-      _sameList(a.rms, b.rms) &&
-      _sameList(a.filled, b.filled);
-
-  static bool _sameList(List<num>? a, List<num>? b) {
-    if (identical(a, b)) return true;
-    if (a == null || b == null || a.length != b.length) return false;
-    for (var i = 0; i < a.length; i++) {
-      if (a[i] != b[i]) return false;
-    }
-    return true;
-  }
+      a.coverageBins == b.coverageBins;
 
   @override
   void onData(Map<Object?, Object?> value) {

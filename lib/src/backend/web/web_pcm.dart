@@ -55,9 +55,6 @@ final class WebPcmNative implements PcmNative {
   int buffered(int id) => bigIntValue(_m.c.pcmBuffered(bigInt(id)));
 
   @override
-  int consumed(int id) => bigIntValue(_m.c.pcmConsumed(bigInt(id)));
-
-  @override
   int state(int id) => _m.c.pcmState(bigInt(id));
 
   @override

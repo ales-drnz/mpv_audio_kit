@@ -135,7 +135,7 @@ Future<List<String>> _runWeb(Map<String, Object?> values) async {
       if (queue.isEmpty) return (false, null, false);
       return (true, queue.removeFirst()(logic), false);
     },
-    flushTrailing: logic.flushTrailing,
+    idle: logic.idle,
     waitSeconds: () => null,
     onError: (e, _) => out.add('error $e'),
   );
@@ -506,7 +506,7 @@ void main() {
       await logic.property('time-pos', MpvFormat.mpvFormatDouble, 0.2);
       expect(logic.holdsValues, isTrue);
       await logic.dispatch(MpvEventPlaybackRestart());
-      logic.flushTrailing();
+      await logic.idle();
       expect(out, ['time-pos=0.1', 'restart 0.5']);
     },
   );
@@ -608,4 +608,56 @@ void main() {
       expect(web, native);
     },
   );
+
+  group('the embedded cover', () {
+    Map<String, Object?> loadedWith(Object? cover) => {
+      'path': '/a.flac',
+      'embedded-cover-art-data': cover,
+      'embedded-cover-art-mime': 'image/png',
+    };
+    Future<MpvEventFileLoaded> load(Map<String, Object?> values) async {
+      final loaded = <MpvEventFileLoaded>[];
+      final logic = EventLogic(_Reader(values), (e) {
+        if (e is MpvEventFileLoaded) loaded.add(e);
+      });
+      await logic.dispatch(MpvEventFileLoaded());
+      return loaded.single;
+    }
+
+    test('bytes ride the event as they are', () async {
+      final bytes = Uint8List.fromList([1, 2, 3]);
+      final e = await load(loadedWith(bytes));
+      expect(identical(e.coverData, bytes), isTrue);
+      expect(e.coverMime, 'image/png');
+      expect(e.coverTransfer, isNull);
+    });
+
+    test('the transfer form of a pump on its own isolate rides it '
+        'untouched', () async {
+      // The native reader answers with what crosses the isolates without
+      // a copy: the logic must not read it, only carry it.
+      final transfer = Object();
+      final e = await load(loadedWith(TransferredBytes(transfer)));
+      expect(identical(e.coverTransfer, transfer), isTrue);
+      expect(e.coverData, isNull);
+      expect(e.coverMime, 'image/png');
+    });
+
+    test('no cover, or an empty one, is no cover', () async {
+      for (final none in [null, Uint8List(0), 'text']) {
+        final values = loadedWith(none);
+        final reader = _Reader(values);
+        final loaded = <MpvEventFileLoaded>[];
+        final logic = EventLogic(reader, (e) {
+          if (e is MpvEventFileLoaded) loaded.add(e);
+        });
+        await logic.dispatch(MpvEventFileLoaded());
+        expect(loaded.single.coverData, isNull);
+        expect(loaded.single.coverTransfer, isNull);
+        expect(loaded.single.coverMime, isNull);
+        expect(reader.reads, isNot(contains('embedded-cover-art-mime')));
+        expect(loaded.single.path, '/a.flac');
+      }
+    });
+  });
 }

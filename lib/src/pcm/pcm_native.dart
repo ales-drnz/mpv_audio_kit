@@ -65,9 +65,6 @@ abstract interface class PcmNative {
   /// Bytes waiting in the FIFO.
   int buffered(int id);
 
-  /// Bytes the reader has taken so far.
-  int consumed(int id);
-
   /// One of the state codes above, or an error.
   int state(int id);
 

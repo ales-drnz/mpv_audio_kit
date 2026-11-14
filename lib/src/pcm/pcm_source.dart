@@ -171,6 +171,9 @@ final class PcmSource {
   bool _closing = false;
   bool _finished = false;
   bool _released = false;
+  // A reader was seen on the native side: from then on the queue, the
+  // state and [ready] move, and the source is polled at the fast rate.
+  bool _read = false;
   Completer<void>? _closed;
   Completer<void>? _ready;
   final Completer<void> _done = Completer<void>();
@@ -420,6 +423,11 @@ final class PcmSource {
 
   int get _lowBytes => _highBytes ~/ 2;
 
+  /// Whether the source has chunks queued in Dart, a [ready] waiter or a
+  /// [close] not yet through: it is held until that work is done.
+  bool get _hasWork =>
+      _queue.isNotEmpty || _ready != null || (_closing && !_finished);
+
   int get _bufferedBytes {
     final native = _released ? 0 : math.max(0, _native.buffered(_id));
     return native + _queuedBytes + _carryLength;
@@ -510,6 +518,7 @@ final class PcmSource {
       case PcmNative.stateOpen:
         if (!_closing) _state = PcmSourceState.waiting;
       case PcmNative.stateReading:
+        _read = true;
         if (!_closing) _state = PcmSourceState.reading;
       case PcmNative.stateFinished:
         _state = PcmSourceState.finishing;
@@ -539,6 +548,7 @@ final class PcmSource {
     ready?.complete();
     if (!_done.isCompleted) _done.complete();
     _held.remove(this);
+    _unwatch(this);
   }
 
   void _release() {
@@ -558,37 +568,73 @@ final class PcmSource {
   // so one the app dropped is still collected (its finalizer releases
   // it); a source with queued chunks, a pending close or a ready waiter
   // is held strongly until that work is done.
+  //
+  // The timer ticks every [_interval] while a player reads one of the
+  // sources. With no reader (sources queued in a playlist, or never
+  // opened) nothing moves on the native side: [add] and [close] write
+  // what fits themselves, and the rest waits for room only a reader
+  // makes. The timer then ticks every [_idleInterval], just to see a
+  // reader come. The native buffer holds at least a second of audio, so
+  // the reader has that much before the first fast tick refills it.
 
   static const Duration _interval = Duration(milliseconds: 20);
+  static const Duration _idleInterval = Duration(milliseconds: 250);
   static final List<WeakReference<PcmSource>> _watched = [];
   static final Set<PcmSource> _held = {};
   static Timer? _timer;
+  // The period of [_timer].
+  static Duration? _period;
+  // Whether [_pollAll] is walking [_watched].
+  static bool _polling = false;
 
   static void _watch(PcmSource source) {
     _watched.add(WeakReference(source));
-    _timer ??= Timer.periodic(_interval, (_) => _pollAll());
+    // A new source has no reader: the timer keeps the rate it has.
+    if (_timer == null) _setPeriod(_idleInterval);
   }
 
   static void _hold(PcmSource source) {
     if (!source.isDone) _held.add(source);
   }
 
+  static void _setPeriod(Duration? period) {
+    if (period == _period) return;
+    _timer?.cancel();
+    _period = period;
+    _timer = period == null ? null : Timer.periodic(period, (_) => _pollAll());
+  }
+
+  /// Stops watching [source], which is done, and the timer with the last
+  /// one. During a poll the loop does it.
+  static void _unwatch(PcmSource source) {
+    if (_polling) return;
+    _watched.removeWhere((w) => identical(w.target, source));
+    if (_watched.isEmpty) _setPeriod(null);
+  }
+
   static void _pollAll() {
+    _polling = true;
+    try {
+      _pollWatched();
+    } finally {
+      _polling = false;
+    }
+  }
+
+  static void _pollWatched() {
+    var read = false;
     for (var i = _watched.length - 1; i >= 0; i--) {
       final source = _watched[i].target;
       if (source != null) source._tick();
       if (source == null || source.isDone) {
         _watched.removeAt(i);
-      } else if (source._queue.isEmpty &&
-          source._ready == null &&
-          !(source._closing && !source._finished)) {
-        _held.remove(source);
+        continue;
       }
+      if (source._read) read = true;
+      if (!source._hasWork) _held.remove(source);
     }
-    if (_watched.isEmpty) {
-      _timer?.cancel();
-      _timer = null;
-    }
+    if (_watched.isEmpty) return _setPeriod(null);
+    _setPeriod(read ? _interval : _idleInterval);
   }
 
   // A source the app dropped: the native side lets go, and its media is
@@ -633,8 +679,7 @@ final class PcmSource {
   /// Test-only: forgets every source and stops the poll timer.
   @visibleForTesting
   static void debugReset() {
-    _timer?.cancel();
-    _timer = null;
+    _setPeriod(null);
     _watched.clear();
     _held.clear();
     _formats.clear();
@@ -707,9 +752,19 @@ String? pcmLoadOptions(String uri) {
 }
 
 extension on PcmFormat {
-  int durationBytes(Duration d) =>
-      d.inMicroseconds *
-      sampleRate ~/
-      Duration.microsecondsPerSecond *
-      bytesPerFrame;
+  /// The bytes of [d] of audio, whole frames. Past [_durationFramesCap]
+  /// frames it stops growing, far above the 1 GiB a source holds, so no
+  /// duration wraps it to a negative size.
+  int durationBytes(Duration d) {
+    const second = Duration.microsecondsPerSecond;
+    final us = d.inMicroseconds;
+    // The seconds and the rest apart: their sum is the frames of the
+    // whole, and neither product passes 64 bits.
+    final frames =
+        us ~/ second * sampleRate + us.remainder(second) * sampleRate ~/ second;
+    return math.min(frames, _durationFramesCap) * bytesPerFrame;
+  }
 }
+
+/// The most frames `durationBytes` counts: 2^40, about a month at 384 kHz.
+const int _durationFramesCap = 1 << 40;

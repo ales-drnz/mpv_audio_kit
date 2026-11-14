@@ -24,6 +24,10 @@ part 'event_properties.dart';
 
 typedef _Send = void Function(MpvIsolateEvent event);
 
+/// The property the embedded cover of the loaded file is read from.
+@internal
+const String kEmbeddedCoverProperty = 'embedded-cover-art-data';
+
 /// The value a transport hands [EventLogic.property] when mpv sent the
 /// change without data (`MPV_FORMAT_NONE`): the property is unavailable.
 @internal
@@ -39,6 +43,19 @@ final class _Sentinel {
   final String name;
   @override
   String toString() => name;
+}
+
+/// The bytes of a property in the form a transport sends to another
+/// isolate without copying them again. The reader of a pump that runs on
+/// its own isolate answers the read of the embedded cover with it, and the
+/// receiving side turns [data] back into the bytes.
+@internal
+final class TransferredBytes {
+  /// Wraps [data], the transport's form of the bytes.
+  const TransferredBytes(this.data);
+
+  /// The bytes, as the transport sends them.
+  final Object data;
 }
 
 /// The property reads the event logic takes, in mpv's formats. Each one
@@ -59,7 +76,8 @@ abstract interface class CoreReader {
   Future<int?> flag(String name);
 
   /// [name] as a decoded node tree (`MPV_FORMAT_NODE`), byte arrays as
-  /// [Uint8List].
+  /// [Uint8List]. The embedded cover (`embedded-cover-art-data`) may come
+  /// as [TransferredBytes] instead.
   Future<Object?> node(String name);
 }
 
@@ -90,12 +108,9 @@ final class EventLogic {
       _cache.group.isNotEmpty ||
       _cache.endOfContentAgainAt != null;
 
-  /// Sends the held values whose window has closed.
-  void flushTrailing() => _flushTrailing(_send, _cache);
-
   /// What the pump does after every event and whenever its wait ends with
-  /// no event: [flushTrailing], then the read of the end of content once
-  /// it is due. Returns the future of that read; the pump waits for it
+  /// no event: it sends the held values whose window has closed, then
+  /// reads the end of content once that is due. Returns the future of that read; the pump waits for it
   /// before the next event.
   Future<void>? idle() {
     _flushTrailing(_send, _cache);
@@ -239,7 +254,7 @@ final class EventLogic {
   /// read is guarded on its own: the event then carries a `null` cover and
   /// consumers clear stale artwork.
   Future<MpvEventFileLoaded> _readFileLoadedEvent() async {
-    (Uint8List, String)? cover;
+    (Object, String)? cover;
     try {
       cover = await _readEmbeddedCover();
     } catch (_) {
@@ -251,8 +266,15 @@ final class EventLogic {
       timePos: await _readTimePos(_reader, _cache),
       chapterIndex: await _reader.int64('chapter'),
       chapterList: await _reader.node('chapter-list'),
-      coverData: cover?.$1,
+      coverData: switch (cover?.$1) {
+        final Uint8List bytes => bytes,
+        _ => null,
+      },
       coverMime: cover?.$2,
+      coverTransfer: switch (cover?.$1) {
+        TransferredBytes(:final data) => data,
+        _ => null,
+      },
     );
   }
 
@@ -260,13 +282,22 @@ final class EventLogic {
   /// `embedded-cover-art-data` and `embedded-cover-art-mime` properties.
   /// Returns `null` when the file has no embedded cover. The bytes are the
   /// original PNG, JPEG or other format as embedded (no decode, no
-  /// conversion), copied out of mpv-owned memory by the reader.
-  Future<(Uint8List, String)?> _readEmbeddedCover() async {
-    final data = await _reader.node('embedded-cover-art-data');
-    if (data is! Uint8List || data.isEmpty) return null;
+  /// conversion), copied out of mpv-owned memory by the reader: a
+  /// [Uint8List], or the [TransferredBytes] of a pump on its own isolate.
+  Future<(Object, String)?> _readEmbeddedCover() async {
+    final data = await _reader.node(kEmbeddedCoverProperty);
+    final Object cover;
+    switch (data) {
+      case TransferredBytes():
+        cover = data;
+      case Uint8List() when data.isNotEmpty:
+        cover = data;
+      default:
+        return null;
+    }
     final mime =
         await _reader.string('embedded-cover-art-mime') ??
         'application/octet-stream';
-    return (data, mime);
+    return (cover, mime);
   }
 }

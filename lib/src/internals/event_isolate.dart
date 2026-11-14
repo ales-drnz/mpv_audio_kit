@@ -443,7 +443,13 @@ final class _NativeReader implements CoreReader {
       );
       if (rc < 0) return null;
       // decodeMpvNode copies every borrowed string and byte buffer, so the
-      // node contents can be freed before the tree is returned.
+      // node contents can be freed before the tree is returned. The cover
+      // is megabytes: it is copied once, into the form that crosses to
+      // the main isolate as it is (see [materializeCover]).
+      if (name == kEmbeddedCoverProperty) {
+        final cover = decodeMpvNode(node, transferBytes: true);
+        return cover is TransferableTypedData ? TransferredBytes(cover) : cover;
+      }
       return decodeMpvNode(node);
     } finally {
       _lib.mpvFreeNodeContents(node);
@@ -534,6 +540,18 @@ final class _NativeMemory implements CoreMemory {
         ? TransferableTypedData.fromList([view])
         : Uint8List.fromList(view);
   }
+}
+
+/// Turns the cover a [MpvEventFileLoaded] crossed the isolates with
+/// ([MpvEventFileLoaded.coverTransfer], a [TransferableTypedData]) into
+/// its bytes, on the receiving isolate. An empty one is no cover. Any
+/// other event is returned as it is.
+MpvIsolateEvent materializeCover(MpvIsolateEvent event) {
+  if (event is! MpvEventFileLoaded) return event;
+  final transfer = event.coverTransfer;
+  if (transfer is! TransferableTypedData) return event;
+  final bytes = transfer.materialize().asUint8List();
+  return event.withCover(bytes.isEmpty ? null : bytes);
 }
 
 /// Turns the [TransferableTypedData] byte arrays of a get reply back into
@@ -648,7 +666,7 @@ class MpvEventIsolate {
       // visible only when many Player instances are created and
       // disposed in rapid succession.
       if (msg is MpvIsolateEvent && !_events.isClosed) {
-        _events.add(msg);
+        _events.add(materializeCover(msg));
       }
     });
 

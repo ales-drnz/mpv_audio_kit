@@ -82,8 +82,10 @@ class FilterTapPipeline {
   // tapped, so a new label never pushes out one already captured (the C
   // side keeps the first [_kMaxActiveTaps]).
   static final Map<String, int> _tapped = {};
-  // The list last written, empty as mpv starts.
-  static String _written = '';
+  // The list last written, empty as mpv starts. `null` once a write
+  // failed: what the process holds is not known, and the next list is
+  // written whatever it is.
+  static String? _written = '';
   static final SharedPropertyWriter _writer = SharedPropertyWriter(
     'analyzer-taps',
   );
@@ -205,12 +207,23 @@ class FilterTapPipeline {
 
   /// Writes the labels of every player, unless mpv has them already (the
   /// other side of a tapped label leaves the list as it is).
-  void _publish() => _writer.write(_asyncSet, () {
-    final csv = _tapped.keys.join(',');
-    if (csv == _written) return null;
-    _written = csv;
-    return csv;
-  }, anyCore: true);
+  ///
+  /// The list counts as written while its write is in flight, so the same
+  /// list is not sent twice. A write that fails (mpv refused it, or the
+  /// core closed on it) leaves the process with a list from before.
+  void _publish() => _writer.write(
+    _asyncSet,
+    () {
+      final csv = _tapped.keys.join(',');
+      if (csv == _written) return null;
+      _written = csv;
+      return csv;
+    },
+    anyCore: true,
+    onFailed: (csv) {
+      if (_written == csv) _written = null;
+    },
+  );
 
   void _poll() {
     if (_disposed || _polling) return;
