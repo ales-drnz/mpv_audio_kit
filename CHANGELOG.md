@@ -1,3 +1,73 @@
+## [0.7.1]
+
+### libmpv-r25
+**All platforms**
+- The loudness scan no longer reports ready from part of a file: it reports failed when a decode worker measured nothing, and unavailable for a file whose channel layout changes midway or that declares more than 48 hours.
+- NaN and infinite samples of a float file read as silence in the waveform, the loudness scan and the taps.
+- A waveform grown from playback drops the audio past its axis, which went into its last bin.
+- The PCM tap never makes the thread of the audio output wait.
+- The analysis of a file URL with percent escapes set by a source resolver works. It failed while the file played.
+- The Mozilla CA bundle is the one of 5-11-2026. In: two SECOM and two Telia roots. Out: Atos TrustedRoot 2011, Entrust Root Certification Authority, SecureSign Root CA12, ePKI Root Certification Authority and three emSign roots.
+
+**Linux, Tizen, webOS**
+- The libraries are built with a stack canary and `_FORTIFY_SOURCE=2` and linked with full RELRO. The TV libraries had neither.
+
+### All platforms
+**Changed**
+- `sendRawCommand` throws `ArgumentError` for `quit` and `quit-watch-later`, which left every later call waiting. Use `dispose`.
+- The lists, maps and sets of the state that come from mpv cannot be changed in place: a change throws `UnsupportedError`. `Spdif.parseMpvList` returns such a set too.
+- `toString` of `Media`, `SourceResolveRequest` and `MediaSessionArtwork.uri` hides the values of a URL's query and keeps their names.
+- `MpvEndFileReason.fromValue` gives `error` for a code it does not know, where it gave `eof`.
+- `Channels.custom('stereo')` equals `Channels.stereo`: two layouts are equal when their mpv string is.
+- The spectrum analyzes each sample once, so a poll costs about 60 percent less at 30 fps. Its smoothing steps once per FFT hop of audio, whatever `emitInterval`: with the same `attackSmoothing` and `releaseSmoothing` the bands rise and fall more slowly.
+- A cover download is cancelled when the track changes or the session goes off, ends 60 seconds after its start at the latest, and the last 4 covers are kept in memory.
+- `dispose` waits 5 seconds at most for the media session, and not at all on a player that never published one.
+
+**Fixed**
+- A player whose core shut down by itself no longer leaves its calls waiting: they complete, and later calls do nothing.
+- A core that the event isolate left too late to be destroyed at `dispose` is destroyed once the isolate exits.
+- The cache of `Media` by URL no longer grows with every URL a queue ever held.
+- `play`, `openAll` and the source resolver complete without `PlayerDisposedException` when a `dispose` lands while they run.
+- `playWhenReady` stays true when `play()` is called before a `jump()` has finished.
+- `setChapter(-1)` shows `currentChapter` as `null`, and `setAudioSpdif` and `openAll` keep a copy of what they are given.
+- A time from mpv that is NaN or infinite reads as `Duration.zero`, where it dropped the whole event.
+- A `PcmSource` that no player reads is polled 4 times a second, not 50, and the embedded cover reaches the main isolate with one copy.
+- A `Float64List` in `supportedPlaybackRates` no longer falls back to the default rates on Apple and Windows.
+- Options and properties mpv refuses at start are reported on `internalLog`.
+
+**Added**
+- `Playlist.current`, the active entry or null.
+- `PlayerInitException.cause`, the error behind a failed start.
+- `isLoadingError`, `isAudioOutputError`, `isFormatError` and `reachedNaturalEnd` are members of `EndFileError` and `MpvFileEndedEvent`. The extensions stay.
+
+### Linux
+**Changed**
+- MPRIS follows `MediaSession.actions`, as the other platforms do. `Play`, `Pause`, `PlayPause` and `Stop` reach the player only when their action is declared, and a write of `LoopStatus`, `Shuffle` or `Rate` is refused without `setRepeatMode`, `setShuffle` or `setPlaybackRate`.
+- With the default actions `Stop`, `LoopStatus`, `Shuffle` and `Rate` no longer reach the player, where they always did. Declare `MediaAction.stop`, `setRepeatMode`, `setShuffle` and `setPlaybackRate` to keep them.
+- `CanPlay` and `CanPause` are false when the matching action is not declared, and a playback update sends `PropertiesChanged` only for the properties that changed.
+
+**Fixed**
+- `xesam:url` of a file whose name is not UTF-8 keeps the bytes of the name, reads a malformed percent escape as mpv does, and is published for a path whose first folder looks like a drive.
+
+### Android, Windows
+**Fixed**
+- A media session enable that fails no longer keeps the session for its engine: another engine can enable it.
+- On Windows an error inside the media session that is no WinRT error answers the call and no longer ends the process.
+
+### iOS, tvOS, macOS
+**Fixed**
+- When the title goes away after a stop, the Now Playing entry is left paused at rate 0 and no longer keeps playing.
+
+### Tizen, webOS
+**Fixed**
+- `setMediaSession` does nothing beyond keeping its value in the state: Flutter no longer reports a `MissingPluginException`, and no artwork URL is loaded.
+
+### Web
+**Fixed**
+- A request made when the module is out of memory fails with mpv's out of memory error, where it wrote at address 0 of the module's memory.
+- A module that failed to load is loaded again by the next `Player`.
+- The cover download is aborted at its timeout or when the track changes, and a response without a content length stops at 20 MB.
+
 ## [0.7.0] - 10-11-2026
 
 ### libmpv-r24

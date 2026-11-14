@@ -359,15 +359,13 @@ jobs:
 
   # The files of Test (macOS), on Windows: the ones that name it in their
   # @TestOn ran nowhere on it, and the Windows branch of the test resolver
-  # with them. This job has never run: it does not fail the run until it
-  # has passed once. Take continue-on-error away after its first green run.
+  # with them.
   test-windows:
     name: Test (Windows)
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: windows-2025-vs2026
     timeout-minutes: 45
-    continue-on-error: true
     defaults:
       run:
         shell: bash
