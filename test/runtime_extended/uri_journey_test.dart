@@ -53,9 +53,16 @@ void main() {
     }
 
     Future<void> expectPlaylist(List<Media> medias) async {
-      if (player.state.playback.playlist.items.length != medias.length) {
+      // The playlist of this open, not the one before it: with one entry
+      // each, a length alone is the same in both until the event comes
+      // (Test (Flutter floor), run 43587324179).
+      bool landed(Playlist p) =>
+          p.items.length == medias.length &&
+          p.items.indexed.every((e) => e.$2.extras?['n'] == e.$1) &&
+          p.items.first.uri == medias.first.uri;
+      if (!landed(player.state.playback.playlist)) {
         await player.stream.playlist
-            .firstWhere((p) => p.items.length == medias.length)
+            .firstWhere(landed)
             .timeout(const Duration(seconds: 15));
       }
       final items = player.state.playback.playlist.items;
