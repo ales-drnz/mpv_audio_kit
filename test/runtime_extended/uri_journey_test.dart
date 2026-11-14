@@ -148,13 +148,20 @@ void main() {
       'a Latin-1 name, which no Dart string holds, opens by its URL',
       () async {
         // The name is written by printf: byte 0xE9, no UTF-8.
-        final made = Process.runSync('sh', [
-          '-c',
-          r'cp "$1" "$2/$(printf "caf\\351 %%1.wav")"',
+        final made = Process.runSync(
           'sh',
-          source,
-          dir.path,
-        ]);
+          [
+            '-c',
+            r'cp "$1" "$2/$(printf "caf\\351 %%1.wav")"',
+            'sh',
+            source,
+            dir.path,
+            // Bytes: where the name is refused (APFS) the error of cp holds
+            // it, and it is no UTF-8 to decode.
+          ],
+          stdoutEncoding: null,
+          stderrEncoding: null,
+        );
         if (made.exitCode != 0) {
           markTestSkipped('this file system takes no name that is not UTF-8');
           return;
