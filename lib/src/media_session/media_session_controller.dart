@@ -505,8 +505,9 @@ class MediaSessionController {
       }
       final bytes = _unescape(uri.substring('file://'.length));
       path = utf8.decode(bytes, allowMalformed: true);
-      // `/C:/Music` names `C:/Music`, as mpv reads it on Windows.
-      final drive = _drivePath.hasMatch(path);
+      // On Windows `/C:/Music` names `C:/Music`, as mpv reads it there.
+      // Elsewhere it is the path it looks like, and so is `/a:b`.
+      final drive = _onWindows && _drivePath.hasMatch(path);
       if (drive) path = path.substring(1);
       if (!_isUtf8(bytes)) {
         // A name that is not UTF-8 (Latin-1): no string holds its bytes,
@@ -533,6 +534,8 @@ class MediaSessionController {
   }
 
   static final RegExp _drivePath = RegExp('^/[A-Za-z]:');
+  static bool get _onWindows =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
 
   /// The bytes of [s] with each `%` and two hex digits decoded, the way
   /// mpv decodes a `file:` URI (and `fileUrlToPath` after it). A `%`

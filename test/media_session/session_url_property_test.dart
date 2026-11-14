@@ -17,6 +17,7 @@ library;
 
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kiri_check/kiri_check.dart';
 import 'package:mpv_audio_kit/src/internals/uri_resolver.dart';
@@ -91,8 +92,7 @@ void main() {
             ? Uri.file(raw, windows: false).toString()
             : 'file://$raw';
         final path = fileUrlToPath(item, windows: false)!;
-        // A drive at the root is read as Windows reads it (see below).
-        if (!_plain(path) || RegExp('^/[A-Za-z]:').hasMatch(path)) return;
+        if (!_plain(path)) return;
         _expectNames(await probe.urlOf(item), path, item);
       },
       maxExamples: 150,
@@ -131,7 +131,6 @@ void main() {
             final item = 'file:///${names.join('/')}';
             final path = fileUrlToPath(item, windows: false);
             if (path == null || !_plain(path)) return;
-            if (RegExp('^/[A-Za-z]:').hasMatch(path)) return;
             _expectNames(await probe.urlOf(item), path, item);
           },
           maxExamples: 150,
@@ -175,8 +174,7 @@ void main() {
           final item = 'file:///${names.join('/')}';
           final bytes = _decoded(item);
           final path = utf8.decode(bytes, allowMalformed: true);
-          // A drive at the root is read as Windows reads it (see below).
-          if (!_plain(path) || RegExp('^/[A-Za-z]:').hasMatch(path)) return;
+          if (!_plain(path)) return;
           final url = await probe.urlOf(item);
           expect(url, isNotNull, reason: item);
           expect(url, matches(RegExp(r'^file:///[\x21-\x7e]*$')), reason: item);
@@ -188,26 +186,47 @@ void main() {
     });
   });
 
-  // A defect these tests found, left as it is (0.7.1 K8 writes tests
-  // only), with its smallest case, in MediaSessionController._fileUri.
-  group('defects', () {
+  // mpv reads /C:/Music as C:/Music on Windows only. On a POSIX host it
+  // is the path it looks like, and so is /a:b, which is no drive path.
+  group('a path that starts like a drive', () {
     setUp(open);
     tearDown(close);
 
-    // /C:/Music is read as C:/Music on every host, which mpv does only on
-    // Windows. With a slash after the colon the URI is the same; without
-    // one the path is no drive path, and nothing is published.
-    test(
-      'a POSIX path that starts like a drive is published',
-      () async {
-        const item = 'file:///a:b/c.flac';
-        const path = '/a:b/c.flac';
-        expect(fileUrlToPath(item, windows: false), path);
-        _expectNames(await probe.urlOf(item), path, item);
-      },
-      skip:
-          'defect: nothing is published (the path is read as a Windows '
-          'drive path on a POSIX host)',
-    );
+    test('a POSIX path that starts like a drive is published', () async {
+      const item = 'file:///a:b/c.flac';
+      const path = '/a:b/c.flac';
+      expect(fileUrlToPath(item, windows: false), path);
+      _expectNames(await probe.urlOf(item), path, item);
+    });
+
+    test('a POSIX path with a slash after the colon too', () async {
+      const item = 'file:///C:/Music/a #1.flac';
+      const path = '/C:/Music/a #1.flac';
+      expect(await probe.urlOf(item), 'file:///C:/Music/a%20%231.flac');
+      _expectNames(await probe.urlOf(item), path, item);
+    });
+
+    test('on Windows it is a drive path, as before', () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      expect(
+        await probe.urlOf('file:///C:/Music/a #1.flac'),
+        'file:///C:/Music/a%20%231.flac',
+      );
+      expect(
+        await probe.urlOf('file:///C:%5CMusic%5Ccaf%E9.mp3'),
+        'file:///C:/Music/caf%E9.mp3',
+      );
+      expect(
+        await probe.urlOf('file:///a:b/c.flac'),
+        isNull,
+        reason: 'a drive without a root: no URI names it',
+      );
+      expect(
+        await probe.urlOf('file:///C:/Music/a*b.flac'),
+        isNull,
+        reason: 'no URI names a path Windows forbids',
+      );
+    });
   });
 }
