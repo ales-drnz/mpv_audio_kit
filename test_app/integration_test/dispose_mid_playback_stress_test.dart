@@ -31,10 +31,22 @@ void main() {
           final player = Player(
             configuration: const PlayerConfiguration(logLevel: LogLevel.off),
           );
+          // Listened for before the open: the fixture lasts one second, and
+          // on a slow simulator it can be over by the time open() returns, so
+          // a listener that came after it never saw it play (check runs
+          // 43401914297 and 43622079133 of libmpv-scripts).
+          final played = player.stream.playing.firstWhere((p) => p);
           await player.open(Media(fixturePath), play: true);
-          await player.stream.playing
-              .firstWhere((p) => p)
-              .timeout(const Duration(seconds: 5));
+          await played.timeout(
+            const Duration(seconds: 5),
+            onTimeout: () => fail(
+              'no playback within 5 s of the open: '
+              'playing ${player.state.playback.playing}, '
+              'completed ${player.state.playback.completed}, '
+              'position ${player.state.playback.position}, '
+              'output ${player.state.output.audioOutputState}',
+            ),
+          );
           await Future<void>.delayed(const Duration(milliseconds: 100));
           await player.dispose().timeout(const Duration(seconds: 3));
         }
