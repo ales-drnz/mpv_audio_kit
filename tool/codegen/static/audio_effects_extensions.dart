@@ -626,7 +626,7 @@ extension AnequalizerBandsX on AnequalizerEffect {
   /// the output. With the default 2, the centre, LFE and surround
   /// channels of a 5.1 or 7.1 source pass without the band and are then
   /// mixed into the output. For a surround source pass its channel count,
-  /// e.g. `state.audioParams.channelCount`.
+  /// e.g. `state.file.audioParams.channelCount`.
   AnequalizerEffect withBands(
     List<AnequalizerBand> bands, {
     int channels = _anequalizerDefaultChannels,

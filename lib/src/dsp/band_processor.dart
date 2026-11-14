@@ -41,7 +41,7 @@ import '../types/settings/spectrum_settings.dart';
 /// player's live spectrum settings:
 ///
 /// ```dart
-/// final processor = BandProcessor(player.state.spectrum);
+/// final processor = BandProcessor(player.state.settings.spectrum);
 /// // Track config changes so the local FFT stays in lock-step with
 /// // the global visualizer.
 /// final cfgSub = player.stream.spectrum.listen(processor.setSettings);

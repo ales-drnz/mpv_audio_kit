@@ -67,7 +67,7 @@ enum PcmSourceState {
 ///
 /// Each source is read once: it cannot be played again, and seeking is
 /// not possible (a seek on it does nothing). Its length is not known in
-/// advance: `state.duration` follows the audio received so far. mpv
+/// advance: `state.playback.duration` follows the audio received so far. mpv
 /// counts it by the start of the last packet, so it can end a few tens
 /// of ms short of the audio fed, and the position can pass it at the end.
 ///
@@ -81,9 +81,10 @@ enum PcmSourceState {
 /// [Loop.file] and the A-B loop do not repeat a live entry: it plays once
 /// to its end, past a B point too, with a warning in the log.
 ///
-/// While a live entry plays, `state.gapless`, `state.cache.pause` and,
-/// with `lowLatency`, `state.audioBuffer` show the values the entry plays
-/// with (`Gapless.no`, `false`, 100 ms). `setGapless`, `setCache` and
+/// While a live entry plays, `state.settings.gapless`,
+/// `state.settings.cache.pause` and, with `lowLatency`,
+/// `state.settings.audioBuffer` show the values the entry plays with
+/// (`Gapless.no`, `false`, 100 ms). `setGapless`, `setCache` and
 /// `setAudioBuffer` called meanwhile hold only until the entry ends: mpv
 /// then puts back the values from before it.
 ///

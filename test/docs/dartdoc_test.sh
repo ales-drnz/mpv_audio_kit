@@ -25,9 +25,7 @@ grep -E '^ *(warning|error):' <<<"$out" || true
 flat="$(sed -nE "s/^ *@Deprecated\('Use [a-z]+\.([A-Za-z]+);.*/\1/p" lib/src/generated/player_state_data.dart | paste -sd'|')"
 deprecated="$(grep -rnE "\[PlayerState\.($flat)\]" lib --include='*.dart' | grep -v '/generated/' || true)"
 [[ -z "$deprecated" ]] || { echo "references to the deprecated flat fields:"; echo "$deprecated"; }
-# The files whose doc comments still read a flat field: none stays here.
-pending='^lib/src/(dsp/band_processor|pcm/pcm_source|generated/audio_effects_extensions)\.dart:'
-flat_docs="$(grep -rnE "^[[:space:]]*///.*\bstate\.($flat)\b" lib --include='*.dart' | grep -vE "$pending" || true)"
+flat_docs="$(grep -rnE "^[[:space:]]*///.*\bstate\.($flat)\b" lib --include='*.dart' || true)"
 [[ -z "$flat_docs" ]] || { echo "doc comments that read the deprecated flat fields:"; echo "$flat_docs"; }
 empty=""
 while read -r topic; do

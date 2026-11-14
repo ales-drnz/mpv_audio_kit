@@ -138,8 +138,6 @@ extension type MpvExports._(JSObject _) implements JSObject {
   external int pcmAbort(JSBigInt id);
   @JS('_mak_pcm_buffered')
   external JSBigInt pcmBuffered(JSBigInt id);
-  @JS('_mak_pcm_consumed')
-  external JSBigInt pcmConsumed(JSBigInt id);
   @JS('_mak_pcm_state')
   external int pcmState(JSBigInt id);
   @JS('_mak_pcm_release')
