@@ -518,21 +518,35 @@ class MediaSessionController {
   }
 
   static final RegExp _drivePath = RegExp('^/[A-Za-z]:');
-  static final RegExp _escape = RegExp('%([0-9A-Fa-f]{2})');
 
   /// [s] with each `%` and two hex digits decoded, the way mpv decodes a
-  /// `file:` URI. A `%` without them is kept.
+  /// `file:` URI (and `fileUrlToPath` after it). A `%` without them is
+  /// kept with the two characters after it, so an escape that starts
+  /// inside those is not one: `%%41` stays as it is.
   static String _unescape(String s) {
+    final src = utf8.encode(s);
     final bytes = <int>[];
-    var i = 0;
-    for (final m in _escape.allMatches(s)) {
-      bytes
-        ..addAll(utf8.encode(s.substring(i, m.start)))
-        ..add(int.parse(m[1]!, radix: 16));
-      i = m.end;
+    for (var i = 0; i < src.length;) {
+      if (src[i] != 0x25 || i + 2 >= src.length) {
+        bytes.add(src[i++]);
+        continue;
+      }
+      final hi = _hexDigit(src[i + 1]);
+      final lo = _hexDigit(src[i + 2]);
+      if (hi >= 0 && lo >= 0) {
+        bytes.add(hi * 16 + lo);
+      } else {
+        bytes.addAll(src.sublist(i, i + 3));
+      }
+      i += 3;
     }
-    bytes.addAll(utf8.encode(s.substring(i)));
     return utf8.decode(bytes, allowMalformed: true);
+  }
+
+  static int _hexDigit(int c) {
+    if (c >= 0x30 && c <= 0x39) return c - 0x30;
+    final letter = c | 0x20;
+    return letter >= 0x61 && letter <= 0x66 ? letter - 0x61 + 10 : -1;
   }
 
   /// Whether [uri] is an `http(s)://` URL.
