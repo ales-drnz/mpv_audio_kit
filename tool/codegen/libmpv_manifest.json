@@ -1,5 +1,5 @@
 {
-  "release": "r24",
+  "release": "r25",
   "mpv": "0.41.0",
   "ffmpeg": "8.1.1",
   "license": "LGPL-3.0-or-later",
@@ -491,28 +491,307 @@
     ]
   },
   "source": {
-    "commit": "107924b16d2948f43159feebd127a62bd998fec6",
-    "run": "42703687387"
+    "commit": "09d4d488eca2ef61ded72e159ac360da854ba185",
+    "run": "43593739828"
   },
   "assets": {
-    "libmpv_android-arm64-v8a.so": "b7437907760f813637e330252f2e6d60744d0c535a6128e1c9967bc0688cb1e5",
-    "libmpv_android-armeabi-v7a.so": "8de6e82aa55b29d114b5c6f9c1552e63f04a3c344abd347bc82d046e43aa84a0",
-    "libmpv_android-x86_64.so": "5ef33c4449d47f5de7dec684ab9c1c1a4299780dbbf3f9420054b7fcb4a2e0c0",
-    "libmpv_ios.xcframework.zip": "0569c18f6f294fb5fed14a6e54f1ee499dfea1809c511f4c29e267bd8a6e5ff8",
-    "libmpv_linux-aarch64.so": "174c57a3501fba6a8f276ce1c0a13beec1a16cc16fe9b2ac3788a867980911c9",
-    "libmpv_linux-x86_64.so": "f357ec2a1fffc4b8b43b287a3d1e3010f928d10f2904dcc53b999faafbcca717",
-    "libmpv_macos.xcframework.zip": "dcfcf54eecc7e58b53ec744e2e2cedaf10302f6b49416325234613092551d8aa",
-    "libmpv_tizen-armv7l.so": "3a2148bdeb5f94ffd79e317f549f5d567647c7f8f94af8b19b925a318e1f9c29",
-    "libmpv_tizen-x86_64.so": "67f133a5a8a05d23ff6cc7206a7f9627ba94ce62bf72c07790147925fc467257",
-    "libmpv_tvos.xcframework.zip": "dc7bdd0927e14e4b9e8b7b2ee899b8b92e665e8695afc41e9af0df8617837301",
-    "libmpv_web.zip": "1033e1ad48fbf290e9923edc3bb3bb477b3c9e1c7ec10e71562bb04941f56396",
-    "libmpv_webos-armv7l.so": "4478343538132b22cb2bfef2944048f39ceb4dd6943a413e1f1ed6eb10072605",
-    "libmpv_windows-arm64.dll": "b4514a673239483bd08969aefd146af643a82c27de15a753494f9f7be595ed34",
-    "libmpv_windows-x86_64.dll": "0e126fa92c92d903c2b9bce5562cf0ed4a1581dee2a123cf749313db44c63421"
+    "libmpv_android-arm64-v8a.so": "ee34c67c790da20dd5807e6c0fb45ec1ef9ec306dab5fa17d9ef7e995f5e772a",
+    "libmpv_android-armeabi-v7a.so": "f8b7dd73513e23c5c8461847326ef24070a2a652e6ca663ea37ff2fed27aa318",
+    "libmpv_android-x86_64.so": "a74b635d10c61a28cb397b3ff3a1fa27f52118a1c67e750e722d61930c5e6500",
+    "libmpv_ios.xcframework.zip": "ea61a67a66af9fd592028c69f4d6416ee53c4c40d94a942f4d238982325296ba",
+    "libmpv_linux-aarch64.so": "197af18cbf491905b150aaaf1db0945a92e5e3890c9c54571d96c906237511bc",
+    "libmpv_linux-x86_64.so": "6fe2031cf14bfdb5ad95bf7f96af9fcc05bcd3db3a33c954a119b78a3ba79749",
+    "libmpv_macos.xcframework.zip": "395e8e44e0e1ace4c94fdc34dac9e981e6a9110d84d6fa924815c9d27dde2706",
+    "libmpv_tizen-armv7l.so": "4031ce942d923f0d93a904986f380c33e9ed02f1697bf9fe99081ad500246b96",
+    "libmpv_tizen-x86_64.so": "a5fac97ac71efbd9c049bf120e61ff9bcee1884e284e75075b9845798a49eb51",
+    "libmpv_tvos.xcframework.zip": "1f0c37f94f91104ad983a6d005ad64ccf51bd482a5801fb27d9baa3010d65acc",
+    "libmpv_web.zip": "230c310b8e5fc76c0fc3d86b477acfcdd470702cf4cd7e63fb9d19b6de64f758",
+    "libmpv_webos-armv7l.so": "0f6c846782387b1d4b9a376a515663f7b2bd65c3fa9e6b083737f09eb05ae81c",
+    "libmpv_windows-arm64.dll": "08e51d6b01a662ec31ba01f15598a304eb168810623d243c6d93c6d514b27987",
+    "libmpv_windows-x86_64.dll": "3748e8ce1973af36e3244d078c398ea7d5dc767111ff16725b2bceed10989190"
   },
   "licenses": {
     "asset": "licenses.zip",
-    "sha256": "55a8eb71f06bfa3e171e2065e99ef507b6497c852582135e9c04840499e4ee57"
+    "sha256": "1a51dc55c5e8e18841d06100ac24b4cb949d53e88da03b5d658c37558e2f790d"
+  },
+  "components": {
+    "android-arm64-v8a": {
+      "mpv": "0.41.0",
+      "ffmpeg": "8.1.1",
+      "openssl": "3.5.6",
+      "libplacebo": "6.338.2",
+      "libxml2": "2.14.6",
+      "zlib": "1.3.2",
+      "bzip2": "1.0.8",
+      "xz": "5.8.3",
+      "speexdsp": "1.2.1",
+      "libsmb2": "6.0.0",
+      "mozilla-ca": "as of Thu Nov  5 04:12:01 2026 GMT"
+    },
+    "android-armeabi-v7a": {
+      "mpv": "0.41.0",
+      "ffmpeg": "8.1.1",
+      "openssl": "3.5.6",
+      "libplacebo": "6.338.2",
+      "libxml2": "2.14.6",
+      "zlib": "1.3.2",
+      "bzip2": "1.0.8",
+      "xz": "5.8.3",
+      "speexdsp": "1.2.1",
+      "libsmb2": "6.0.0",
+      "mozilla-ca": "as of Thu Nov  5 04:12:01 2026 GMT"
+    },
+    "android-x86_64": {
+      "mpv": "0.41.0",
+      "ffmpeg": "8.1.1",
+      "openssl": "3.5.6",
+      "libplacebo": "6.338.2",
+      "libxml2": "2.14.6",
+      "zlib": "1.3.2",
+      "bzip2": "1.0.8",
+      "xz": "5.8.3",
+      "speexdsp": "1.2.1",
+      "libsmb2": "6.0.0",
+      "mozilla-ca": "as of Thu Nov  5 04:12:01 2026 GMT"
+    },
+    "ios": {
+      "mpv": "0.41.0",
+      "ffmpeg": "8.1.1",
+      "openssl": "3.5.6",
+      "libplacebo": "6.338.2",
+      "libxml2": "2.14.6",
+      "zlib": "1.3.2",
+      "bzip2": "1.0.8",
+      "xz": "5.8.3",
+      "speexdsp": "1.2.1",
+      "libsmb2": "6.0.0",
+      "mozilla-ca": "as of Thu Nov  5 04:12:01 2026 GMT"
+    },
+    "linux-aarch64": {
+      "mpv": "0.41.0",
+      "ffmpeg": "8.1.1",
+      "openssl": "3.5.6",
+      "libplacebo": "7.349.0",
+      "libxml2": "2.14.6",
+      "zlib": "1.3.2",
+      "bzip2": "1.0.8",
+      "xz": "5.8.3",
+      "speexdsp": "1.2.1",
+      "pipewire": "0.3.57",
+      "implib": "commit a3e167cf978a5b8a38ec0f710d8c4331e8dcdd9a",
+      "libsmb2": "6.0.0",
+      "mozilla-ca": "as of Thu Nov  5 04:12:01 2026 GMT"
+    },
+    "linux-x86_64": {
+      "mpv": "0.41.0",
+      "ffmpeg": "8.1.1",
+      "openssl": "3.5.6",
+      "libplacebo": "7.349.0",
+      "libxml2": "2.14.6",
+      "zlib": "1.3.2",
+      "bzip2": "1.0.8",
+      "xz": "5.8.3",
+      "speexdsp": "1.2.1",
+      "pipewire": "0.3.57",
+      "implib": "commit a3e167cf978a5b8a38ec0f710d8c4331e8dcdd9a",
+      "libsmb2": "6.0.0",
+      "mozilla-ca": "as of Thu Nov  5 04:12:01 2026 GMT"
+    },
+    "macos": {
+      "mpv": "0.41.0",
+      "ffmpeg": "8.1.1",
+      "openssl": "3.5.6",
+      "libplacebo": "7.349.0",
+      "libxml2": "2.14.6",
+      "zlib": "1.3.2",
+      "bzip2": "1.0.8",
+      "xz": "5.8.3",
+      "speexdsp": "1.2.1",
+      "libsmb2": "6.0.0",
+      "mozilla-ca": "as of Thu Nov  5 04:12:01 2026 GMT"
+    },
+    "tizen-armv7l": {
+      "mpv": "0.41.0",
+      "ffmpeg": "8.1.1",
+      "openssl": "3.5.6",
+      "libplacebo": "7.349.0",
+      "libxml2": "2.14.6",
+      "zlib": "1.3.2",
+      "bzip2": "1.0.8",
+      "xz": "5.8.3",
+      "speexdsp": "1.2.1",
+      "libsmb2": "6.0.0",
+      "mozilla-ca": "as of Thu Nov  5 04:12:01 2026 GMT"
+    },
+    "tizen-x86_64": {
+      "mpv": "0.41.0",
+      "ffmpeg": "8.1.1",
+      "openssl": "3.5.6",
+      "libplacebo": "7.349.0",
+      "libxml2": "2.14.6",
+      "zlib": "1.3.2",
+      "bzip2": "1.0.8",
+      "xz": "5.8.3",
+      "speexdsp": "1.2.1",
+      "libsmb2": "6.0.0",
+      "mozilla-ca": "as of Thu Nov  5 04:12:01 2026 GMT"
+    },
+    "tvos": {
+      "mpv": "0.41.0",
+      "ffmpeg": "8.1.1",
+      "openssl": "3.5.6",
+      "libplacebo": "6.338.2",
+      "libxml2": "2.14.6",
+      "zlib": "1.3.2",
+      "bzip2": "1.0.8",
+      "xz": "5.8.3",
+      "speexdsp": "1.2.1",
+      "libsmb2": "6.0.0",
+      "mozilla-ca": "as of Thu Nov  5 04:12:01 2026 GMT"
+    },
+    "web": {
+      "mpv": "0.41.0",
+      "ffmpeg": "8.1.1",
+      "libplacebo": "7.349.0",
+      "libxml2": "2.14.6",
+      "zlib": "1.3.2"
+    },
+    "webos-armv7l": {
+      "mpv": "0.41.0",
+      "ffmpeg": "8.1.1",
+      "openssl": "3.5.6",
+      "libplacebo": "7.349.0",
+      "libxml2": "2.14.6",
+      "zlib": "1.3.2",
+      "bzip2": "1.0.8",
+      "xz": "5.8.3",
+      "speexdsp": "1.2.1",
+      "libsmb2": "6.0.0",
+      "mozilla-ca": "as of Thu Nov  5 04:12:01 2026 GMT"
+    },
+    "windows-arm64": {
+      "mpv": "0.41.0",
+      "ffmpeg": "8.1.1",
+      "openssl": "3.5.6",
+      "libplacebo": "6.338.2",
+      "libxml2": "2.14.6",
+      "zlib": "1.3.2",
+      "bzip2": "1.0.8",
+      "xz": "5.8.3",
+      "speexdsp": "1.2.1",
+      "libsmb2": "6.0.0",
+      "mozilla-ca": "as of Thu Nov  5 04:12:01 2026 GMT"
+    },
+    "windows-x86_64": {
+      "mpv": "0.41.0",
+      "ffmpeg": "8.1.1",
+      "openssl": "3.5.6",
+      "libplacebo": "6.338.2",
+      "libxml2": "2.14.6",
+      "zlib": "1.3.2",
+      "bzip2": "1.0.8",
+      "xz": "5.8.3",
+      "speexdsp": "1.2.1",
+      "libsmb2": "6.0.0",
+      "mozilla-ca": "as of Thu Nov  5 04:12:01 2026 GMT"
+    }
+  },
+  "toolchain": {
+    "android-arm64-v8a": {
+      "compiler": "Android (13624864, +pgo, +bolt, +lto, +mlgo, based on r530567e) clang version 19.0.1 (https://android.googlesource.com/toolchain/llvm-project 97a699bf4812a18fb657c2779f5296a4ab2694d2)",
+      "meson": "1.12.1",
+      "ninja": "1.11.1",
+      "cmake": "3.28.3",
+      "ndk": "28.2.13676358"
+    },
+    "android-armeabi-v7a": {
+      "compiler": "Android (13624864, +pgo, +bolt, +lto, +mlgo, based on r530567e) clang version 19.0.1 (https://android.googlesource.com/toolchain/llvm-project 97a699bf4812a18fb657c2779f5296a4ab2694d2)",
+      "meson": "1.12.1",
+      "ninja": "1.11.1",
+      "cmake": "3.28.3",
+      "ndk": "28.2.13676358"
+    },
+    "android-x86_64": {
+      "compiler": "Android (13624864, +pgo, +bolt, +lto, +mlgo, based on r530567e) clang version 19.0.1 (https://android.googlesource.com/toolchain/llvm-project 97a699bf4812a18fb657c2779f5296a4ab2694d2)",
+      "meson": "1.12.1",
+      "ninja": "1.11.1",
+      "cmake": "3.28.3",
+      "ndk": "28.2.13676358"
+    },
+    "ios": {
+      "compiler": "Apple clang version 21.0.0 (clang-2100.1.1.101)",
+      "meson": "1.12.1",
+      "ninja": "1.13.2",
+      "cmake": "4.4.5",
+      "xcode": "Xcode 26.6 Build version 17F113",
+      "sdk-iphoneos": "26.5",
+      "sdk-iphonesimulator": "26.5"
+    },
+    "linux-aarch64": {
+      "compiler": "aarch64-linux-gnu-gcc (Ubuntu 10.5.0-1ubuntu1~20.04) 10.5.0",
+      "meson": "1.7.2",
+      "ninja": "1.13.2.git.kitware.jobserver-pipe-1",
+      "cmake": "3.31.10"
+    },
+    "linux-x86_64": {
+      "compiler": "x86_64-linux-gnu-gcc (Ubuntu 10.5.0-1ubuntu1~20.04) 10.5.0",
+      "meson": "1.7.2",
+      "ninja": "1.13.2.git.kitware.jobserver-pipe-1",
+      "cmake": "3.31.10"
+    },
+    "macos": {
+      "compiler": "Apple clang version 21.0.0 (clang-2100.1.1.101)",
+      "meson": "1.12.1",
+      "ninja": "1.13.2",
+      "cmake": "4.4.5",
+      "xcode": "Xcode 26.6 Build version 17F113",
+      "sdk-macosx": "26.5"
+    },
+    "tizen-armv7l": {
+      "compiler": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+      "meson": "1.12.1",
+      "ninja": "1.11.1",
+      "cmake": "3.28.3"
+    },
+    "tizen-x86_64": {
+      "compiler": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+      "meson": "1.12.1",
+      "ninja": "1.11.1",
+      "cmake": "3.28.3"
+    },
+    "tvos": {
+      "compiler": "Apple clang version 21.0.0 (clang-2100.1.1.101)",
+      "meson": "1.12.1",
+      "ninja": "1.13.2",
+      "cmake": "4.4.5",
+      "xcode": "Xcode 26.6 Build version 17F113",
+      "sdk-appletvos": "26.5",
+      "sdk-appletvsimulator": "26.5"
+    },
+    "web": {
+      "compiler": "emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 6.0.12 (5488e0871d46d19a3209988190fa6a653126256f)",
+      "meson": "1.12.1",
+      "ninja": "1.13.2.git.kitware.jobserver-pipe-1",
+      "cmake": "3.31.6"
+    },
+    "webos-armv7l": {
+      "compiler": "arm-webosmllib32-linux-gnueabi-gcc (GCC) 13.3.0",
+      "meson": "1.12.1",
+      "ninja": "1.11.1",
+      "cmake": "3.28.3"
+    },
+    "windows-arm64": {
+      "compiler": "clang version 22.1.4 (https://github.com/llvm/llvm-project.git 35990504507d79e0b9deb809c8ee5e1b34ceef20)",
+      "meson": "1.12.1",
+      "ninja": "1.11.1",
+      "cmake": "3.28.3"
+    },
+    "windows-x86_64": {
+      "compiler": "x86_64-w64-mingw32-gcc (GCC) 13-win32",
+      "meson": "1.12.1",
+      "ninja": "1.11.1",
+      "cmake": "3.28.3"
+    }
   },
   "web": {
     "asset": "libmpv_web.zip",
@@ -521,7 +800,7 @@
     "emscripten": "6.0.12",
     "files": {
       "libmpv.mjs": "a828dc54cc9a95d5c4b335c7b6dc3ae11691c511f4866dec6c4f211972d1387f",
-      "libmpv.wasm": "8f2c3067858d7699f0011263916024a10c3149ac409b0447f696e532d3c17ec8",
+      "libmpv.wasm": "7a6b36064b4cb3116cb3176bfa96e5a8d48b4939c5d7ee040cd2bb7158f2dea6",
       "mak_webaudio_processor.js": "253e3882e772051e749292e518768c75e2d61a807355d45d00ad7215f7c7bee4"
     }
   },

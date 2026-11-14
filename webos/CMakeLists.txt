@@ -18,8 +18,8 @@
 cmake_minimum_required(VERSION 3.10)
 project(mpv_audio_kit LANGUAGES NONE)
 
-set(MAK_LIBMPV_RELEASE "libmpv-r24")
-set(MAK_LIBMPV_SHA256 "4478343538132b22cb2bfef2944048f39ceb4dd6943a413e1f1ed6eb10072605")
+set(MAK_LIBMPV_RELEASE "libmpv-r25")
+set(MAK_LIBMPV_SHA256 "0f6c846782387b1d4b9a376a515663f7b2bd65c3fa9e6b083737f09eb05ae81c")
 
 # flutter-webos names its target here: arm, the TVs, or arm64 with
 # --target-arch arm64, which has no libmpv. Failing now beats an app that
