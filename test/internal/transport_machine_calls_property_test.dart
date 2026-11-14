@@ -138,7 +138,7 @@ final class _Calls {
       // The reply of playlist-play-index.
       waiting.add((_) {
         m.takePark();
-        if (m.owns(epoch)) intent = true;
+        if (m.wantsPlay(epoch)) intent = true;
       });
     });
   }
@@ -428,7 +428,7 @@ final class _Fifo {
         break;
       case _JumpReply(:final intent):
         m.takePark();
-        if (m.owns(intent)) this.intent = true;
+        if (m.wantsPlay(intent)) this.intent = true;
       case _LoadReply():
         m.takePark();
       case _LoadEnd():
@@ -577,19 +577,13 @@ void main() {
     );
   });
 
-  // A defect these tests found, left as it is (0.7.1 K8 writes tests
-  // only). jump() writes the intent on after the reply of its command
-  // only while it still owns the intent (player_playlist.part.dart, "if
-  // (_transport.owns(intent)) _transport.writeIntent(true)"). A play()
-  // called before that reply owns it instead, and away from a park it
-  // writes nothing after its claim. A read of the old park that lands
-  // between the two spends the intent, and nothing takes it back: the
-  // entry of the jump plays with the intent off. play() had the same hole
-  // between two of its own calls, closed in 0c37fc6 with wantsPlay().
-  const jumpDefect =
-      'defect: a play() before the reply of a jump() leaves the intent a '
-      'late read of the park spent (jump() asks owns(), not wantsPlay())';
-
+  // jump() writes the intent on after the reply of its command while the
+  // last call that claimed the intent played (wantsPlay(), as the reply of
+  // the seek of play() since 0c37fc6). It asked owns() before: a play()
+  // called before that reply owned the intent instead, and away from a
+  // park it writes nothing after its claim. A read of the old park that
+  // landed between the two spent the intent, and nothing took it back:
+  // the entry of the jump played with the intent off.
   test('a play() before the reply of a jump() keeps the intent on', () {
     final r = _Fifo()
       ..play(false)
@@ -600,7 +594,18 @@ void main() {
       r.deliver();
     }
     expect(r.intent, isTrue);
-  }, skip: jumpDefect);
+  });
+
+  test('the rigs write the intent after the reply of a jump() as jump() '
+      'does', () {
+    expect(
+      _jumpSource(),
+      contains(
+        '_transport.takePark(); '
+        'if (_transport.wantsPlay(intent)) _transport.writeIntent(true);',
+      ),
+    );
+  });
 
   property('the same with a play() before the reply of a jump()', () {
     runBehavior(
@@ -608,7 +613,7 @@ void main() {
       maxSteps: 60,
       maxCycles: 300,
     );
-  }, skip: jumpDefect);
+  });
 
   // The cases the property above must reach, each by hand.
   group('a pause() has the last word', () {
