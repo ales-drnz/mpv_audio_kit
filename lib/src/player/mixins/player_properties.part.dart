@@ -61,7 +61,7 @@ mixin _PropertiesModule on _PlayerBase {
   /// custom handlers for properties whose update logic doesn't fit a simple
   /// (parser, reducer) pair (node parsing with player-side context, derived
   /// fields aggregating multiple mpv properties, etc.).
-  void _dispatchProperty(String name, dynamic raw) {
+  void _dispatchProperty(String name, Object? raw) {
     // `commit` assigns the reduced state to `_state` BEFORE the spec's
     // onChange fires, so a hook that reads + mutates `_state` (the
     // idle-active hook settling the transport) builds on the reduced state
@@ -130,7 +130,7 @@ mixin _PropertiesModule on _PlayerBase {
     _updateField((s) => s.copyWith(loop: next), _loop, next);
   }
 
-  void _updatePlaylistFromNode(dynamic raw) {
+  void _updatePlaylistFromNode(Object? raw) {
     try {
       // Forget the entries mpv no longer has. mpv numbers entries in
       // order, so one newer than every entry a node has listed was
@@ -181,7 +181,7 @@ mixin _PropertiesModule on _PlayerBase {
     );
   }
 
-  void _updateDevicesFromNode(dynamic raw) {
+  void _updateDevicesFromNode(Object? raw) {
     try {
       final devices = parseDeviceListNode(raw);
       _updateField(
@@ -194,7 +194,7 @@ mixin _PropertiesModule on _PlayerBase {
     }
   }
 
-  void _updateMetadataFromNode(dynamic raw) {
+  void _updateMetadataFromNode(Object? raw) {
     try {
       final metadata = parseMetadataNode(raw);
       if (metadata == null) return;
@@ -204,7 +204,7 @@ mixin _PropertiesModule on _PlayerBase {
     }
   }
 
-  void _updateBufferingPercentageFromNode(dynamic raw) {
+  void _updateBufferingPercentageFromNode(Object? raw) {
     try {
       final pct = parseDemuxerCacheStateNode(raw, _state.settings.cache.secs);
       _updateField(

@@ -198,7 +198,7 @@ mixin _FileEventsModule on _PlayerBase, _PropertiesModule, _EffectsModule {
   /// Writes the FILE_LOADED entry into the state snapshot only. The
   /// reactives keep the last observed values, so the observed `path` and
   /// `playlist` changes that follow still emit on the streams.
-  void _applyLoadedEntry(String? path, dynamic playlistNode) {
+  void _applyLoadedEntry(String? path, Object? playlistNode) {
     Playlist? playlist;
     if (playlistNode != null) {
       try {
