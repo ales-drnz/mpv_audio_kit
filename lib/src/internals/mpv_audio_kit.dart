@@ -15,6 +15,7 @@ import 'passthrough_codecs.dart';
 /// libmpv the players use and the cleanup of the cores that leaked across
 /// Flutter Hot-Restarts, both of which the backend carries out.
 ///
+/// {@category Platforms}
 /// {@category Web}
 /// {@category Android TV}
 /// {@category Tizen}

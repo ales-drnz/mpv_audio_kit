@@ -101,6 +101,10 @@ On Android `MpvAudioKit.passthroughCodecs()` tells which of AC3, E-AC3 and DTS t
 await player.setAudioSpdif(await MpvAudioKit.passthroughCodecs());
 ```
 
+### Offload on Android
+
+The package has no audio offload, where the phone's DSP decodes a compressed stream to save battery. `audiotrack` writes PCM, or IEC61937 for passthrough. Offload would skip the whole chain the package runs on PCM: effects, the equalizer, ReplayGain, speed and pitch, the spectrum, the PCM stream and the taps.
+
 ## Tracks
 
 A file can hold several audio tracks, such as one per language.
