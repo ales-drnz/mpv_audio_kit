@@ -14,6 +14,9 @@ import '../models/media.dart';
 import 'pcm_format.dart';
 import 'pcm_native.dart';
 
+part 'pcm_poller.dart';
+part 'pcm_registry.dart';
+
 /// Where a [PcmSource] is in its life.
 enum PcmSourceState {
   /// Created, not yet opened by a player. Chunks wait in the buffer.
@@ -560,115 +563,6 @@ final class PcmSource {
     _forget(_id);
   }
 
-  // ── polling ──────────────────────────────────────────────────────────
-  //
-  // One timer serves every source while any is not done: the reader runs
-  // on an mpv thread and the C API never calls back into Dart, so the
-  // queue, the state and [ready] follow by polling. A tick costs a few
-  // leaf calls per source. Sources are watched through weak references,
-  // so one the app dropped is still collected (its finalizer releases
-  // it); a source with queued chunks, a pending close or a ready waiter
-  // is held strongly until that work is done.
-  //
-  // The timer ticks every [_interval] while a player reads one of the
-  // sources. With no reader (sources queued in a playlist, or never
-  // opened) nothing moves on the native side: [add] and [close] write
-  // what fits themselves, and the rest waits for room only a reader
-  // makes. The timer then ticks every [_idleInterval], just to see a
-  // reader come. The native buffer holds at least a second of audio, so
-  // the reader has that much before the first fast tick refills it.
-
-  static const Duration _interval = Duration(milliseconds: 20);
-  static const Duration _idleInterval = Duration(milliseconds: 250);
-  static final List<WeakReference<PcmSource>> _watched = [];
-  static final Set<PcmSource> _held = {};
-  static Timer? _timer;
-  // The period of [_timer].
-  static Duration? _period;
-  // Whether [_pollAll] is walking [_watched].
-  static bool _polling = false;
-
-  static void _watch(PcmSource source) {
-    _watched.add(WeakReference(source));
-    // A new source has no reader: the timer keeps the rate it has.
-    if (_timer == null) _setPeriod(_idleInterval);
-  }
-
-  static void _hold(PcmSource source) {
-    if (!source.isDone) _held.add(source);
-  }
-
-  static void _setPeriod(Duration? period) {
-    if (period == _period) return;
-    _timer?.cancel();
-    _period = period;
-    _timer = period == null ? null : Timer.periodic(period, (_) => _pollAll());
-  }
-
-  /// Stops watching [source], which is done, and the timer with the last
-  /// one. During a poll the loop does it.
-  static void _unwatch(PcmSource source) {
-    if (_polling) return;
-    _watched.removeWhere((w) => identical(w.target, source));
-    if (_watched.isEmpty) _setPeriod(null);
-  }
-
-  static void _pollAll() {
-    _polling = true;
-    try {
-      _pollWatched();
-    } finally {
-      _polling = false;
-    }
-  }
-
-  static void _pollWatched() {
-    var read = false;
-    for (var i = _watched.length - 1; i >= 0; i--) {
-      final source = _watched[i].target;
-      if (source != null) source._tick();
-      if (source == null || source.isDone) {
-        _watched.removeAt(i);
-        continue;
-      }
-      if (source._read) read = true;
-      if (!source._hasWork) _held.remove(source);
-    }
-    if (_watched.isEmpty) return _setPeriod(null);
-    _setPeriod(read ? _interval : _idleInterval);
-  }
-
-  // A source the app dropped: the native side lets go, and its media is
-  // refused from then on.
-  static final Finalizer<_NativeRef> _finalizer = Finalizer<_NativeRef>((ref) {
-    ref.native.release(ref.id);
-    _forget(ref.id);
-  });
-
-  static void _forget(int id) {
-    _formats.remove(id);
-    _lowLatency.remove(id);
-    _live.remove(id);
-  }
-
-  // The native side refuses a larger buffer.
-  static const int _maxCapacity = 1 << 30;
-
-  static const String _scheme = 'mak-pcm://';
-
-  // The format of every source not yet released, for the load options of
-  // its media.
-  static final Map<int, PcmFormat> _formats = {};
-  static final Set<int> _lowLatency = {};
-
-  // Every source not yet released, for the player that loads its media.
-  static final Map<int, WeakReference<PcmSource>> _live = {};
-
-  // The source of each media [toMedia] made: a source the app keeps only
-  // through its media (`player.add(make().toMedia())`) must not be
-  // collected between toMedia and the player holding its entry.
-  static final Expando<PcmSource> _byMedia = Expando<PcmSource>('pcm');
-
   /// Test-only: runs one poll of every source now.
   @visibleForTesting
   static void debugPoll() => _pollAll();
@@ -697,75 +591,3 @@ final class PcmSource {
     return bytes ~/ format.bytesPerFrame * format.bytesPerFrame;
   }
 }
-
-final class _NativeRef {
-  _NativeRef(this.native, this.id);
-  final PcmNative native;
-  final int id;
-}
-
-/// The live source [uri] names, while it is not released.
-@internal
-PcmSource? pcmSourceFor(String uri) {
-  if (!isPcmUri(uri)) return null;
-  final id = int.tryParse(uri.substring(PcmSource._scheme.length));
-  return id == null ? null : PcmSource._live[id]?.target;
-}
-
-/// Whether [uri] names a live PCM source.
-@internal
-bool isPcmUri(String uri) => uri.startsWith(PcmSource._scheme);
-
-/// The file-local `loadfile` options that play the `mak-pcm://` [uri]:
-/// mpv's raw audio demuxer set to the source's format, and no gapless
-/// audio, so the entry ends once its last sample has played rather than
-/// once the audio output holds it (a buffer earlier, with nothing after
-/// it to join). `null` when [uri] is not one. Throws [ArgumentError] for
-/// a source that is released or was never created in this isolate.
-@internal
-String? pcmLoadOptions(String uri) {
-  if (!isPcmUri(uri)) return null;
-  final id = int.tryParse(uri.substring(PcmSource._scheme.length));
-  final format = id == null ? null : PcmSource._formats[id];
-  if (format == null) {
-    throw ArgumentError.value(
-      uri,
-      'media',
-      'is not a live PcmSource: it is done, or was not created here',
-    );
-  }
-  // cache-pause=no: a pause in the input (between two sentences) would
-  // otherwise hold playback until a second is buffered, a lag that stays
-  // for the rest of the entry. demuxer-termination-timeout=0: stop, next
-  // or a dispose with a starved reader return at once instead of after
-  // 100 ms. demuxer-seekable-cache=no: with the cache forced on (cache=yes)
-  // mpv would seek back into what it cached of the live input and keep a
-  // back buffer of up to 50 MiB for it.
-  return 'demuxer=rawaudio,'
-      'demuxer-rawaudio-format=${format.encoding.mpvValue},'
-      'demuxer-rawaudio-rate=${format.sampleRate},'
-      'demuxer-rawaudio-channels=${format.channels},'
-      'cache-pause=no,'
-      'demuxer-termination-timeout=0,'
-      'demuxer-seekable-cache=no,'
-      'gapless-audio=no'
-      '${PcmSource._lowLatency.contains(id) ? ',audio-buffer=0.1' : ''}';
-}
-
-extension on PcmFormat {
-  /// The bytes of [d] of audio, whole frames. Past [_durationFramesCap]
-  /// frames it stops growing, far above the 1 GiB a source holds, so no
-  /// duration wraps it to a negative size.
-  int durationBytes(Duration d) {
-    const second = Duration.microsecondsPerSecond;
-    final us = d.inMicroseconds;
-    // The seconds and the rest apart: their sum is the frames of the
-    // whole, and neither product passes 64 bits.
-    final frames =
-        us ~/ second * sampleRate + us.remainder(second) * sampleRate ~/ second;
-    return math.min(frames, _durationFramesCap) * bytesPerFrame;
-  }
-}
-
-/// The most frames `durationBytes` counts: 2^40, about a month at 384 kHz.
-const int _durationFramesCap = 1 << 40;
