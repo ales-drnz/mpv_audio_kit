@@ -145,6 +145,10 @@ mixin _NavigationModule on _PlayerBase, _QueueModule {
     }
     // Optimistic update: `state.loop` reflects the requested mode
     // without waiting for the two underlying observers to round-trip.
+    // After the writes, not before as [CoreCalls.writeBundle] does: the
+    // loop is derived from each echo against the mode in the state, and
+    // the echo of an earlier call's `loop-file=no` read against the new
+    // mode would pass through Loop.off.
     _updateField((s) => s.copyWith(loop: loop), _loop, loop);
   }
 
