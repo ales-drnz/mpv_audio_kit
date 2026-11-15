@@ -427,10 +427,7 @@ public class MediaSessionPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
     // suspended (its session deactivated in the background) — not a real
     // call/Siri interruption. Treat it as a no-op so foregrounding doesn't
     // fire a spurious pause/resume.
-    if type == .began,
-       (info[AVAudioSessionInterruptionWasSuspendedKey] as? Bool) == true {
-      return
-    }
+    if type == .began, MediaSessionPlugin.wasSuspended(info) { return }
 
     DispatchQueue.main.async {
       let policy = self.currentInterruptionPolicy()
@@ -473,6 +470,20 @@ public class MediaSessionPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
         break
       }
     }
+  }
+
+  /// Whether a `.began` interruption only says the app was suspended. iOS
+  /// reads the reason key, which replaced the suspended key in iOS 14.5;
+  /// tvOS keeps the suspended key.
+  private static func wasSuspended(_ info: [AnyHashable: Any]) -> Bool {
+    #if os(iOS)
+    guard let raw = info[AVAudioSessionInterruptionReasonKey] as? UInt else {
+      return false
+    }
+    return raw == AVAudioSession.InterruptionReason.appWasSuspended.rawValue
+    #else
+    return (info[AVAudioSessionInterruptionWasSuspendedKey] as? Bool) == true
+    #endif
   }
 
   /// Headphones unplugged → pause, regardless of `interruptionPolicy`
