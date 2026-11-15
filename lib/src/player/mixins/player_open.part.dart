@@ -25,6 +25,30 @@ mixin _OpenModule on _PlayerBase, _LoadfileModule {
     _checkNotDisposed();
     // Validated and built before the first await, once.
     final opts = loadfileOptions(media);
+    // Per-Media `httpHeaders` and `httpChunkSize` ride along as the 4th
+    // `loadfile` arg, so mpv scopes them as file-local for this exact
+    // playlist entry, never writing the global `http-header-fields` or
+    // `stream-lavf-o`.
+    await _replaceContent(
+      media,
+      play,
+      entry: true,
+      replace: (source) =>
+          _loadfile(loadfileArgs(source.uri, 'replace', opts), media, source),
+    );
+  }
+
+  /// The load that replaces the content with [media], for [Player.open]
+  /// ([entry] true: [media] is the new entry) and [Player.openPlaylistFile]
+  /// ([entry] false: mpv reads the list inside the command, and its
+  /// entries are the playlist). [replace] sends the command from the
+  /// resolved source, and throws when mpv refuses it.
+  Future<void> _replaceContent(
+    Media media,
+    bool? play, {
+    required bool entry,
+    required Future<void> Function(OwnedSource source) replace,
+  }) async {
     final load = _transport.claimLoad();
     await _gate();
     if (load.superseded) return;
@@ -38,7 +62,7 @@ mixin _OpenModule on _PlayerBase, _LoadfileModule {
     final previousIntent = _state.playback.playWhenReady;
     final intent = _transport.claimIntent(shouldPlay);
     _mediaCache.clear();
-    _mediaCache[media.uri] = media;
+    if (entry) _mediaCache[media.uri] = media;
     final OwnedSource source;
     try {
       source = OwnedSource(await resolveUri(media.uri));
@@ -48,11 +72,14 @@ mixin _OpenModule on _PlayerBase, _LoadfileModule {
       rethrow;
     }
     // Released on every way out unless mpv took the entry: a later load,
-    // an error, a refusal.
+    // an error, a refusal. A playlist file is never handed over: nothing
+    // reads the list itself again.
     try {
       if (load.superseded) return;
-      _mediaCache[source.uri] = media;
-      await _forgetFdResume(source.uri);
+      if (entry) {
+        _mediaCache[source.uri] = media;
+        await _forgetFdResume(source.uri);
+      }
       // Execute in-flight transport writes (e.g. an un-awaited seek) before
       // the replace below, so they apply to the OLD file; see
       // [CoreCalls.settleWrites].
@@ -69,28 +96,9 @@ mixin _OpenModule on _PlayerBase, _LoadfileModule {
       final playNow = _transport.intendedPlay(intent, shouldPlay);
       await _calls.prop('pause', playNow ? 'no' : 'yes');
       try {
-        if (opts.isEmpty) {
-          await _loadfile(['loadfile', source.uri, 'replace'], media, source);
-        } else {
-          // Per-Media `httpHeaders` and `httpChunkSize` ride along as the 4th
-          // `loadfile` arg (mpv 0.38+: index must be `-1` when options are
-          // present), so mpv scopes them as file-local for this exact
-          // playlist entry, never writing the global `http-header-fields` or
-          // `stream-lavf-o`.
-          await _loadfile(
-            ['loadfile', source.uri, 'replace', '-1', opts],
-            media,
-            source,
-          );
-        }
+        await replace(source);
       } catch (_) {
-        // mpv refused the entry and kept what it had: nothing will ever read
-        // the source, and the track there goes on with its own intent and
-        // pause, as after a failed [openPlaylistFile].
-        if (_transport.restoreIntent(load, intent, previousIntent) &&
-            playNow != previousIntent) {
-          await _calls.propRc('pause', previousIntent ? 'no' : 'yes');
-        }
+        await _undoIntent(load, intent, previousIntent, playNow: playNow);
         rethrow;
       }
       // The replace leaves the park of the old file: its START_FILE is
@@ -98,7 +106,7 @@ mixin _OpenModule on _PlayerBase, _LoadfileModule {
       // ends. A park of the old file reached while this load ran keeps the
       // intent (see [TransportMachine.park]).
       _transport.takePark();
-      // Asked again, not reused: a pause() called while the loadfile was in
+      // Asked again, not reused: a pause() called while the command was in
       // flight has the last word.
       if (parkedAtEof && _transport.intendedPlay(intent, shouldPlay)) {
         await _calls.prop('pause', 'no');
@@ -106,7 +114,7 @@ mixin _OpenModule on _PlayerBase, _LoadfileModule {
       // Drop visible per-track state (cover art, chapter list and current
       // chapter index) so a UI that reads the state immediately after
       // `open()` returns doesn't render the previous track's data. Placed
-      // AFTER the loadfile reply (not before): the async writes above
+      // AFTER the command's reply (not before): the async writes above
       // suspend, and by FIFO port delivery every still-queued OLD-file
       // PROPERTY_CHANGE (e.g. a trailing `chapter-list`) has been received
       // and applied by the time that reply lands: clearing here is the last
@@ -116,6 +124,24 @@ mixin _OpenModule on _PlayerBase, _LoadfileModule {
       _clearPerFileState();
     } finally {
       await source.release();
+    }
+  }
+
+  /// mpv refused the command of a [_replaceContent], or could not read
+  /// the list, and kept what it had: nothing will ever read the source,
+  /// and the track there goes on with its own intent and pause. The
+  /// [intent] and the pause [playNow] wrote go back to [previous], unless
+  /// a later call took them over. Tolerant write, so the error the caller
+  /// sees is the command's.
+  Future<void> _undoIntent(
+    _LoadTicket load,
+    int intent,
+    bool previous, {
+    required bool playNow,
+  }) async {
+    if (_transport.restoreIntent(load, intent, previous) &&
+        playNow != previous) {
+      await _calls.propRc('pause', previous ? 'no' : 'yes');
     }
   }
 
@@ -405,10 +431,7 @@ mixin _OpenModule on _PlayerBase, _LoadfileModule {
       final window = <Future<int?>>[
         for (var i = sent; i < end; i++)
           _loadfileEntry(
-            switch (options[i]) {
-              '' => ['loadfile', sources[i].uri, 'append'],
-              final opts => ['loadfile', sources[i].uri, 'append', '-1', opts],
-            },
+            loadfileArgs(sources[i].uri, 'append', options[i]),
             medias[i],
             sources[i],
           )..ignore(),
@@ -431,62 +454,12 @@ mixin _OpenModule on _PlayerBase, _LoadfileModule {
     _checkNotDisposed();
     rejectPcm(playlist, 'playlist');
     validateLoadOptions(playlist);
-    // Claim the load epoch synchronously; see [Player.open].
-    final load = _transport.claimLoad();
-    await _gate();
-    if (load.superseded) return;
-    final shouldPlay = play ?? configuration.autoPlay;
-    // Optimistic intent written at the call point: same rationale as
-    // [Player.open].
-    final previousIntent = _state.playback.playWhenReady;
-    final intent = _transport.claimIntent(shouldPlay);
-    _mediaCache.clear();
-    final OwnedSource source;
-    try {
-      source = OwnedSource(await resolveUri(playlist.uri));
-    } catch (_) {
-      _transport.restoreIntent(load, intent, previousIntent);
-      rethrow;
-    }
-    // Never handed over: mpv reads the list inside the command, and its
-    // entries are the playlist, so nothing reads the list itself again.
-    // Released on every way out.
-    try {
-      if (load.superseded) return;
-      // Execute in-flight transport writes before the replace: see
-      // [CoreCalls.settleWrites].
-      await _calls.settleWrites();
-      if (load.superseded) return;
-      // See [Player.open]: parked at EOF the pre-loadlist unpause doesn't
-      // survive mpv's keep-open re-pause; a corrective write after the
-      // replace does.
-      final parkedAtEof = await _parkedAtEof();
-      if (load.superseded) return;
-      final playNow = _transport.intendedPlay(intent, shouldPlay);
-      await _calls.prop('pause', playNow ? 'no' : 'yes');
-      try {
-        await _calls.commandChecked(['loadlist', source.uri, 'replace']);
-      } catch (_) {
-        // mpv keeps the playlist it had when the list cannot be read, and
-        // the track there goes on: the intent and the pause written above
-        // go back to what they were, unless a later call took them over.
-        // Tolerant write, so the error the caller sees is the loadlist one.
-        if (_transport.restoreIntent(load, intent, previousIntent) &&
-            playNow != previousIntent) {
-          await _calls.propRc('pause', previousIntent ? 'no' : 'yes');
-        }
-        rethrow;
-      }
-      // See [Player.open]: the replace leaves the park.
-      _transport.takePark();
-      // See [Player.open]: asked again, a pause() during the loadlist wins.
-      if (parkedAtEof && _transport.intendedPlay(intent, shouldPlay)) {
-        await _calls.prop('pause', 'no');
-      }
-      // Clear per-track state AFTER the replace's reply; see [Player.open].
-      _clearPerFileState();
-    } finally {
-      await source.release();
-    }
+    await _replaceContent(
+      playlist,
+      play,
+      entry: false,
+      replace: (source) =>
+          _calls.commandChecked(['loadlist', source.uri, 'replace']),
+    );
   }
 }

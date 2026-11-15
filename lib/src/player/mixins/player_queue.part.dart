@@ -75,14 +75,12 @@ mixin _QueueModule on _PlayerBase, _LoadfileModule {
         _mediaCache[source.uri] = media;
         await _forgetFdResume(source.uri);
         await _loadfile(
-          [
-            'loadfile',
+          loadfileArgs(
             source.uri,
-            if (at == null) 'append' else 'insert-at',
-            // The options need the index argument (mpv 0.38+), -1 to append.
-            if (at != null) '$at' else if (opts.isNotEmpty) '-1',
-            if (opts.isNotEmpty) opts,
-          ],
+            at == null ? 'append' : 'insert-at',
+            opts,
+            at: at,
+          ),
           media,
           source,
         );
@@ -187,21 +185,11 @@ mixin _QueueModule on _PlayerBase, _LoadfileModule {
             : (int.tryParse(posValue as String? ?? '') ?? -1);
         // mpv's index, against mpv's position: see [EntryTable.toCore].
         final at = _entries.toCore(index);
-        Future<void> insertAt(int at) {
-          if (opts.isEmpty) {
-            return _loadfile(
-              ['loadfile', source.uri, 'insert-at', at.toString()],
-              media,
-              source,
-            );
-          }
-          // 4th-arg options require an explicit index argument (mpv 0.38+).
-          return _loadfile(
-            ['loadfile', source.uri, 'insert-at', at.toString(), opts],
-            media,
-            source,
-          );
-        }
+        Future<void> insertAt(int at) => _loadfile(
+          loadfileArgs(source.uri, 'insert-at', opts, at: at),
+          media,
+          source,
+        );
 
         // Re-check the epoch between each of the multi-command surgeries
         // below: every await now spans an event-isolate reply round-trip,

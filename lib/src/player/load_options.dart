@@ -27,6 +27,23 @@ void rejectPcm(Media media, String name) {
   );
 }
 
+/// The `loadfile` command of [uri] with [flags] (`replace`, `append`,
+/// `insert-at`), at the index [at] for `insert-at`, and the per-entry
+/// [options] of [loadfileOptions]. The options need the index argument
+/// (mpv 0.38+), `-1` when the flags take none.
+List<String> loadfileArgs(
+  String uri,
+  String flags,
+  String options, {
+  int? at,
+}) => [
+  'loadfile',
+  uri,
+  flags,
+  if (at != null) '$at' else if (options.isNotEmpty) '-1',
+  if (options.isNotEmpty) options,
+];
+
 /// Builds the `loadfile` `<options>` argument from a [Media]'s
 /// `httpHeaders`, `httpChunkSize`, `streamLavfOptions`, `demuxerLavfOptions`,
 /// `start`, `end` and `waveformDurationHint`, and the raw audio demuxer
