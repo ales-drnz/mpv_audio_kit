@@ -51,8 +51,8 @@ mixin _FileEventsModule on _PlayerBase, _PropertiesModule {
     // the startup burst.
     _transport.onStartFile();
     // A new load attempt re-arms the source resolver's single
-    // retry allowance; see [_resolverRetried].
-    _resolverRetried = false;
+    // retry allowance; see [_SourceResolverDriver._retried].
+    _resolver.onStartFile();
     _entries.onStartFile(entryId);
     _updateLifecycle(buffering: true, completed: false);
   }

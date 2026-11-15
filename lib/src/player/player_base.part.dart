@@ -56,25 +56,8 @@ abstract class _PlayerBase {
   void _continueMpvHook(int mpvId, String name) =>
       _calls.hookContinue(mpvId, prefetch: name == Hook.prefetch.mpvValue);
 
-  // The installed [SourceResolver]; null = feature off. Set by
-  // [Player.setSourceResolver], consulted by `_routeHookEvent` on every
-  // `on_load` or `on_load_fail` event.
-  SourceResolver? _sourceResolver;
-
-  // Latched when the resolver services an `on_load_fail` for the current
-  // load attempt, cleared on the next START_FILE only (not on `on_load`,
-  // which mpv re-enters for the same attempt after the retry). Caps the
-  // resolver-driven retry at ONE per load: a resolver that keeps minting
-  // fresh-but-broken URLs (e.g. a timestamped query string) would
-  // otherwise put mpv in an infinite open-fail-reopen loop.
-  bool _resolverRetried = false;
-
-  // What the resolver gave for the prefetch of the next entry: the URL mpv
-  // was about to open, the one it opened instead, the load epoch then, and
-  // the entry (`null` when its read failed). The
-  // load of that entry, or of that URL without one, in the same epoch takes
-  // it once (F10, kit-core-3).
-  (String, String, _LoadTicket, int?)? _prefetchResolved;
+  /// The source resolver, with what it keeps across the hooks of a load.
+  late final _SourceResolverDriver _resolver = _SourceResolverDriver(this);
 
   PlayerState _state = const PlayerState();
 
