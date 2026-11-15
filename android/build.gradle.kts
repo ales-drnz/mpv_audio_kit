@@ -81,7 +81,7 @@ dependencies {
     implementation("androidx.media3:media3-common:$media3Version")
 
     testImplementation("org.jetbrains.kotlin:kotlin-test")
-    testImplementation("org.mockito:mockito-core:5.0.0")
+    testImplementation("org.mockito:mockito-core:5.24.0")
     // JUnit 5 engine for the `useJUnitPlatform()` runner above.
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
     // Gradle 9 no longer brings its own JUnit Platform launcher: the test
