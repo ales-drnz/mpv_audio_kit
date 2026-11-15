@@ -39,7 +39,7 @@ void main() {
     addTearDown(player.dispose);
     await player.ready;
     final version = await player.getRawProperty('mpv-version');
-    expect(version, startsWith('mpv v0.41.0'));
+    expect(version, startsWith('mpv v0.42.0'));
   });
 
   test(

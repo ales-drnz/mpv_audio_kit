@@ -7,7 +7,7 @@
 #### Audio engine for Flutter.
 
 [![](https://img.shields.io/pub/v/mpv_audio_kit.svg?style=for-the-badge&logo=dart&logoColor=white)](https://pub.dev/packages/mpv_audio_kit)
-[![](https://img.shields.io/badge/libmpv-v0.41.0-orange.svg?style=for-the-badge)](https://github.com/ales-drnz/libmpv-scripts)
+[![](https://img.shields.io/badge/libmpv-v0.42.0-orange.svg?style=for-the-badge)](https://github.com/ales-drnz/libmpv-scripts)
 [![](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg?style=for-the-badge)](LICENSE)
 [![](https://img.shields.io/github/stars/ales-drnz/mpv_audio_kit?style=for-the-badge&logo=github&logoColor=white)](https://github.com/ales-drnz/mpv_audio_kit)
 [![](https://img.shields.io/discord/1485588004029333516?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/g2Qf4Mq9MP)
@@ -63,15 +63,15 @@ The build downloads the libmpv binary for each native target and checks its SHA-
 
 | Platform | Minimum | Architectures | Size |
 | :--- | :--- | :--- | :---: |
-| Android | 7.0 (SDK 24) | arm64-v8a, armeabi-v7a, x86_64 | 7.7 to 8.3 MB per ABI |
-| iOS | 15.0 | arm64, simulator arm64 and x86_64 | 7.3 MB |
-| macOS | 12.0 | arm64, x86_64 | 15.1 MB universal |
-| tvOS | 15.0 | arm64, simulator arm64 and x86_64 | 7.3 MB |
-| Tizen | 6.0 | armv7l, emulator x86_64 | 6.0 MB, 8.6 MB on the emulator |
-| webOS | 26 | armv7l | 5.8 MB |
-| Windows | 10 | arm64, x86_64 | 7.5 to 7.8 MB |
-| Linux | glibc 2.31 | aarch64, x86_64 | 8.4 to 8.7 MB |
-| Web | a cross-origin isolated page | wasm32 | 4.3 MB, 2.0 MB zipped |
+| Android | 7.0 (SDK 24) | arm64-v8a, armeabi-v7a, x86_64 | 8.0 to 8.5 MB per ABI |
+| iOS | 15.0 | arm64, simulator arm64 and x86_64 | 7.6 MB |
+| macOS | 12.0 | arm64, x86_64 | 15.7 MB universal |
+| tvOS | 15.0 | arm64, simulator arm64 and x86_64 | 7.6 MB |
+| Tizen | 6.0 | armv7l, emulator x86_64 | 6.4 MB, 9.0 MB on the emulator |
+| webOS | 26 | armv7l | 6.2 MB |
+| Windows | 10 | arm64, x86_64 | 7.8 to 8.1 MB |
+| Linux | glibc 2.31 | aarch64, x86_64 | 8.7 to 8.9 MB |
+| Web | a cross-origin isolated page | wasm32 | 4.4 MB, 2.1 MB zipped |
 
 The package needs Flutter 3.38.10 or later, and Flutter 3.47.4 to build for iOS. Linux needs ALSA, and uses PipeWire or PulseAudio when they are installed.
 
