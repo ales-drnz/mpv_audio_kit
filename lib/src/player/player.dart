@@ -96,6 +96,7 @@ part 'mixins/player_network.part.dart';
 part 'mixins/player_open.part.dart';
 part 'mixins/player_output.part.dart';
 part 'mixins/player_pcm.part.dart';
+part 'mixins/player_pcm_cut.part.dart';
 part 'mixins/player_playback.part.dart';
 part 'mixins/player_properties.part.dart';
 part 'mixins/player_queue.part.dart';
@@ -114,7 +115,7 @@ part 'transport.part.dart';
 /// {@category Playback}
 class Player extends _PlayerBase
     with
-        _PcmModule,
+        _PcmCutModule,
         _LoadfileModule,
         _RawModule,
         _OpenModule,
@@ -130,6 +131,7 @@ class Player extends _PlayerBase
         _OutputModule,
         _EffectsModule,
         _NetworkModule,
+        _PcmModule,
         _HooksModule,
         _MediaSessionModule
     implements PlayerApi {

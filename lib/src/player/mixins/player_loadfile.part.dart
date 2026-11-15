@@ -14,7 +14,7 @@ Set<String> debugMediaCacheKeys(Player player) =>
 /// [_PlayerBase._entries], the live source it holds). The calls
 /// themselves go through [_PlayerBase._calls] ([CoreCalls]), on the async
 /// client API.
-mixin _LoadfileModule on _PlayerBase, _PcmModule {
+mixin _LoadfileModule on _PlayerBase, _PcmCutModule {
   /// Runs a `loadfile` [args] for [media] and records the new playlist
   /// entry's id, so the playlist maps that entry back to [media] even when
   /// another entry has the same URI. Hands [source] over to the entry as
