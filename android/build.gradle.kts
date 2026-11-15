@@ -76,7 +76,7 @@ dependencies {
     // lock-screen / Android-11+ media controls, hardware & Bluetooth
     // media keys). The custom SimpleBasePlayer adapter is a controller
     // only — libmpv decodes in-process; Media3 never touches audio.
-    val media3Version = "1.10.1"
+    val media3Version = "1.11.1"
     implementation("androidx.media3:media3-session:$media3Version")
     implementation("androidx.media3:media3-common:$media3Version")
 

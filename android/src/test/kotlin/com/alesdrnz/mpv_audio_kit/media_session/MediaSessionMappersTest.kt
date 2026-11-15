@@ -28,7 +28,7 @@ import org.mockito.stubbing.Answer
  * `Player.Commands` keeps its flags in an `android.util.SparseBooleanArray`,
  * which a JVM test has only as a stub that throws. One stands in for it
  * here, over a sorted map, with the calls `FlagSet` makes (media3-common
- * 1.10.1); any other call fails the test, so a Media3 that reads its flags
+ * 1.11.1); any other call fails the test, so a Media3 that reads its flags
  * another way is noticed.
  */
 class MediaSessionMappersTest {
