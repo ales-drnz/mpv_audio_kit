@@ -23,7 +23,7 @@
 //
 // The steps mirror how the player uses the machine today
 // (player_playback.part.dart play() and pause(), player_playlist.part.dart
-// jump(), player_open.part.dart _open(), player_intent.part.dart
+// jump(), player_open.part.dart _open(), transport.part.dart
 // trackLoad()): a change of that protocol changes them.
 
 import 'dart:io';

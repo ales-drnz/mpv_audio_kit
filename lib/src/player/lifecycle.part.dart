@@ -1,7 +1,7 @@
 // Copyright © 2026 & onwards, Alessandro Di Ronza <ales.drnz@gmail.com>.
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
-part of '../player.dart';
+part of 'player.dart';
 
 /// The lifecycle flags (playing, buffering, completed) and the end of
 /// content: where the core stands against the end of the file, the

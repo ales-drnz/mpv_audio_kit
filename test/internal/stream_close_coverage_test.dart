@@ -79,7 +79,7 @@ void main() {
 
   group('_PlayerBase closes what backs its streams', () {
     final base = _body(
-      _code(_read('lib/src/player/player.dart')),
+      _code(_read('lib/src/player/player_base.part.dart')),
       'abstract class _PlayerBase {',
     );
     // The closes live in _disposeImpl and in whatever it calls inside the

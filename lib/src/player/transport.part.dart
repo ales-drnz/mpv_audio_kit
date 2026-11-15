@@ -1,7 +1,7 @@
 // Copyright © 2026 & onwards, Alessandro Di Ronza <ales.drnz@gmail.com>.
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
-part of '../player.dart';
+part of 'player.dart';
 
 /// The transport axis of a player: the rules of [TransportMachine], whose
 /// effects this carries out on the player (the intent written into the
