@@ -10,6 +10,8 @@ import 'package:mpv_audio_kit/src/internals/mpv_client.dart';
 import 'package:mpv_audio_kit/src/mpv_bindings.dart';
 import 'package:test/test.dart';
 
+import '../_helpers/fake_mpv_library.dart';
+
 /// The `mpv_node` MpvClient.setNodeProperty builds from a Dart tree, read
 /// inside the call, while the arena still holds it. No reply ever comes
 /// (no event isolate), so the calls are not awaited.
@@ -22,8 +24,8 @@ void main() {
   setUp(() {
     written = [];
     inspect = null;
-    final lib = MpvLibrary.uninitializedForTest()
-      ..mpvSetPropertyAsync = (_, _, name, format, data) {
+    final lib = FakeMpvLibrary()
+      ..setPropertyAsync = (_, _, name, format, data) {
         final node = data.cast<MpvNode>();
         inspect?.call(node);
         written.add((name.toDartString(), format, decodeMpvNode(node)));

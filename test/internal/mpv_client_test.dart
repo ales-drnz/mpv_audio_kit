@@ -9,11 +9,13 @@ import 'package:mpv_audio_kit/src/internals/mpv_client.dart';
 import 'package:mpv_audio_kit/src/mpv_bindings.dart';
 import 'package:test/test.dart';
 
+import '../_helpers/fake_mpv_library.dart';
+
 void main() {
   group('MpvClient', () {
     test('an enqueue that throws settles its slot', () async {
-      final lib = MpvLibrary.uninitializedForTest()
-        ..mpvCommandAsync = (_, _, _) => throw StateError('enqueue failed');
+      final lib = FakeMpvLibrary()
+        ..commandAsync = (_, _, _) => throw StateError('enqueue failed');
       final client = MpvClient(lib, nullptr);
 
       expect(() => client.command(['stop']), throwsStateError);
@@ -26,8 +28,8 @@ void main() {
     });
 
     test('a request mpv refuses client-side resolves with its rc', () async {
-      final lib = MpvLibrary.uninitializedForTest()
-        ..mpvCommandAsync = (_, _, _) => MpvError.mpvErrorInvalidParameter;
+      final lib = FakeMpvLibrary()
+        ..commandAsync = (_, _, _) => MpvError.mpvErrorInvalidParameter;
       final client = MpvClient(lib, nullptr);
 
       final (rc, _) = await client.command(['stop']);
@@ -44,10 +46,10 @@ void main() {
         return MpvError.mpvErrorUninitialized;
       }
 
-      final lib = MpvLibrary.uninitializedForTest()
-        ..mpvSetPropertyAsync = ((_, _, _, _, _) => refuse())
-        ..mpvCommandAsync = ((_, _, _) => refuse())
-        ..mpvGetPropertyAsync = ((_, _, _, _) => refuse());
+      final lib = FakeMpvLibrary()
+        ..setPropertyAsync = ((_, _, _, _, _) => refuse())
+        ..commandAsync = ((_, _, _) => refuse())
+        ..getPropertyAsync = ((_, _, _, _) => refuse());
       final client = MpvClient(lib, nullptr)..close();
 
       final results = [
@@ -75,8 +77,8 @@ void main() {
         // line after close. Only the first write is accepted (with no reply),
         // so a second one would fail at once instead of hanging.
         final names = <String>[];
-        final lib = MpvLibrary.uninitializedForTest()
-          ..mpvSetPropertyAsync = (_, _, name, _, _) {
+        final lib = FakeMpvLibrary()
+          ..setPropertyAsync = (_, _, name, _, _) {
             names.add(name.toDartString());
             return names.length == 1
                 ? MpvError.mpvErrorSuccess
