@@ -1,3 +1,34 @@
+## [0.7.2]
+
+### libmpv-r26
+**All platforms**
+- mpv 0.42.0, from 0.41.0, and FFmpeg 9.0.2, from 8.1.1, with OpenSSL 4.1.0 and libplacebo 7.387.0. The libraries say `mpv v0.42.0+r26`.
+- mpv 0.42.0 names a local playlist entry by its absolute, normalized path: a relative path, `./`, `//` and `..` come back rewritten in `playlist`. The state keeps the `Media` the app gave.
+- No `env://` protocol and no `env` property: a playlist or a property expansion can no longer read the environment of the app.
+- A live `PcmSource` entry with an A-B loop plays on past B to its end.
+- The HLS demuxer keeps its persistent connections under FFmpeg 9.0, which turned them off when mpv reads the playlist.
+- zlib 1.4, xz 5.8.4, expat 2.10.0, libxml2 2.15.4, libpng 1.6.59 and libiconv 1.19.1.
+
+**Android**
+- Built with NDK r30. The minimum stays Android 7.0 (SDK 24).
+
+**Tizen**
+- A seek no longer plays audio from before it.
+
+**Web**
+- Emscripten 7.0.0. The module runs from Chrome 92, Firefox 114 and Safari 15.2.
+
+### All platforms
+**Changed**
+- Certificates are still not verified by default (`tls-verify` off), so a home server with a self-signed certificate plays: mpv 0.42.0 turns verification on, the player keeps it off. `setTlsVerify(true)` turns it on. A later release will make verification the default.
+
+**Fixed**
+- `setVolume` above `volumeMax` and `setVolumeGain` outside `volumeGainMin` and `volumeGainMax` play the value again, as their docs say. On mpv 0.42.0 they threw `MpvCommandException`.
+
+### Android
+**Changed**
+- Media3 1.11.1.
+
 ## [0.7.1] - 15-11-2026
 
 ### libmpv-r25
