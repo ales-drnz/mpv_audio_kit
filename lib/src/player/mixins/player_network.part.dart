@@ -131,6 +131,9 @@ mixin _NetworkModule on _PlayerBase {
   }
 
   /// Whether to verify TLS (SSL) certificates for network streams.
+  ///
+  /// Off by default (see [PlayerSettings.tlsVerify]); a later release
+  /// turns it on by default.
   Future<void> setTlsVerify(bool enable) async {
     await _gate();
     await _calls.prop('tls-verify', enable ? 'yes' : 'no');

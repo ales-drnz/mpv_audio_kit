@@ -162,6 +162,10 @@ mixin _InitModule on _PlayerBase {
     'load-scripts': 'no',
     'input-builtin-bindings': 'no',
     'audio-client-name': 'mpv_audio_kit',
+    // mpv 0.42 verifies certificates by default. The player keeps the
+    // behaviour of the releases before it, so a home server with a
+    // self-signed certificate still plays: Player.setTlsVerify turns it on.
+    'tls-verify': 'no',
     'stream-lavf-o': _kStreamLavfDefaults,
   };
 
