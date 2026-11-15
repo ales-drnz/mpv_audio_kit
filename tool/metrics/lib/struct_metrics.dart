@@ -6,8 +6,9 @@ import 'package:analyzer/dart/ast/ast.dart';
 
 /// The layout of the client API structs the package reads, as written in
 /// lib: each field of each `Struct` and `Union` of mpv_bindings.dart with
-/// its native type, and the wasm32 table of web_layout.dart. A change shows
-/// in the review together with the libmpv it follows.
+/// its native type, the two tables of `StructLayout` (lp64 and ilp32) in
+/// struct_layout.dart, and `_kEndFileReadError` of web_layout.dart. A
+/// change shows in the review together with the libmpv it follows.
 List<String> structLayout(CompilationUnit Function(String) parse) {
   final out = <String>[];
   final bindings = parse('lib/src/mpv_bindings.dart');
@@ -24,6 +25,18 @@ List<String> structLayout(CompilationUnit Function(String) parse) {
           'ffi $name.${index++} ${v.name.lexeme}: '
           '${native.isEmpty ? '' : '$native '}${m.fields.type?.toSource()}',
         );
+      }
+    }
+  }
+  final table = parse('lib/src/internals/struct_layout.dart');
+  for (final d in table.declarations.whereType<ClassDeclaration>()) {
+    if (d.namePart.typeName.lexeme != 'StructLayout') continue;
+    for (final m in d.body.members.whereType<FieldDeclaration>()) {
+      if (!m.isStatic) continue;
+      for (final v in m.fields.variables) {
+        final name = v.name.lexeme;
+        if (name != 'lp64' && name != 'ilp32') continue;
+        out.add('table $name = ${v.initializer?.toSource()}');
       }
     }
   }

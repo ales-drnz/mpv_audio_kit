@@ -40,8 +40,9 @@ What it reads:
   `lib/mpv_audio_kit.dart` exports, and each public member, as written.
   Any change fails, an addition too.
 - **Struct layout** (`struct_layout.txt`): the fields of the `Struct` and
-  `Union` classes of `mpv_bindings.dart`, and the wasm32 table of
-  `web_layout.dart`. Any change fails.
+  `Union` classes of `mpv_bindings.dart`, the lp64 and ilp32 tables of
+  `StructLayout` in `lib/src/internals/struct_layout.dart`, and the wasm32
+  lines of `web_layout.dart`. Any change fails.
 
 Beside the ratchet, Test (Linux) holds the **line coverage** of the same
 files of lib (`scripts/ci/coverage.sh`) over `coverage_floor.txt`, a
