@@ -1,0 +1,432 @@
+name: Devices
+
+# test_app's integration tests on the Android emulators (API 24, 29 and 34,
+# and the Android TV image of API 36) with their emulated audio device, and
+# on the iOS simulator. ci.yml builds the Android and iOS apps but runs
+# nothing on a device; libmpv-scripts' check of the kit runs this same
+# matrix for a libmpv Build, never for a branch of the kit. The steps, the
+# files of each device and the names of the logs are that check's.
+#
+# libmpv is the one ci.yml takes: the pinned release when it is published,
+# which the build hook downloads at its SHA-256, else the latest Build of
+# its libmpv-scripts release branch (scripts/ci/resolve_libmpv_run.sh,
+# .github/actions/libmpv-from-run, with LIBMPV_SCRIPTS_TOKEN), else the
+# Build given by hand.
+#
+# A file that never started (an install that never ended, an app that
+# never attached, an emulator that went away) is not a result: its device
+# job can be green without it, this workflow is not. The Summary job lists
+# those files under "Never started" and fails. Run them again before a
+# release.
+#
+# Runs on the release branches when what the devices run changes, and by
+# hand, on any branch, with the libmpv-scripts Build to try. A branch named
+# wip/<something>-devices runs it too, at a push that changes one of the
+# paths below: GitHub starts a workflow by hand only once it is on the
+# default branch. A run takes up to two and a half hours: five jobs, four
+# of them Android emulators of up to 130 minutes each.
+on:
+  push:
+    branches: ['release/**', 'wip/*-devices']
+    paths:
+      - 'android/**'
+      - 'darwin/**'
+      - 'hook/**'
+      - 'lib/**'
+      - 'pubspec.yaml'
+      - 'test_app/**'
+      - 'scripts/ci/android_emulator.sh'
+      - 'scripts/ci/flutter_version.sh'
+      - 'scripts/ci/preflight.sh'
+      - 'scripts/ci/resolve_libmpv_run.sh'
+      - '.github/actions/**'
+      - '.github/flutter-version'
+      - '.github/workflows/devices.yml'
+  workflow_dispatch:
+    inputs:
+      libmpv_scripts_run:
+        description: 'libmpv-scripts Build run id to take libmpv from, instead of the pinned release'
+        type: string
+
+# A new push makes the run of the previous commit of the branch stale: the
+# emulators are too long to finish one nobody reads.
+concurrency:
+  group: devices-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # A missing libmpv or fixture fails the tests instead of skipping them.
+  CI: 'true'
+
+jobs:
+  # The libmpv-scripts Build the device jobs bundle, found once, and the
+  # libmpv they will bundle checked before the long jobs start, as in
+  # ci.yml's changes job.
+  plan:
+    name: Plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      # The libmpv-scripts run, empty for the pinned release.
+      libmpv_run: ${{ steps.libmpv.outputs.run }}
+      # The pinned release, rN: the one the tests expect without a run.
+      pin: ${{ steps.libmpv.outputs.pin }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: libmpv-scripts run
+        id: libmpv
+        env:
+          LIBMPV_SCRIPTS_RUN: ${{ inputs.libmpv_scripts_run || vars.LIBMPV_SCRIPTS_RUN }}
+          GH_TOKEN: ${{ secrets.LIBMPV_SCRIPTS_TOKEN }}
+          RELEASE_TOKEN: ${{ github.token }}
+        run: |
+          run="$(scripts/ci/resolve_libmpv_run.sh)"
+          pin="$(sed -n "s/^const String libmpvRelease = '\([^']*\)';/\1/p" lib/src/internals/libmpv_release.dart)"
+          { echo "run=$run"; echo "pin=$pin"; } | tee -a "$GITHUB_OUTPUT"
+      - name: Preflight
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LIBMPV_SCRIPTS_RUN: ${{ steps.libmpv.outputs.run }}
+          LIBMPV_SCRIPTS_TOKEN: ${{ secrets.LIBMPV_SCRIPTS_TOKEN }}
+        run: scripts/ci/preflight.sh
+
+  ios-integration:
+    name: iOS simulator integration tests
+    needs: plan
+    runs-on: macos-26
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # No Flutter cache off Linux, as in ci.yml.
+      - uses: ./.github/actions/flutter
+        with:
+          cache: false
+      - name: Disable Swift Package Manager
+        run: flutter config --no-enable-swift-package-manager
+      - name: App from the current template with the test app's integration tests
+        run: |
+          flutter --version
+          xcodebuild -version
+          cd "$RUNNER_TEMP"
+          flutter create --org com.example --platforms=ios freshapp
+          cd freshapp
+          flutter pub add "mpv_audio_kit:{\"path\":\"$GITHUB_WORKSPACE\"}" path_provider
+          flutter pub add 'dev:integration_test:{"sdk":"flutter"}'
+          cp -R "$GITHUB_WORKSPACE/test_app/integration_test" "$GITHUB_WORKSPACE/test_app/assets" .
+          # The android_ files run on the emulators. One imports test_app's
+          # own library, which this app does not have, so it cannot build.
+          # The linux_ and windows_ ones run in ci.yml: here they would only
+          # build the app to skip.
+          rm -f integration_test/android_*_test.dart integration_test/linux_*_test.dart integration_test/windows_*_test.dart
+          python3 - <<'PY'
+          p = 'pubspec.yaml'
+          s = open(p).read()
+          s = s.replace('  uses-material-design: true', '  uses-material-design: true\n  assets:\n    - assets/fixtures/\n    - assets/fixtures/codec/', 1)
+          open(p, 'w').write(s)
+          PY
+      - uses: ./.github/actions/libmpv-from-run
+        with:
+          run-id: ${{ needs.plan.outputs.libmpv_run }}
+          token: ${{ secrets.LIBMPV_SCRIPTS_TOKEN }}
+          pubspecs: ${{ runner.temp }}/freshapp/pubspec.yaml
+      - name: The release under test
+        if: needs.plan.outputs.libmpv_run == ''
+        env:
+          PIN: ${{ needs.plan.outputs.pin }}
+        run: echo "MAK_LIBMPV_RELEASE=$PIN" >> "$GITHUB_ENV"
+      - name: flutter pub get
+        working-directory: ${{ runner.temp }}/freshapp
+        run: flutter pub get
+      - name: Boot a simulator
+        run: |
+          udid=$(xcrun simctl list devices available -j | python3 -c "import json,sys;d=json.load(sys.stdin)['devices'];print(next(x['udid'] for k,v in d.items() if 'iOS' in k for x in v if x['name'].startswith('iPhone')))")
+          echo "UDID=$udid" >> "$GITHUB_ENV"
+          xcrun simctl boot "$udid"
+          xcrun simctl bootstatus "$udid" -b
+          xcrun simctl list devices booted
+      # Each file gets 10 minutes and its full verbose output in logs/. The
+      # simulator sometimes launches the app and flutter test never attaches
+      # (seen with several libmpv builds and an unchanged app): a timeout
+      # before any test started is retried, twice at most. A test that
+      # fails, or a timeout once tests are running, fails the job. A file
+      # that never started in three tries is infrastructure, not a result:
+      # a warning, a line of the summary, and the Summary job fails.
+      - name: flutter test integration_test, one file at a time
+        working-directory: ${{ runner.temp }}/freshapp
+        timeout-minutes: 130
+        run: |
+          mkdir -p ../logs
+          failed=()
+          infra=()
+          for f in integration_test/*_test.dart; do
+            name=$(basename "$f" .dart)
+            result=fail
+            for attempt in 1 2 3; do
+              log="../logs/$name.$attempt.log"
+              echo "=== $f attempt $attempt $(date -u +%T)"
+              set +e
+              perl -e 'alarm shift; exec @ARGV' 600 flutter test "$f" -d "$UDID" -r expanded -v \
+                --dart-define=MAK_CI=true --dart-define=MAK_LIBMPV_RELEASE="$MAK_LIBMPV_RELEASE" > "$log" 2>&1
+              rc=$?
+              set -e
+              grep -E '[0-9]+:[0-9]+ \+|All tests passed|Some tests failed|No tests ran' "$log" | tail -40 || true
+              if [ $rc -eq 0 ]; then result=pass; break; fi
+              # 79 is flutter's "no tests found": a file whose tests all
+              # return early off its platform.
+              if [ $rc -eq 79 ] && grep -q 'No tests ran' "$log"; then
+                echo "::notice::$f has no tests on iOS"; result=skip; break
+              fi
+              xcrun simctl terminate "$UDID" com.example.freshapp >/dev/null 2>&1 || true
+              xcrun simctl uninstall "$UDID" com.example.freshapp >/dev/null 2>&1 || true
+              if [ $rc -eq 142 ]; then
+                xcrun simctl spawn "$UDID" log show --last 12m --style compact --predicate 'process == "Runner"' > "../logs/$name.$attempt.sim.log" 2>&1 || true
+                # Tests running: a progress line past the loading of the file.
+                if grep -E '[0-9]+:[0-9]+ \+[0-9]+[^:]*: ' "$log" | grep -qv ': loading '; then
+                  echo "::error::$f timed out with tests running"; result=fail; break
+                fi
+                echo "::warning::$f timed out before any test started (attempt $attempt)"
+                result=launch-timeout
+                continue
+              fi
+              echo "::error::$f failed (exit $rc)"; tail -60 "$log"; result=fail; break
+            done
+            echo "--- $f: $result" | tee -a ../logs/summary.txt
+            case $result in
+              pass | skip) ;;
+              launch-timeout)
+                infra+=("$f")
+                echo "::warning::$f never started on the simulator: infrastructure, not a test result. Run it again before a release."
+                ;;
+              *) failed+=("$f") ;;
+            esac
+          done
+          {
+            echo "### iOS simulator"
+            echo
+            echo "| file | outcome |"
+            echo "|---|---|"
+            sed -n 's/^--- \(.*\): \(.*\)$/| \1 | \2 |/p' ../logs/summary.txt
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ ${#infra[@]} -gt 0 ]; then printf 'NEVER STARTED: %s\n' "${infra[@]}"; fi
+          if [ ${#failed[@]} -gt 0 ]; then printf 'FAILED: %s\n' "${failed[@]}"; exit 1; fi
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: ios-integration-${{ needs.plan.outputs.libmpv_run || needs.plan.outputs.pin }}
+          path: ${{ runner.temp }}/logs
+          if-no-files-found: ignore
+
+  android-emu:
+    name: Android emulator API ${{ matrix.api }}${{ matrix.target == 'android-tv' && ' TV' || '' }}
+    needs: plan
+    runs-on: ubuntu-24.04
+    # Six files of at most two 8 minute tries each, plus the boot: a job cut
+    # by its timeout could not tell infra from fail.
+    timeout-minutes: 130
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {api: 24, target: google_apis}
+          - {api: 29, target: google_apis}
+          - {api: 34, target: google_apis}
+          # A TV profile: with the default phone screen the SystemUI of the
+          # TV image crashes in a loop and takes the tests down with it.
+          - {api: 36, target: android-tv, profile: tv_1080p}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: KVM for the emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+          cache-dependency-path: |
+            test_app/android/*.gradle*
+            test_app/android/app/*.gradle*
+            test_app/android/gradle/wrapper/gradle-wrapper.properties
+            android/*.gradle*
+      - uses: ./.github/actions/flutter
+        with:
+          cache: true
+      - uses: ./.github/actions/libmpv-from-run
+        with:
+          run-id: ${{ needs.plan.outputs.libmpv_run }}
+          token: ${{ secrets.LIBMPV_SCRIPTS_TOKEN }}
+          pubspecs: test_app/pubspec.yaml
+      - name: The release under test
+        if: needs.plan.outputs.libmpv_run == ''
+        env:
+          PIN: ${{ needs.plan.outputs.pin }}
+        run: echo "MAK_LIBMPV_RELEASE=$PIN" >> "$GITHUB_ENV"
+      - name: Build the test app once
+        working-directory: test_app
+        run: |
+          flutter pub get
+          flutter build apk --debug
+      - name: Integration tests on the emulator
+        if: matrix.target != 'android-tv'
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: ${{ matrix.api }}
+          target: ${{ matrix.target }}
+          profile: ${{ matrix.profile }}
+          arch: x86_64
+          force-avd-creation: false
+          # No -noaudio: the audiotrack checks need the emulated audio device,
+          # which consumes frames at real time even with no host sound card.
+          emulator-options: -no-window -gpu swiftshader_indirect -no-boot-anim -camera-back none
+          disable-animations: true
+          script: bash ../scripts/ci/android_emulator.sh ${{ matrix.api }}
+          working-directory: test_app
+      # The Android TV image without the emulator runner: right after the
+      # boot its adbd goes away for a moment, and the runner's own adb calls
+      # (keyevent 82) failed the step before any test. Same options, and a
+      # wait for an adb that answers twice in a row.
+      - name: Integration tests on the Android TV emulator
+        if: matrix.target == 'android-tv'
+        working-directory: test_app
+        env:
+          API: ${{ matrix.api }}
+        run: |
+          tools="$ANDROID_HOME/cmdline-tools/latest/bin"
+          image="system-images;android-$API;android-tv;x86_64"
+          # adb for this step and for android_emulator.sh, as the runner
+          # puts it on the path of its own steps.
+          export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
+          yes | "$tools/sdkmanager" --licenses > /dev/null || true
+          # The runner's command-line tools read no SDK XML of version 4,
+          # which the image of API 36 has: newer ones first.
+          "$tools/sdkmanager" --install "cmdline-tools;latest" > /dev/null
+          for d in "$ANDROID_HOME"/cmdline-tools/latest-*/bin; do [ -x "$d/avdmanager" ] && tools=$d; done
+          "$tools/sdkmanager" --install emulator platform-tools "$image" > /dev/null
+          # One AVD home for avdmanager and the emulator: the newer tools
+          # put the AVD elsewhere by default.
+          export ANDROID_AVD_HOME="$RUNNER_TEMP/avd"
+          mkdir -p "$ANDROID_AVD_HOME"
+          echo no | "$tools/avdmanager" create avd --force -n tv --package "$image" --device tv_1080p \
+            -p "$ANDROID_AVD_HOME/tv.avd"
+          [ -f "$ANDROID_AVD_HOME/tv.avd/config.ini" ] || {
+            "$tools/avdmanager" list avd; echo "::error::avdmanager made no AVD"; exit 1; }
+          [ -f "$ANDROID_AVD_HOME/tv.ini" ] || printf 'path=%s\npath.rel=avd/tv.avd\ntarget=android-%s\n' \
+            "$ANDROID_AVD_HOME/tv.avd" "$API" > "$ANDROID_AVD_HOME/tv.ini"
+          printf 'hw.cpu.ncore=2\n' >> "$ANDROID_AVD_HOME/tv.avd/config.ini"
+          "$ANDROID_HOME/emulator/emulator" -avd tv -no-window -gpu swiftshader_indirect \
+            -no-boot-anim -no-snapshot -camera-back none > emu-boot.log 2>&1 &
+          adb wait-for-device
+          ok=0
+          for _ in $(seq 1 300); do
+            if [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = 1 ]; then
+              ok=$((ok + 1))
+              [ $ok -ge 2 ] && break
+            else
+              ok=0
+            fi
+            sleep 3
+          done
+          [ $ok -ge 2 ] || { tail -40 emu-boot.log; echo "::error::the TV emulator did not boot"; exit 1; }
+          adb shell settings put global window_animation_scale 0 || true
+          adb shell settings put global transition_animation_scale 0 || true
+          adb shell settings put global animator_duration_scale 0 || true
+          # The emulator's own log, for an emulator that goes away.
+          mkdir -p emu-logs
+          trap 'cp emu-boot.log emu-logs/' EXIT
+          bash ../scripts/ci/android_emulator.sh "$API-tv"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: android-emu-${{ matrix.api }}${{ matrix.target == 'android-tv' && '-tv' || '' }}
+          path: test_app/emu-logs
+          if-no-files-found: ignore
+
+  # What the run checked, on the run's page and in the devices-result
+  # artifact. A device job is green with a file that never started; the
+  # run is not, so a release never takes it for a file that passed.
+  summary:
+    name: Summary
+    needs: [plan, ios-integration, android-emu]
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      # The artifacts of this run.
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        continue-on-error: true
+        with:
+          pattern: '{android-emu,ios-integration}-*'
+          path: device-logs
+      - name: Summary
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          python3 - <<'EOF'
+          import glob, json, os, re
+          needs = json.loads(os.environ['NEEDS'])
+          plan = needs['plan'].get('outputs') or {}
+          out = open(os.environ['GITHUB_STEP_SUMMARY'], 'a')
+          run = plan.get('libmpv_run') or ''
+          libmpv = f'libmpv-scripts run {run}' if run else f"the pinned release libmpv-{plan.get('pin') or '?'}"
+          jobs = [
+              ('plan', 'Plan: the libmpv to bundle'),
+              ('ios-integration', 'iOS simulator integration tests'),
+              ('android-emu', 'Android emulators'),
+          ]
+          results, rows, green = {}, [], True
+          for job, what in jobs:
+              result = needs[job]['result']
+              results[job] = result
+              if result != 'success':
+                  green = False
+              rows.append(f'| {what} | {result} |')
+          # The files a device job could not start (an install that never
+          # ended, an app that never attached): infra in the summary of an
+          # emulator, launch-timeout in the one of the simulator.
+          never = []
+          for path in sorted(glob.glob('device-logs/*/summary*.txt')):
+              where = path.split('/')[1]
+              for line in open(path):
+                  m = re.match(r'(?:--- )?(\S+?):? (infra|launch-timeout)\s*$', line)
+                  if m:
+                      never.append(f'{where}: {m.group(1)}')
+          if never:
+              green = False
+          verdict = 'green' if green else 'not green'
+          out.write(f'### Devices, {verdict}\n\n')
+          out.write(f"libmpv: {libmpv}. Kit: `{os.environ['GITHUB_REF_NAME']}` at {os.environ['GITHUB_SHA'][:7]}.\n\n")
+          out.write('| job | result |\n|---|---|\n')
+          out.write('\n'.join(rows) + '\n\n')
+          if never:
+              out.write('**Never started, so not checked** (' + str(len(never)) + '): a device job is green '
+                        'without them, this run is not. Run them again before a release.\n\n')
+              out.write('\n'.join(f'- `{n}`' for n in never) + '\n\n')
+              print('::error title=Files never started::' + ', '.join(never))
+          else:
+              out.write('Every file of the iOS simulator and of the emulators that ran started its tests.\n')
+          json.dump({
+              'libmpv_run': run, 'pin': plan.get('pin'),
+              'kit_ref': os.environ['GITHUB_REF_NAME'], 'kit_sha': os.environ['GITHUB_SHA'],
+              'green': green, 'jobs': results, 'never_started': never,
+          }, open('devices-result.json', 'w'), indent=2)
+          raise SystemExit(0 if green else 1)
+          EOF
+      - if: always()
+        run: cat devices-result.json 2>/dev/null || true
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: devices-result
+          path: devices-result.json
+          if-no-files-found: ignore

@@ -534,6 +534,7 @@ jobs:
           path: build/web-test-logs/
           if-no-files-found: ignore
 
+  # test_app's integration tests on the emulators and the simulator: devices.yml.
   build:
     name: Build ${{ matrix.name }}
     needs: changes
