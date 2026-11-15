@@ -136,7 +136,9 @@ public class MediaSessionPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
       binaryMessenger: messenger)
     eventChannel.setStreamHandler(instance)
 
-    // The engine calls `detachFromEngine(for:)` only on published values.
+    // The iOS engine calls `detachFromEngine(for:)` only on published
+    // values. The macOS engine never calls it: there the session closes on
+    // `disable` alone.
     registrar.publish(instance)
   }
 
