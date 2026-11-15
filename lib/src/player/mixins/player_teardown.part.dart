@@ -113,23 +113,25 @@ mixin _TeardownModule on _PlayerBase, _MediaSessionModule {
       } catch (_) {}
     }
 
-    // Tear down the media-session controller before closing the
-    // backing reactives: its subscriptions need live streams to
-    // cancel cleanly, and its final `disable()` call to native
-    // needs the controller still wired. The release of the media session
-    // above already tore the controller down, but we double-check for
-    // safety in case a future code path skips that step.
+    await _disposeSessionController();
+    await _closeStreams();
+  }
+
+  /// Tears down the media-session controller before the backing reactives
+  /// close: its subscriptions need live streams to cancel cleanly, and its
+  /// final `disable()` call to native needs the controller still wired.
+  /// The release of the media session at the start of the teardown already
+  /// tore the controller down, but we double-check for safety in case a
+  /// future code path skips that step.
+  Future<void> _disposeSessionController() async {
     final controller = _mediaSessionController;
     _mediaSessionController = null;
-    if (controller != null) {
-      try {
-        await controller.dispose();
-      } catch (_) {
-        // Best effort: never block disposal on session teardown.
-      }
+    if (controller == null) return;
+    try {
+      await controller.dispose();
+    } catch (_) {
+      // Best effort: never block disposal on session teardown.
     }
-
-    await _closeStreams();
   }
 
   /// Destroys a core [dispose] had to leave alone, once its event pump has
