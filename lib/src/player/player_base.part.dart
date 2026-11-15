@@ -216,10 +216,10 @@ abstract class _PlayerBase {
   // domain mixins can call across part boundaries: `on _PlayerBase` only
   // exposes what `_PlayerBase` itself declares.
 
-  /// See `_FfiModule` (player_ffi.part.dart).
+  /// See `_LoadfileModule` (player_loadfile.part.dart).
   Future<void> _loadfile(List<String> args, Media media, OwnedSource source);
 
-  /// See `_DispatchModule` (player_dispatch.part.dart).
+  /// See `_PropertiesModule` (player_properties.part.dart).
   void _updatePlaylistFromNode(dynamic raw);
 
   /// Every call to libmpv once the player runs, on top of [_session]. All
@@ -234,7 +234,7 @@ abstract class _PlayerBase {
   void _validateLoadOptions(Media media);
   void _rejectPcm(Media media, String name);
 
-  /// See `_FfiModule`: the raw property escape hatches of the public API.
+  /// See `_RawModule`: the raw property escape hatches of the public API.
   /// The player's own reads and writes go through [_readString] and
   /// [_calls] instead.
   Future<String?> getRawProperty(String name);
@@ -267,7 +267,7 @@ abstract class _PlayerBase {
   /// pump's `onEvent` during bring-up.
   void _handleEvent(MpvIsolateEvent event);
 
-  /// See `_DispatchModule`: `setAudioDevice` reuses it to optimistically
+  /// See `_PropertiesModule`: `setAudioDevice` reuses it to optimistically
   /// resolve the device description from the parsed `audio-device-list`.
   void _updateActiveAudioDevice(String name);
 

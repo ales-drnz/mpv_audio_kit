@@ -86,17 +86,22 @@ part 'lifecycle.part.dart';
 part 'mixins/player_audio.part.dart';
 part 'mixins/player_dispatch.part.dart';
 part 'mixins/player_effects.part.dart';
-part 'mixins/player_ffi.part.dart';
+part 'mixins/player_file_events.part.dart';
 part 'mixins/player_hooks.part.dart';
 part 'mixins/player_init.part.dart';
 part 'mixins/player_load_validation.part.dart';
+part 'mixins/player_loadfile.part.dart';
 part 'mixins/player_media_session.part.dart';
+part 'mixins/player_navigation.part.dart';
 part 'mixins/player_network.part.dart';
 part 'mixins/player_open.part.dart';
 part 'mixins/player_output.part.dart';
 part 'mixins/player_pcm.part.dart';
 part 'mixins/player_playback.part.dart';
-part 'mixins/player_playlist.part.dart';
+part 'mixins/player_properties.part.dart';
+part 'mixins/player_queue.part.dart';
+part 'mixins/player_raw.part.dart';
+part 'mixins/player_tracks.part.dart';
 part 'player_base.part.dart';
 part 'transport.part.dart';
 
@@ -110,18 +115,23 @@ part 'transport.part.dart';
 /// {@category Playback}
 class Player extends _PlayerBase
     with
-        _FfiModule,
+        _PcmModule,
+        _LoadfileModule,
+        _RawModule,
         _LoadValidationModule,
         _OpenModule,
         _InitModule,
+        _PropertiesModule,
+        _FileEventsModule,
         _DispatchModule,
         _PlaybackModule,
-        _PlaylistModule,
+        _QueueModule,
+        _NavigationModule,
         _AudioModule,
+        _TracksModule,
         _OutputModule,
         _EffectsModule,
         _NetworkModule,
-        _PcmModule,
         _HooksModule,
         _MediaSessionModule
     implements PlayerApi {

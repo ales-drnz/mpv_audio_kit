@@ -22,7 +22,7 @@
 // parked at the end.
 //
 // The steps mirror how the player uses the machine today
-// (player_playback.part.dart play() and pause(), player_playlist.part.dart
+// (player_playback.part.dart play() and pause(), player_navigation.part.dart
 // jump(), player_open.part.dart _open(), transport.part.dart
 // trackLoad()): a change of that protocol changes them.
 
@@ -221,10 +221,10 @@ final class _Calls {
 String _jumpSource() {
   final source = File(
     '${Directory.current.path}/lib/src/player/mixins/'
-    'player_playlist.part.dart',
+    'player_navigation.part.dart',
   ).readAsStringSync();
   final start = source.indexOf('Future<void> jump(int index) async {');
-  final end = source.indexOf('Future<void> move(', start);
+  final end = source.indexOf('Future<void> setLoop(', start);
   return source.substring(start, end).replaceAll(RegExp(r'\s+'), ' ');
 }
 

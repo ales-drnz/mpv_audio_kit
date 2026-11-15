@@ -8,12 +8,19 @@ part of '../player.dart';
 /// leave room for the events and the other calls.
 const _kAppendWindow = 512;
 
+/// Test only: awaited by [Player.openAll] between its jump to the new
+/// entry and the removal of the old one it kept playing meanwhile, so a
+/// test can hold that window open. Not exported, as
+/// [debugBeforePcmCutRemove].
+@visibleForTesting
+Future<void> Function()? debugBeforeRetainedRemove;
+
 /// The loads that replace the content: [Player.open], [Player.openAll] and
 /// [Player.openPlaylistFile], with the entry bookkeeping of [Player.openAll]
 /// (the old entry it keeps in mpv until its jump, hidden from the state
 /// through [EntryTable.retained]). [Player] keeps the public methods and
 /// their contract; the bodies run here.
-mixin _OpenModule on _PlayerBase, _FfiModule {
+mixin _OpenModule on _PlayerBase, _LoadfileModule {
   Future<void> _open(Media media, bool? play) async {
     _checkNotDisposed();
     _validateLoadOptions(media);
