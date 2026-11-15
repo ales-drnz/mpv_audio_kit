@@ -18,7 +18,7 @@ VERSION="$(python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['ffmp
 SRC="$DIR/.ffmpeg-src/ffmpeg-$VERSION"
 
 case "$VERSION" in
-  8.1.1) SHA256=1b856f26a07082b6879f3e5300d81e8c7ce3b410ade5898b14382d90c2904634 ;;
+  9.0.2) SHA256=84960df915059e8754fef2cd7c9afeb614062b1b5458ec471eecee619ee04e98 ;;
   *) echo "no SHA-256 pinned for FFmpeg $VERSION in $0" >&2; exit 1 ;;
 esac
 
