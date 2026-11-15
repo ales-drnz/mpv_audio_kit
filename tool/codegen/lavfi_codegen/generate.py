@@ -407,19 +407,35 @@ def _emit_enums_header() -> str:
     )
 
 
+# The lints the settings library and its parts leave off: the generated
+# code spells strings and control flow the generator's way.
+_SETTINGS_IGNORES = (
+    "// ignore_for_file: unnecessary_ignore, non_constant_identifier_names,"
+    " constant_identifier_names, camel_case_types,"
+    " curly_braces_in_flow_control_structures,"
+    " prefer_adjacent_string_concatenation,"
+    " prefer_interpolation_to_compose_strings\n"
+)
+
+
+def _emit_settings_part_header(library: str) -> str:
+    """The head of one effect's part of the settings library."""
+    return _COPYRIGHT_FFMPEG_TEXT + _SETTINGS_IGNORES + "\n" + f"part of '{library}';\n"
+
+
 def _emit_settings_header(
-    *, needs_set: bool = True, needs_map: bool = True, needs_duration: bool = True
+    *,
+    needs_set: bool = True,
+    needs_map: bool = True,
+    needs_duration: bool = True,
+    parts: list[str] = (),
 ) -> str:
     # `_setEq` / `_mapEq` are emitted only when some field actually uses them
     # (Set / Map params). Audio has both, so its output is unchanged; a flavor
     # with neither (video) omits them rather than tripping `unused_element`.
     parts: list[str] = [
         _COPYRIGHT_FFMPEG_TEXT,
-        "// ignore_for_file: unnecessary_ignore, non_constant_identifier_names,"
-        " constant_identifier_names, camel_case_types,"
-        " curly_braces_in_flow_control_structures,"
-        " prefer_adjacent_string_concatenation,"
-        " prefer_interpolation_to_compose_strings\n"
+        _SETTINGS_IGNORES,
         "\n"
         "import 'dart:convert';\n"
         "\n"
@@ -427,7 +443,10 @@ def _emit_settings_header(
         "\n"
         f"import '{_NAMING.sentinel_import}';\n"
         f"import '{_ENUMS_IMPORT}';\n"
-        "\n"
+        "\n",
+        # One part per effect class.
+        *(f"part '{uri}';\n" for uri in parts),
+        "\n" if parts else "",
         "// Collection equality helpers used by the generated `==`. Kept\n"
         "// inline to avoid a transitive `package:collection` dependency.\n",
     ]
@@ -1550,28 +1569,45 @@ def run(config: Config) -> int:
     # File 2: settings + AudioEffects bundle + AudioEffectsX.active
     # extension. Imports the enums file for typed enum / flags param
     # fields and for the singular `AudioEffect` enum used by the
-    # extension.
-    settings_bodies: list[str] = []
-    for fname in sorted_names:
-        settings_bodies.append(_emit_settings_class(fname, filters[fname]))
-    settings_bodies.insert(0, _emit_chain())
-    settings_bodies.append(_emit_param_keys(filters, sorted_names))
+    # extension. Each effect class goes in a part of its own, in the
+    # directory named after the library (`audio_effects_settings/`).
+    settings = config.output.settings
+    part_dir = settings.with_suffix("")
+    parts = {
+        fname: part_dir / f"{fname}.part.dart" for fname in sorted_names
+    }
+    class_bodies = {
+        fname: _emit_settings_class(fname, filters[fname])
+        for fname in sorted_names
+    }
+    chain = _emit_chain()
+    param_keys = _emit_param_keys(filters, sorted_names)
     # The Set/Map equality helpers and the duration formatter are emitted only
     # when a field uses them, so a flavor without them (video) doesn't trip
     # `unused_element`.
-    _body = "\n".join(settings_bodies)
+    _body = "\n".join([chain, *class_bodies.values(), param_keys])
     settings_pieces: list[str] = [
         _emit_settings_header(
             needs_set="_setEq(" in _body,
             needs_map="_mapEq(" in _body,
             needs_duration="_wireDuration(" in _body,
+            parts=[f"{part_dir.name}/{p.name}" for p in parts.values()],
         ),
-        *settings_bodies,
+        chain,
+        param_keys,
     ]
-    config.output.settings.parent.mkdir(parents=True, exist_ok=True)
-    config.output.settings.write_text("\n".join(settings_pieces))
+    settings.parent.mkdir(parents=True, exist_ok=True)
+    settings.write_text("\n".join(settings_pieces))
+    part_dir.mkdir(parents=True, exist_ok=True)
+    # A filter that left the build leaves no part behind.
+    for stale in part_dir.glob("*.part.dart"):
+        if stale not in parts.values():
+            stale.unlink()
+    part_header = _emit_settings_part_header(f"../{settings.name}")
+    for fname, path in parts.items():
+        path.write_text(part_header + class_bodies[fname] + "\n")
 
-    written: list[Path] = [config.output.enums, config.output.settings]
+    written: list[Path] = [config.output.enums, settings, *parts.values()]
 
     # File 2b (optional): typed string-/map-DSL extension helpers,
     # re-emitted verbatim from the codegen's static source so the
@@ -1593,16 +1629,15 @@ def run(config: Config) -> int:
     )
     written.append(config.output.test_filter_names)
 
-    for path in written:
-        try:
-            subprocess.run(
-                ["dart", "format", str(path)],
-                check=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
-        except (FileNotFoundError, subprocess.CalledProcessError):
-            print(f"WARN: `dart format` failed for {path}", file=sys.stderr)
+    try:
+        subprocess.run(
+            ["dart", "format", *(str(p) for p in written)],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        print("WARN: `dart format` failed for the generated files", file=sys.stderr)
 
     # `dart format` does NOT add the trailing commas that
     # `require_trailing_commas` wants on the lines it splits, so a strict
@@ -1626,7 +1661,7 @@ def run(config: Config) -> int:
     for path, label in [
         (config.output.enums, f"{len(seen_enums)} enums"),
         (config.output.settings,
-         f"{len(sorted_names)} effects + the chain model"),
+         f"the chain model + {len(sorted_names)} effect parts"),
         *(
             [(config.output.extensions, "typed string-/map-DSL helpers")]
             if config.features.emit_extensions else []

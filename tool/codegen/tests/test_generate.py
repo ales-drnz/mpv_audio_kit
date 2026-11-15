@@ -71,7 +71,10 @@ class GeneratorOutputTest(unittest.TestCase):
                     self.assertEqual(generate_tests.run(config), 0)
                 finally:
                     devnull.close()
-            written = sorted(p for p in out.rglob("*") if p.is_file())
+            written = sorted(
+                (p for p in out.rglob("*") if p.is_file()),
+                key=lambda p: str(p.relative_to(out)),
+            )
             self.assertTrue(written)
             if os.environ.get("UPDATE_GOLDEN"):
                 for p in GOLDEN.rglob("*.golden"):
