@@ -9,6 +9,7 @@ import 'package:meta/meta.dart';
 import '../models/loudness.dart';
 import '../mpv_constants.dart';
 import 'dsp_async_io.dart';
+import 'poll_loop.dart';
 
 /// Live EBU R128 loudness meter pipeline.
 ///
@@ -43,13 +44,9 @@ class LoudnessMeterPipeline {
 
   final StreamController<Loudness> _ctrl =
       StreamController<Loudness>.broadcast();
-  Timer? _pollTimer;
+  late final PollLoop _loop = PollLoop(_poll, _doPoll);
   bool _enabled = false;
   bool _disposed = false;
-  // Guards against overlapping polls: under a busy core an async read's
-  // reply can land after the next tick has fired, so a tick is skipped
-  // while one read is still outstanding.
-  bool _polling = false;
 
   /// The live measurement stream. Emits one [Loudness] per poll tick
   /// while the meter is active in the chain.
@@ -61,10 +58,9 @@ class LoudnessMeterPipeline {
     if (_disposed || enabled == _enabled) return;
     _enabled = enabled;
     if (enabled) {
-      _pollTimer ??= Timer.periodic(_pollInterval, (_) => _poll());
+      _loop.arm(_pollInterval);
     } else {
-      _pollTimer?.cancel();
-      _pollTimer = null;
+      _loop.disarm();
     }
   }
 
@@ -72,15 +68,13 @@ class LoudnessMeterPipeline {
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
-    _pollTimer?.cancel();
-    _pollTimer = null;
+    _loop.disarm();
     if (!_ctrl.isClosed) await _ctrl.close();
   }
 
   void _poll() {
-    if (_disposed || _polling) return;
-    _polling = true;
-    unawaited(_doPoll().whenComplete(() => _polling = false));
+    if (_disposed) return;
+    _loop.run();
   }
 
   Future<void> _doPoll() async {

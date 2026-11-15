@@ -9,6 +9,7 @@ import 'package:meta/meta.dart';
 import '../models/pcm_frame.dart';
 import '../mpv_constants.dart';
 import 'dsp_async_io.dart';
+import 'poll_loop.dart';
 import 'shared_property_writer.dart';
 
 /// Upper bound on the channel count reported by the native filter tap.
@@ -95,9 +96,7 @@ class FilterTapPipeline {
   // or at EOF the writer isn't advancing it and the position stands).
   final Map<_TapKey, ({int seq, int ptsNs})> _lastSlice = {};
 
-  Timer? _pollTimer;
-  // Guards against overlapping async polls; see [LoudnessMeterPipeline].
-  bool _polling = false;
+  late final PollLoop _loop = PollLoop(_poll, _doPoll);
   bool _disposed = false;
   bool _idle = false;
 
@@ -138,10 +137,9 @@ class FilterTapPipeline {
     if (_disposed || idle == _idle) return;
     _idle = idle;
     if (idle) {
-      _pollTimer?.cancel();
-      _pollTimer = null;
+      _loop.disarm();
     } else if (_active.isNotEmpty) {
-      _pollTimer ??= Timer.periodic(_pollInterval, (_) => _poll());
+      _loop.arm(_pollInterval);
     }
   }
 
@@ -150,8 +148,8 @@ class FilterTapPipeline {
     if (_active.add(key)) _writeActiveList();
     if (_idle) {
       _poll();
-    } else if (_pollTimer == null) {
-      _pollTimer = Timer.periodic(_pollInterval, (_) => _poll());
+    } else if (!_loop.isArmed) {
+      _loop.arm(_pollInterval);
       _poll();
     }
   }
@@ -165,10 +163,7 @@ class FilterTapPipeline {
     // pts still equal the retained ones) until the next write.
     _lastSlice.remove(key);
     _writeActiveList();
-    if (_active.isEmpty) {
-      _pollTimer?.cancel();
-      _pollTimer = null;
-    }
+    if (_active.isEmpty) _loop.disarm();
   }
 
   /// Builds the `analyzer-taps` CSV from the union of every distinct
@@ -226,10 +221,9 @@ class FilterTapPipeline {
   );
 
   void _poll() {
-    if (_disposed || _polling) return;
+    if (_disposed) return;
     if (_active.isEmpty) return;
-    _polling = true;
-    unawaited(_doPoll().whenComplete(() => _polling = false));
+    _loop.run();
   }
 
   Future<void> _doPoll() async {
@@ -301,8 +295,7 @@ class FilterTapPipeline {
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
-    _pollTimer?.cancel();
-    _pollTimer = null;
+    _loop.disarm();
     // This player's labels leave the list, the other players' stay. The
     // player disposes the taps after its quit: the core still serves this
     // write before it is destroyed.
