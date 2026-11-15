@@ -70,7 +70,7 @@ extension _Lifecycle on _PlayerBase {
       currentChapter: null,
       chapters: const <Chapter>[],
     );
-    _coverArtCtrl.add(null);
+    _streams.coverArt.add(null);
   }
 
   /// Clears what [_clearPerFileState] clears plus the file's waveform and
@@ -108,8 +108,8 @@ extension _Lifecycle on _PlayerBase {
     );
     _state = result.newState;
     if (result.playingDidChange) _reactives.playing.update(playing!);
-    if (result.bufferingDidChange) _buffering.update(buffering!);
-    if (result.completedDidChange) _completed.update(completed!);
+    if (result.bufferingDidChange) _streams.buffering.update(buffering!);
+    if (result.completedDidChange) _streams.completed.update(completed!);
   }
 
   /// Settles `completed` from where the core stands against the end of

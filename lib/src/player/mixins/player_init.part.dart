@@ -84,10 +84,10 @@ mixin _InitModule on _PlayerBase, _DispatchModule, _TeardownModule {
     _waveformPipeline.clear();
     _loudnessScanPipeline.clear();
     _waveformPipeline.stream.listen((w) {
-      _lastWaveform = w;
-      _waveformCtrl.add(w);
+      _streams.lastWaveform = w;
+      _streams.waveform.add(w);
     });
-    _loudnessMeterPipeline.stream.listen(_loudnessMeterCtrl.add);
+    _loudnessMeterPipeline.stream.listen(_streams.loudnessMeter.add);
     // Paused, stopped or parked at the end, the output writes nothing: the
     // spectrum and tap polls rest until the core plays again.
     void idle(bool playing) {
@@ -98,8 +98,8 @@ mixin _InitModule on _PlayerBase, _DispatchModule, _TeardownModule {
     idle(_state.playback.playing);
     _reactives.playing.changes.listen(idle);
     _loudnessScanPipeline.stream.listen((s) {
-      _lastLoudnessScan = s;
-      _loudnessScanCtrl.add(s);
+      _streams.lastLoudnessScan = s;
+      _streams.loudnessScan.add(s);
     });
 
     _session.track();
@@ -112,15 +112,7 @@ mixin _InitModule on _PlayerBase, _DispatchModule, _TeardownModule {
 
     // A DSP subscriber that landed before bring-up finished missed the
     // `onListen` enable: reconcile it now.
-    if (_fftCtrl.hasListener) {
-      _fftPipeSub ??= _spectrumPipeline.fftStream.listen(_fftCtrl.add);
-    }
-    if (_pcmStreamCtrl.hasListener) {
-      _pcmPipeSub ??= _spectrumPipeline.pcmStream.listen(_pcmStreamCtrl.add);
-    }
-    if (_waveformCtrl.hasListener) _waveformPipeline.setEnabled(true);
-    if (_loudnessMeterCtrl.hasListener) _loudnessMeterPipeline.setEnabled(true);
-    if (_loudnessScanCtrl.hasListener) _loudnessScanPipeline.setEnabled(true);
+    _streams.reconcile();
   }
 
   /// Recipe of pre-init `mpv_set_option_string` calls executed by the

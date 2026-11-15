@@ -106,20 +106,23 @@ mixin _PropertiesModule on _PlayerBase {
     switch (name) {
       case 'metadata':
         _updateField(
-          (s) => s.copyWith(metadata: _metadata.initial),
-          _metadata,
-          _metadata.initial,
+          (s) => s.copyWith(metadata: _streams.metadata.initial),
+          _streams.metadata,
+          _streams.metadata.initial,
         );
       case 'demuxer-cache-state':
         _updateField(
-          (s) => s.copyWith(bufferingPercentage: _bufferingPercentage.initial),
-          _bufferingPercentage,
-          _bufferingPercentage.initial,
+          (s) => s.copyWith(
+            bufferingPercentage: _streams.bufferingPercentage.initial,
+          ),
+          _streams.bufferingPercentage,
+          _streams.bufferingPercentage.initial,
         );
         _updateField(
-          (s) => s.copyWith(demuxerCacheState: _demuxerCacheState.initial),
-          _demuxerCacheState,
-          _demuxerCacheState.initial,
+          (s) =>
+              s.copyWith(demuxerCacheState: _streams.demuxerCacheState.initial),
+          _streams.demuxerCacheState,
+          _streams.demuxerCacheState.initial,
         );
     }
   }
@@ -127,7 +130,7 @@ mixin _PropertiesModule on _PlayerBase {
   void _updateLoopFromMpv(String name, String value) {
     final next = deriveLoop(name, value, _state.playback.loop);
     if (next == null) return;
-    _updateField((s) => s.copyWith(loop: next), _loop, next);
+    _updateField((s) => s.copyWith(loop: next), _streams.loop, next);
   }
 
   void _updatePlaylistFromNode(Object? raw) {
@@ -152,7 +155,11 @@ mixin _PropertiesModule on _PlayerBase {
         skip: hidden,
       );
       _entries.hiddenAt = hidden;
-      _updateField((s) => s.copyWith(playlist: playlist), _playlist, playlist);
+      _updateField(
+        (s) => s.copyWith(playlist: playlist),
+        _streams.playlist,
+        playlist,
+      );
       // A new index, or a hint of the playing entry, changes the duration.
       _state = _durationHint.apply(_state);
     } catch (e) {
@@ -186,7 +193,7 @@ mixin _PropertiesModule on _PlayerBase {
       final devices = parseDeviceListNode(raw);
       _updateField(
         (s) => s.copyWith(audioDevices: devices),
-        _audioDevices,
+        _streams.audioDevices,
         devices,
       );
     } catch (e) {
@@ -198,7 +205,11 @@ mixin _PropertiesModule on _PlayerBase {
     try {
       final metadata = parseMetadataNode(raw);
       if (metadata == null) return;
-      _updateField((s) => s.copyWith(metadata: metadata), _metadata, metadata);
+      _updateField(
+        (s) => s.copyWith(metadata: metadata),
+        _streams.metadata,
+        metadata,
+      );
     } catch (e) {
       _internalLog('Failed to parse metadata: $e', level: LogLevel.warn);
     }
@@ -209,13 +220,13 @@ mixin _PropertiesModule on _PlayerBase {
       final pct = parseDemuxerCacheStateNode(raw, _state.settings.cache.secs);
       _updateField(
         (s) => s.copyWith(bufferingPercentage: pct),
-        _bufferingPercentage,
+        _streams.bufferingPercentage,
         pct,
       );
       final cacheState = parseDemuxerCacheStateFull(raw);
       _updateField(
         (s) => s.copyWith(demuxerCacheState: cacheState),
-        _demuxerCacheState,
+        _streams.demuxerCacheState,
         cacheState,
       );
     } catch (e) {

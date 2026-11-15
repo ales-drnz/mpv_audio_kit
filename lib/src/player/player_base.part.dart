@@ -9,11 +9,12 @@ part of 'player.dart';
 /// Owns:
 /// - the session to the core (the backend's event pump and client),
 /// - the [PropertyRegistry] for the ~90 simple mpv properties,
-/// - the small set of standalone [ReactiveProperty]s and [StreamController]s
-///   that back state fields not directly mirrored by an mpv property
-///   (lifecycle: `buffering`/`completed`; complex node parses: `playlist`,
-///   `metadata`, `audioDevices`, `bufferingPercentage`; pure events: log,
-///   error, hook, end-of-file, seek-completed).
+/// - through [_StreamHub], the small set of standalone [ReactiveProperty]s
+///   and [StreamController]s that back state fields not directly mirrored
+///   by an mpv property (lifecycle: `buffering`/`completed`; complex node
+///   parses: `playlist`, `metadata`, `audioDevices`,
+///   `bufferingPercentage`; pure events: log, error, hook, end-of-file,
+///   seek-completed; the analysis streams).
 abstract class _PlayerBase {
   /// The configuration captured at construction time.
   final PlayerConfiguration configuration;
@@ -32,6 +33,10 @@ abstract class _PlayerBase {
 
   /// The effects chain mpv holds, against the list in the state.
   late final _EffectsChain _effects = _EffectsChain(this);
+
+  /// The reactives and controllers behind [stream] that no property spec
+  /// owns.
+  late final _StreamHub _streams = _StreamHub(this);
 
   // The registered hooks and the pending hook events, with the ids the
   // library hands out and the deadlines.
@@ -104,66 +109,12 @@ abstract class _PlayerBase {
   late final DurationHint _durationHint;
   late final PropertyRegistry _registry;
 
-  // ── Standalone reactive properties (no 1:1 mpv property backing) ───────
-  // Lifecycle flags driven by file-boundary events, not by a single property.
-  final ReactiveProperty<bool> _buffering = ReactiveProperty<bool>(false);
-  final ReactiveProperty<bool> _completed = ReactiveProperty<bool>(false);
-  // Derived from node properties that need access to player-side context.
-  final ReactiveProperty<Playlist> _playlist = ReactiveProperty<Playlist>(
-    Playlist.empty,
-  );
-  final ReactiveProperty<Loop> _loop = ReactiveProperty<Loop>(Loop.off);
-  final ReactiveProperty<List<Device>> _audioDevices =
-      ReactiveProperty<List<Device>>(const [
-        Device(name: 'auto', description: 'Auto'),
-      ]);
-  final ReactiveProperty<Map<String, String>> _metadata =
-      ReactiveProperty<Map<String, String>>(const <String, String>{});
-  final ReactiveProperty<double> _bufferingPercentage =
-      ReactiveProperty<double>(0.0);
-  final ReactiveProperty<DemuxerCacheState> _demuxerCacheState =
-      ReactiveProperty<DemuxerCacheState>(DemuxerCacheState.empty);
-  // OS media-session config + metadata override. Null = disabled.
-  // Updated synchronously by [_MediaSessionModule.setMediaSession].
-  final ReactiveProperty<MediaSession?> _mediaSession =
-      ReactiveProperty<MediaSession?>(null);
-
   // Dart-side orchestrator that ferries state from `PlayerStream` to
   // the native media-session channel and routes inbound OS commands
   // back. Null while the session is disabled; lazily allocated on
   // first `setMediaSession(non-null)` and torn down on disable or
   // on `dispose()`.
   MediaSessionController? _mediaSessionController;
-
-  // ── Pure event streams (no current value) ───────────────────────────────
-  final StreamController<MpvFileEndedEvent> _endFileCtrl =
-      StreamController<MpvFileEndedEvent>.broadcast();
-  final StreamController<PlayerError> _errorCtrl =
-      StreamController<PlayerError>.broadcast();
-  // Log stream from the mpv engine itself (codec, demux, ao and so on).
-  final StreamController<MpvLogEntry> _logCtrl =
-      StreamController<MpvLogEntry>.broadcast();
-  // Log stream from the Dart layer itself: node parse warnings, hook
-  // timeouts, etc. Kept disjoint from `_logCtrl` so library-side noise
-  // can be filtered from genuine engine messages without inspecting
-  // the prefix.
-  final StreamController<MpvLogEntry> _internalLogCtrl =
-      StreamController<MpvLogEntry>.broadcast();
-  final StreamController<MpvHookEvent> _hookCtrl =
-      StreamController<MpvHookEvent>.broadcast();
-  final StreamController<void> _seekCompletedCtrl =
-      StreamController<void>.broadcast();
-  // Nullable payload: each file-loaded transition emits exactly once,
-  // with `null` when the new file has no embedded cover. This lets a
-  // UI clear or reset on every track change without having to compare
-  // against a separate file-transition signal.
-  final StreamController<CoverArt?> _coverArtCtrl =
-      StreamController<CoverArt?>.broadcast();
-  // Incoming commands from the OS media session (lockscreen, BT
-  // headset, Siri, Assistant), routed back from the per-platform
-  // native implementation.
-  final StreamController<MediaSessionCommand> _mediaSessionCommandsCtrl =
-      StreamController<MediaSessionCommand>.broadcast();
 
   // Real-time FFT + raw PCM pipeline. Lazy: the poll loop starts only
   // when something subscribes to `stream.spectrum` or `stream.pcm`.
@@ -245,118 +196,10 @@ abstract class _PlayerBase {
     // Streams that don't need the core can be wired immediately:
     // a consumer subscribing right after `Player()` sees no events
     // until init completes, which is the correct semantics.
-    _wireAnalysisControllers();
-    stream = PlayerStream.fromInternals(
-      reactives: _reactives,
-      buffering: _buffering,
-      completed: _completed,
-      playlist: _playlist,
-      loop: _loop,
-      audioDevices: _audioDevices,
-      metadata: _metadata,
-      bufferingPercentage: _bufferingPercentage,
-      demuxerCacheState: _demuxerCacheState,
-      audioEffects: _reactives.audioEffects,
-      mediaSession: _mediaSession,
-      endFile: _endFileCtrl.stream,
-      error: _errorCtrl.stream,
-      log: _logCtrl.stream,
-      internalLog: _internalLogCtrl.stream,
-      hook: _hookCtrl.stream,
-      seekCompleted: _seekCompletedCtrl.stream,
-      coverArt: replayStream(() => _state.file.coverArt, _coverArtCtrl.stream),
-      fft: _fftCtrl.stream,
-      pcm: _pcmStreamCtrl.stream,
-      spectrum: _reactives.spectrum.stream,
-      waveform: replayStream(() => _lastWaveform, _waveformCtrl.stream),
-      loudnessMeter: _loudnessMeterCtrl.stream,
-      loudnessScan: replayStream(
-        () => _lastLoudnessScan,
-        _loudnessScanCtrl.stream,
-      ),
-      tap: (filter, {instance = 0, required side}) => switch (side) {
-        TapSide.pre => _filterTapPipeline.tapPre(
-          audioEffectLabel(filter.filterName, instance),
-        ),
-        TapSide.post => _filterTapPipeline.tapPost(
-          audioEffectLabel(filter.filterName, instance),
-        ),
-      },
-      mediaSessionCommands: _mediaSessionCommandsCtrl.stream,
-    );
+    stream = _streams.build();
 
     // The bring-up starts in the constructors of [Player], right after
     // this one: see `_InitModule._start`.
-  }
-
-  /// The controllers of the analysis streams (fft, pcm, waveform, loudness
-  /// meter and scan), whose listeners arm the pipelines built at bring-up.
-  void _wireAnalysisControllers() {
-    // The fft and pcm bridges into the spectrum pipeline are listener-gated:
-    // the pipeline arms its 30fps `pcm-tap-frame` poll as soon as its own
-    // streams have a listener, so bridging unconditionally would keep the
-    // poll running for the player's whole lifetime with zero consumers.
-    // Subscribers that land before bring-up are reconciled once the
-    // pipeline exists (see `_bringUp`).
-    _fftCtrl = StreamController<FftFrame>.broadcast(
-      onListen: () {
-        if (_bringUpCompleted) {
-          _fftPipeSub ??= _spectrumPipeline.fftStream.listen(_fftCtrl.add);
-        }
-      },
-      onCancel: () {
-        final sub = _fftPipeSub;
-        _fftPipeSub = null;
-        if (sub != null) unawaited(sub.cancel());
-      },
-    );
-    _pcmStreamCtrl = StreamController<PcmFrame>.broadcast(
-      onListen: () {
-        if (_bringUpCompleted) {
-          _pcmPipeSub ??= _spectrumPipeline.pcmStream.listen(
-            _pcmStreamCtrl.add,
-          );
-        }
-      },
-      onCancel: () {
-        final sub = _pcmPipeSub;
-        _pcmPipeSub = null;
-        if (sub != null) unawaited(sub.cancel());
-      },
-    );
-    // Listener-gated: the native waveform analyzer arms only while a
-    // consumer is subscribed. The pipeline is built during bring-up; a
-    // subscriber that lands before then is reconciled once bring-up
-    // finishes (see `_bringUp`).
-    _waveformCtrl = StreamController<WaveformData?>.broadcast(
-      onListen: () {
-        if (_bringUpCompleted) _waveformPipeline.setEnabled(true);
-      },
-      onCancel: () {
-        if (!_bringUpCompleted) return;
-        _waveformPipeline.setEnabled(false);
-      },
-    );
-    // Same listener-gating as the waveform: the af-metadata poll runs
-    // only while someone is subscribed to `stream.loudnessMeter`.
-    _loudnessMeterCtrl = StreamController<Loudness>.broadcast(
-      onListen: () {
-        if (_bringUpCompleted) _loudnessMeterPipeline.setEnabled(true);
-      },
-      onCancel: () {
-        if (_bringUpCompleted) _loudnessMeterPipeline.setEnabled(false);
-      },
-    );
-    // Listener-gated like the waveform: the native whole-file scan runs
-    // only while someone is subscribed to `stream.loudnessScan`.
-    _loudnessScanCtrl = StreamController<LoudnessScan?>.broadcast(
-      onListen: () {
-        if (_bringUpCompleted) _loudnessScanPipeline.setEnabled(true);
-      },
-      onCancel: () {
-        if (_bringUpCompleted) _loudnessScanPipeline.setEnabled(false);
-      },
-    );
   }
 
   /// Test-only: allows tests to await the post-`Player()` init that
@@ -377,21 +220,6 @@ abstract class _PlayerBase {
   /// The level of the last [setLogLevel] call, applied at the end of
   /// bring-up when the call came before it.
   LogLevel? _pendingLogLevel;
-
-  late final StreamController<FftFrame> _fftCtrl;
-  late final StreamController<PcmFrame> _pcmStreamCtrl;
-  // Lazy bridges into the spectrum pipeline: non-null exactly while the
-  // matching public stream has a listener (they keep the pipeline's
-  // listener-gated poll loop armed; see the controllers' onListen).
-  StreamSubscription<FftFrame>? _fftPipeSub;
-  StreamSubscription<PcmFrame>? _pcmPipeSub;
-  late final StreamController<WaveformData?> _waveformCtrl;
-  // The last envelope and scan result, replayed to a new subscriber of
-  // `stream.waveform` and `stream.loudnessScan`.
-  WaveformData? _lastWaveform;
-  LoudnessScan? _lastLoudnessScan;
-  late final StreamController<Loudness> _loudnessMeterCtrl;
-  late final StreamController<LoudnessScan?> _loudnessScanCtrl;
 
   void _checkNotDisposed() {
     if (_disposed) {
@@ -479,7 +307,7 @@ abstract class _PlayerBase {
   /// [PlayerStream.error], and one that opened may be the null driver.
   void _onAudioOutputState(AudioOutputState state) {
     final err = buildAudioOutputError(state);
-    if (err != null) _errorCtrl.add(err);
+    if (err != null) _streams.errors.add(err);
     if (state == AudioOutputState.active) {
       unawaited(_reportNullFallback());
     }
@@ -500,7 +328,7 @@ abstract class _PlayerBase {
     if (rc < 0 || current != 'null' || _disposed) return;
     final (aoRc, ao) = await _calls.get('ao', MpvFormat.mpvFormatString);
     if (aoRc < 0 || ao is! String || aoListHasNull(ao) || _disposed) return;
-    _errorCtrl.add(nullOutputError);
+    _streams.errors.add(nullOutputError);
   }
 
   /// Internal log helper: emits on the library-side log channel
@@ -508,8 +336,8 @@ abstract class _PlayerBase {
   /// stream ([PlayerStream.log]). Dropped once dispose closed the channel:
   /// an async path (a source resolver failing late) can still log then.
   void _internalLog(String message, {LogLevel level = LogLevel.info}) {
-    if (_internalLogCtrl.isClosed) return;
-    _internalLogCtrl.add(
+    if (_streams.internalLog.isClosed) return;
+    _streams.internalLog.add(
       MpvLogEntry(prefix: 'mpv_audio_kit', level: level, text: message),
     );
   }
@@ -569,23 +397,14 @@ abstract class _PlayerBase {
   /// The last step of [dispose]: closes every reactive property and stream
   /// controller, so each stream of [stream] ends.
   Future<void> _closeStreams() async {
-    // Close registry-backed reactives, then standalone ones, then
-    // pure-event controllers. Order is for auditability: close() is
+    // Close registry-backed reactives, then the ones the player writes
+    // itself, then those of [_streams]. Order is for auditability: close() is
     // safe with attached listeners. None is awaited: a listener the app
     // keeps paused takes the done only when it resumes, so waiting would
     // hold dispose forever. An active listener gets it right after.
     unawaited(_registry.closeAll());
     unawaited(
       Future.wait<void>([
-        _buffering.close(),
-        _completed.close(),
-        _playlist.close(),
-        _loop.close(),
-        _audioDevices.close(),
-        _metadata.close(),
-        _bufferingPercentage.close(),
-        _demuxerCacheState.close(),
-        _mediaSession.close(),
         // Reactives the player writes itself, outside the registry.
         _reactives.playWhenReady.close(),
         _reactives.audioDevice.close(),
@@ -596,35 +415,7 @@ abstract class _PlayerBase {
         _reactives.durationEstimated.close(),
       ]),
     );
-    // Drop the lazy spectrum bridges before closing their controllers:
-    // a dispose with a live fft or pcm listener must not leave the pipeline's
-    // poll loop armed against a torn-down handle.
-    await _fftPipeSub?.cancel();
-    _fftPipeSub = null;
-    await _pcmPipeSub?.cancel();
-    _pcmPipeSub = null;
-    unawaited(
-      Future.wait<void>([
-        _endFileCtrl.close(),
-        _errorCtrl.close(),
-        _logCtrl.close(),
-        _internalLogCtrl.close(),
-        _hookCtrl.close(),
-        _seekCompletedCtrl.close(),
-        _coverArtCtrl.close(),
-        _mediaSessionCommandsCtrl.close(),
-        // Player-side DSP controllers: the pipelines close their own
-        // internal streams, which completes the forwarding subscriptions
-        // but does NOT propagate `done` to these: without an explicit
-        // close, a consumer awaiting `stream.fft.first` (etc.) across a
-        // dispose would hang forever.
-        _fftCtrl.close(),
-        _pcmStreamCtrl.close(),
-        _waveformCtrl.close(),
-        _loudnessMeterCtrl.close(),
-        _loudnessScanCtrl.close(),
-      ]),
-    );
+    await _streams.closeAll();
   }
 }
 

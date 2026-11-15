@@ -107,6 +107,7 @@ part 'mixins/player_teardown.part.dart';
 part 'mixins/player_tracks.part.dart';
 part 'player_base.part.dart';
 part 'source_resolver_driver.part.dart';
+part 'stream_hub.part.dart';
 part 'transport.part.dart';
 
 /// An audio player on libmpv: a queue, effects, analysis and the OS media

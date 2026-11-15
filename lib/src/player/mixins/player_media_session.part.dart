@@ -95,7 +95,7 @@ mixin _MediaSessionModule
     //    config change and push it to native via `updateConfig`.
     _updateField(
       (s) => s.copyWith(mediaSession: session),
-      _mediaSession,
+      _streams.mediaSession,
       session,
     );
 
@@ -115,7 +115,7 @@ mixin _MediaSessionModule
         }
         _updateField(
           (s) => s.copyWith(mediaSession: null),
-          _mediaSession,
+          _streams.mediaSession,
           null,
         );
       }
@@ -186,17 +186,17 @@ mixin _MediaSessionModule
         inputs: MediaSessionInputs(
           playWhenReady: _reactives.playWhenReady.changes,
           playing: _reactives.playing.changes,
-          buffering: _buffering.changes,
+          buffering: _streams.buffering.changes,
           rate: _reactives.rate.changes,
-          seekCompleted: _seekCompletedCtrl.stream,
+          seekCompleted: _streams.seekCompleted.stream,
           seekable: _reactives.seekable.changes,
-          loop: _loop.changes,
+          loop: _streams.loop.changes,
           shuffle: _reactives.shuffle.changes,
           duration: _reactives.duration.changes,
-          metadata: _metadata.changes,
-          coverArt: _coverArtCtrl.stream,
+          metadata: _streams.metadata.changes,
+          coverArt: _streams.coverArt.stream,
           mediaTitle: _reactives.mediaTitle.changes,
-          mediaSession: _mediaSession.changes,
+          mediaSession: _streams.mediaSession.changes,
         ),
         onCommand: _handleSessionCommand,
         onAudioOutputReset: _reloadAudioOutput,
@@ -271,7 +271,7 @@ mixin _MediaSessionModule
     // whether the command was auto-applied. Even for next and previous
     // on a single-media playlist (where auto-apply is a no-op) the
     // consumer needs to see the command to drive its own queue.
-    _mediaSessionCommandsCtrl.add(command);
+    _streams.mediaSessionCommands.add(command);
   }
 
   /// Runs the playlist step [nav] of a next or previous command when the

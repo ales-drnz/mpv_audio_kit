@@ -106,9 +106,9 @@ mixin _DispatchModule
   /// An mpv log line: on [PlayerStream.log], and on [PlayerStream.error]
   /// too at error and fatal.
   void _onLog(String prefix, LogLevel level, String text) {
-    _logCtrl.add(MpvLogEntry(prefix: prefix, level: level, text: text));
+    _streams.log.add(MpvLogEntry(prefix: prefix, level: level, text: text));
     if (level == LogLevel.error || level == LogLevel.fatal) {
-      _errorCtrl.add(LogError(prefix: prefix, level: level, text: text));
+      _streams.errors.add(LogError(prefix: prefix, level: level, text: text));
     }
   }
 

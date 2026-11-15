@@ -21,7 +21,7 @@ mixin _FileEventsModule on _PlayerBase, _PropertiesModule {
     _transport.onRestart();
     if (_state.playback.completed) _updateLifecycle(completed: false);
     _applyPolledPosition(timePos);
-    _seekCompletedCtrl.add(null);
+    _streams.seekCompleted.add(null);
   }
 
   /// The end-of-content read of the event isolate.
@@ -115,7 +115,7 @@ mixin _FileEventsModule on _PlayerBase, _PropertiesModule {
             mimeType: coverMime ?? 'application/octet-stream',
           );
     _state = _state.copyWith(coverArt: cover);
-    _coverArtCtrl.add(cover);
+    _streams.coverArt.add(cover);
     // Re-arm the waveform and the loudness scan on every load, the
     // same file loaded again included: a result kept across it may
     // belong to other content, or to a pass that failed. The path is no
@@ -145,7 +145,7 @@ mixin _FileEventsModule on _PlayerBase, _PropertiesModule {
     final media = _entries.onEndFile(entryId);
     _releaseSettled();
     final typedReason = MpvEndFileReason.fromValue(reason);
-    _endFileCtrl.add(
+    _streams.endFile.add(
       MpvFileEndedEvent(
         reason: typedReason,
         error: error,
@@ -157,7 +157,7 @@ mixin _FileEventsModule on _PlayerBase, _PropertiesModule {
       ),
     );
     if (error < 0) {
-      _errorCtrl.add(
+      _streams.errors.add(
         EndFileError(
           reason: typedReason,
           code: error,

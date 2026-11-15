@@ -149,7 +149,7 @@ mixin _NavigationModule on _PlayerBase, _QueueModule {
     // loop is derived from each echo against the mode in the state, and
     // the echo of an earlier call's `loop-file=no` read against the new
     // mode would pass through Loop.off.
-    _updateField((s) => s.copyWith(loop: loop), _loop, loop);
+    _updateField((s) => s.copyWith(loop: loop), _streams.loop, loop);
   }
 
   /// Enables or disables shuffle mode.

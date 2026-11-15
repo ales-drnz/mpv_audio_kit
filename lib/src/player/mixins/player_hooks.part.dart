@@ -245,7 +245,7 @@ mixin _HooksModule on _PlayerBase {
     // on, so the event is not handed to the consumer.
     if (_disposed || !pending()) return;
     if (_hooks.user.contains(name)) {
-      _hookCtrl.add(MpvHookEvent(id, hook));
+      _streams.hook.add(MpvHookEvent(id, hook));
     } else {
       await continueHook(id);
     }
