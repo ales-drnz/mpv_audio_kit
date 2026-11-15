@@ -1,0 +1,234 @@
+// Copyright © 2026 & onwards, Alessandro Di Ronza <ales.drnz@gmail.com>.
+// All rights reserved.
+// Use of this source code is governed by BSD 3-Clause license
+// that can be found in the LICENSE file.
+//
+// AUTO-GENERATED: do NOT edit by hand.
+//
+// Runtime af-command coverage. For every filter whose ffmpeg source
+// declares `.process_command` (the schema's `supports_commands` flag
+// is the gate for live updates in `audioEffectsDiff`), enable the filter on a
+// live playing mpv, then change each runtime-tunable option through
+// `Player.updateAudioEffects`: the diff must send it as `af-command`,
+// and mpv must accept it, which the player logs when it does not
+// before rebuilding the chain. A refusal here means the flag (or an
+// option's runtime flag) is wrong for the SHIPPED binary: fix the
+// codegen and regenerate.
+//
+// Probe values stay close to each option's default: corner values can
+// be DYNAMICALLY invalid even when statically inside the AVOption
+// range (e.g. a biquad frequency above Nyquist), and a failed runtime
+// reconfigure poisons the filter instance: every later command on it
+// fails too, which would read here as a bogus unsupported command.
+//
+// Enum, duration and free-string options have no schema-derivable safe
+// alternate value and are skipped (string-only filters carry curated
+// hand-probed values instead). Command-capable filters with NO
+// runtime-tunable options (none in this schema) can never
+// receive a diff command, so there is nothing to validate for them.
+
+@TestOn('mac-os || linux || windows')
+library;
+
+// ignore_for_file: prefer_const_constructors, prefer_const_literals_to_create_immutables, lines_longer_than_80_chars, unnecessary_const
+
+import 'dart:io';
+
+import 'package:mpv_audio_kit/mpv_audio_kit.dart';
+import 'package:mpv_audio_kit/src/generated/audio_effects_settings.dart'
+    show audioEffectsDiff;
+import 'package:mpv_audio_kit/src/player/player.dart' show afCommandRefusedLog;
+import 'package:test/test.dart';
+
+import '../_helpers/setter_test_helpers.dart';
+
+typedef AfCommandUpdate = ({
+  String label,
+  List<AudioEffect> Function(List<AudioEffect>) apply,
+});
+
+typedef AfCommandCase = ({
+  String filter,
+  String field,
+  List<AudioEffect> bundle,
+  List<AfCommandUpdate> updates,
+});
+
+void main() {
+  // The LONG fixture on purpose: the file loops for the whole run and
+  // every loop wrap resets the filter chain; a shorter file would
+  // multiply the command-vs-chain-reset races the retry below absorbs.
+  final fixturePath =
+      '${Directory.current.path}/test/fixtures/sine_5s.flac';
+
+  late Player player;
+
+  runtimeSuite(fixturePath: fixturePath, () {
+  setUpAll(() async {
+    player = Player(
+      configuration: const PlayerConfiguration(
+        logLevel: LogLevel.error,
+      ),
+    );
+    await player.setRawProperty('ao', 'null');
+    // af-command needs a LIVE filter graph as its target: keep the
+    // (silent) fixture playing on a loop for the whole run.
+    await player.setLoop(Loop.file);
+    await player.open(Media(fixturePath), play: true);
+    await player.stream.seekCompleted.first
+        .timeout(const Duration(seconds: 10));
+  });
+
+  tearDownAll(() async {
+    await player.dispose();
+  });
+
+  test(
+    'every supports_commands filter applies af-command on its runtime options',
+    () async {
+      final cases = <AfCommandCase>[
+        (
+          filter: 'acompressor',
+          field: 'acompressor_0',
+          bundle: const [AcompressorEffect()],
+          updates: <AfCommandUpdate>[
+            (
+              label: 'attack=21.0',
+              apply: (e) => [(e.single as AcompressorEffect).copyWith(attack: 21.0)],
+            ),
+            (
+              label: 'knee=3.82843',
+              apply: (e) => [(e.single as AcompressorEffect).copyWith(knee: 3.82843)],
+            ),
+            (
+              label: 'levelIn=2.0',
+              apply: (e) => [(e.single as AcompressorEffect).copyWith(levelIn: 2.0)],
+            ),
+            (
+              label: 'levelSc=2.0',
+              apply: (e) => [(e.single as AcompressorEffect).copyWith(levelSc: 2.0)],
+            ),
+            (
+              label: 'makeup=2.0',
+              apply: (e) => [(e.single as AcompressorEffect).copyWith(makeup: 2.0)],
+            ),
+            (
+              label: 'mix=0.5',
+              apply: (e) => [(e.single as AcompressorEffect).copyWith(mix: 0.5)],
+            ),
+            (
+              label: 'ratio=3.0',
+              apply: (e) => [(e.single as AcompressorEffect).copyWith(ratio: 3.0)],
+            ),
+            (
+              label: 'release=251.0',
+              apply: (e) => [(e.single as AcompressorEffect).copyWith(release: 251.0)],
+            ),
+            (
+              label: 'threshold=0.5625',
+              apply: (e) => [(e.single as AcompressorEffect).copyWith(threshold: 0.5625)],
+            ),
+          ],
+        ),
+        (
+          filter: 'afade',
+          field: 'afade_0',
+          bundle: const [AfadeEffect()],
+          updates: <AfCommandUpdate>[
+            (
+              label: 'nbSamples=44101',
+              apply: (e) => [(e.single as AfadeEffect).copyWith(nbSamples: 44101)],
+            ),
+            (
+              label: 'silence=0.5',
+              apply: (e) => [(e.single as AfadeEffect).copyWith(silence: 0.5)],
+            ),
+            (
+              label: 'startSample=1',
+              apply: (e) => [(e.single as AfadeEffect).copyWith(startSample: 1)],
+            ),
+            (
+              label: 'unity=0.5',
+              apply: (e) => [(e.single as AfadeEffect).copyWith(unity: 0.5)],
+            ),
+          ],
+        ),
+      ];
+
+      // mpv refuses an af-command until a rebuilt filter graph has
+      // seen its first frame, which comes after the audio already
+      // buffered past it: wait until playback has moved 0.6 s on
+      // without a jump back, which a loop wrap or the refresh seek of
+      // a rebuild makes, and which resets the graph again.
+      Future<double> timePos() async =>
+          double.tryParse(await player.getRawProperty('time-pos') ?? '') ??
+          0;
+      Future<void> flowing() async {
+        var start = await timePos();
+        var last = start;
+        final deadline = DateTime.now().add(const Duration(seconds: 8));
+        while (DateTime.now().isBefore(deadline)) {
+          await Future<void>.delayed(const Duration(milliseconds: 50));
+          final now = await timePos();
+          if (now < last) start = now;
+          last = now;
+          if (now >= start + 0.6) return;
+        }
+        fail('playback did not move on for 8 s');
+      }
+
+      // The player logs each live update mpv refuses before rebuilding
+      // the chain from the state.
+      var refusals = 0;
+      final logSub = player.stream.internalLog.listen((e) {
+        if (e.text == afCommandRefusedLog) refusals++;
+      });
+      addTearDown(logSub.cancel);
+      Future<bool> refusedLive(
+        List<AudioEffect> Function(List<AudioEffect>) apply,
+      ) async {
+        final before = refusals;
+        await player.updateAudioEffects(apply);
+        await pumpEventQueue();
+        return refusals != before;
+      }
+
+      for (final c in cases) {
+        // Without libmpv-scripts' chain_eof patch, mpv stalls at the end
+        // of a file when a chain change there drops lavfi-dynaudnorm with
+        // the EOF it holds: change the chain at the start.
+        await player.seek(Duration.zero);
+        await player.setAudioEffects(c.bundle);
+        await flowing();
+        final baseline = await player.getRawProperty('af');
+        expect(baseline, contains('@aek_${c.field}:'),
+            reason: '${c.filter}: enabled stage must carry its chain label',);
+        for (final u in c.updates) {
+          final next = u.apply(player.state.audioEffects);
+          expect(audioEffectsDiff(player.state.audioEffects, next),
+              allOf(isNotNull, isNotEmpty),
+              reason: '${c.filter} ${u.label}: not sent as a live update',);
+          var refused = await refusedLive(u.apply);
+          for (var attempt = 1; refused && attempt < 5; attempt++) {
+            // A loop wrap resets the graph as well, and the refusal rebuilt
+            // the stage. Re-arm the baseline, let the audio reach the new
+            // graph and retry: an unsupported command is refused every time,
+            // a race is not.
+            await player.setAudioEffects(c.bundle);
+            await flowing();
+            refused = await refusedLive(u.apply);
+          }
+          expect(refused, isFalse,
+              reason: '${c.filter} ${u.label}: mpv refused the af-command, '
+                  'so supports_commands (or the option runtime flag) is wrong '
+                  'for the shipped binary',);
+        }
+      }
+
+      // Leave a clean chain behind for whatever runs next.
+      await player.setAudioEffects(const []);
+    },
+    timeout: const Timeout(Duration(minutes: 4)),
+  );
+  });
+}

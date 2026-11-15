@@ -156,6 +156,13 @@ jobs:
         run: |
           scripts/publish.sh --versions
           flutter pub publish --dry-run
+      # The generator's Python: ruff (tool/codegen/ruff.toml) and its golden
+      # tests, which need no FFmpeg source.
+      - name: Codegen lint and tests
+        if: matrix.flutter == 'stable'
+        run: |
+          pipx run ruff==0.14.3 check tool/codegen
+          cd tool/codegen && python3 -m unittest discover -s tests -t .
       # The FFmpeg tarball the generator parses comes from the cache, not
       # from ffmpeg.org on every run: fetch_ffmpeg_src.sh keeps it and checks
       # its SHA-256 either way.
