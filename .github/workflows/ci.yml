@@ -717,6 +717,20 @@ jobs:
             xvfb-run -a dbus-run-session -- \
               flutter test -d linux -r expanded "integration_test/$f.dart"
           done
+      # The same playback tests in the running app on Windows and macOS. The
+      # runners have no sound device: the player falls back to the null
+      # output (audio-fallback-to-null) and the clock still runs.
+      - name: Playback integration tests
+        if: matrix.name == 'Windows' || matrix.name == 'macOS (SwiftPM)'
+        timeout-minutes: 15
+        working-directory: test_app
+        shell: bash
+        run: |
+          device=windows
+          [[ "${{ matrix.name }}" == 'macOS (SwiftPM)' ]] && device=macos
+          for f in smoke_test codec_coverage_test; do
+            flutter test -d "$device" -r expanded "integration_test/$f.dart"
+          done
       # media_session_test reads the plugin's probe, windows_smtc_test what
       # the SystemMediaTransportControls themselves hold.
       - name: Media session integration tests
