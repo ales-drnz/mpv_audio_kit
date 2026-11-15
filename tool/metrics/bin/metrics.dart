@@ -322,12 +322,12 @@ Map<String, int>? playerBaseMetrics(CompilationUnit unit) {
   for (final d in unit.declarations) {
     if (d is! ClassDeclaration || nameOf(d) != '_PlayerBase') continue;
     var fields = 0, nonFinal = 0, abstract = 0;
-    for (final m in d.members) {
+    for (final m in d.body.members) {
       if (m is FieldDeclaration && !m.isStatic) {
         final n = m.fields.variables.length;
         fields += n;
         if (!m.fields.isFinal && !m.fields.isConst) nonFinal += n;
-      } else if (m is MethodDeclaration && m.isAbstract) {
+      } else if (m is MethodDeclaration && !m.isComplete) {
         abstract++;
       }
     }
@@ -337,4 +337,4 @@ Map<String, int>? playerBaseMetrics(CompilationUnit unit) {
 }
 
 /// The name of a class.
-String nameOf(ClassDeclaration d) => d.name.lexeme;
+String nameOf(ClassDeclaration d) => d.namePart.typeName.lexeme;

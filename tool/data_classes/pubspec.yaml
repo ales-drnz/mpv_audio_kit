@@ -6,4 +6,4 @@ environment:
   sdk: ^3.10.0
 
 dependencies:
-  analyzer: ^9.0.0
+  analyzer: ^14.7.0

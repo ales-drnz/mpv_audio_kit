@@ -96,7 +96,12 @@ String _relative(String path) {
 }
 
 List<String> _names(CompilationUnitMember d) => switch (d) {
-  NamedCompilationUnitMember(:final name) => [name.lexeme],
+  ClassDeclaration(:final namePart) ||
+  EnumDeclaration(:final namePart) ||
+  ExtensionTypeDeclaration(:final namePart) => [namePart.typeName.lexeme],
+  FunctionDeclaration(:final name) ||
+  MixinDeclaration(:final name) ||
+  TypeAlias(:final name) => [name.lexeme],
   TopLevelVariableDeclaration(:final variables) => [
     for (final v in variables.variables) v.name.lexeme,
   ],
@@ -123,7 +128,7 @@ List<String> _describe(
   final members = <String>{};
   _members(d, library, members, {});
   if (d is EnumDeclaration) {
-    for (final c in d.constants) {
+    for (final c in d.body.constants) {
       members.add('${c.name.lexeme}${c.arguments?.toSource() ?? ''}');
     }
   }
@@ -175,19 +180,19 @@ void _members(
   final supers = <String>[];
   switch (d) {
     case ClassDeclaration():
-      members = d.members;
+      members = d.body.members;
       final e = d.extendsClause?.superclass.name.lexeme;
       if (e != null) supers.add(e);
       supers.addAll(d.withClause?.mixinTypes.map((t) => t.name.lexeme) ?? []);
     case MixinDeclaration():
-      members = d.members;
+      members = d.body.members;
     case EnumDeclaration():
-      members = d.members;
+      members = d.body.members;
       supers.addAll(d.withClause?.mixinTypes.map((t) => t.name.lexeme) ?? []);
     case ExtensionDeclaration():
-      members = d.members;
+      members = d.body.members;
     case ExtensionTypeDeclaration():
-      members = d.members;
+      members = d.body.members;
     default:
       return;
   }
@@ -234,6 +239,10 @@ String? _member(ClassMember m) {
           ? ' = ${v.variables.map((x) => x.initializer?.toSource()).join(', ')}'
           : '';
       return '$keyword ${v.type?.toSource() ?? ''} ${names.join(', ')}$constValue';
+    // The body of a primary constructor (`this : ... { ... }`): its
+    // parameters are in the header of the type, the rest is no API.
+    case PrimaryConstructorBody():
+      return null;
   }
 }
 

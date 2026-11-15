@@ -14,9 +14,9 @@ List<String> structLayout(CompilationUnit Function(String) parse) {
   for (final d in bindings.declarations.whereType<ClassDeclaration>()) {
     final base = d.extendsClause?.superclass.name.lexeme;
     if (base != 'Struct' && base != 'Union') continue;
-    final name = d.name.lexeme;
+    final name = d.namePart.typeName.lexeme;
     var index = 0;
-    for (final m in d.members.whereType<FieldDeclaration>()) {
+    for (final m in d.body.members.whereType<FieldDeclaration>()) {
       if (m.isStatic) continue;
       final native = m.metadata.map((a) => a.toSource()).join(' ');
       for (final v in m.fields.variables) {

@@ -58,16 +58,20 @@ class ComplexityVisitor extends RecursiveAstVisitor<void> {
   }
 
   @override
-  void visitClassDeclaration(ClassDeclaration node) =>
-      _inContainer(node.name.lexeme, () => super.visitClassDeclaration(node));
+  void visitClassDeclaration(ClassDeclaration node) => _inContainer(
+    node.namePart.typeName.lexeme,
+    () => super.visitClassDeclaration(node),
+  );
 
   @override
   void visitMixinDeclaration(MixinDeclaration node) =>
       _inContainer(node.name.lexeme, () => super.visitMixinDeclaration(node));
 
   @override
-  void visitEnumDeclaration(EnumDeclaration node) =>
-      _inContainer(node.name.lexeme, () => super.visitEnumDeclaration(node));
+  void visitEnumDeclaration(EnumDeclaration node) => _inContainer(
+    node.namePart.typeName.lexeme,
+    () => super.visitEnumDeclaration(node),
+  );
 
   @override
   void visitExtensionDeclaration(ExtensionDeclaration node) => _inContainer(
@@ -78,7 +82,7 @@ class ComplexityVisitor extends RecursiveAstVisitor<void> {
   @override
   void visitExtensionTypeDeclaration(ExtensionTypeDeclaration node) =>
       _inContainer(
-        node.name.lexeme,
+        node.namePart.typeName.lexeme,
         () => super.visitExtensionTypeDeclaration(node),
       );
 
