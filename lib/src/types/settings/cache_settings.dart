@@ -23,6 +23,13 @@ final class CacheSettings {
   final Duration secs;
 
   /// Whether to spill cache to disk instead of holding it in memory.
+  ///
+  /// Not a persistent cache: mpv creates a new file with a random name in
+  /// [PlayerConfiguration.demuxerCacheDir] each time it opens a source, and
+  /// never reads an earlier one. By default it deletes the file as soon as
+  /// it creates it. A source played again is downloaded again. To keep a
+  /// file for offline listening, download it in Dart and open the local
+  /// file.
   final bool onDisk;
 
   /// Whether playback pauses when the cache runs empty (network stall).
