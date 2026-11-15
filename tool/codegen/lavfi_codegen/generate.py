@@ -880,7 +880,7 @@ def _emit_settings_class(filter_name: str, fdata: dict) -> str:
             for pn in params
         ):
             lines.append(
-                f"  @Deprecated('marked AV_OPT_FLAG_DEPRECATED in libavfilter')"
+                "  @Deprecated('marked AV_OPT_FLAG_DEPRECATED in libavfilter')"
             )
         lines.append(f"  final {ftype} {name};")
     lines.append("")

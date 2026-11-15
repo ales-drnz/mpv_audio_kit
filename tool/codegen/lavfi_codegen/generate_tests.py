@@ -39,7 +39,6 @@ import json
 import re
 import subprocess
 import sys
-from pathlib import Path
 from typing import Optional
 
 from .config import Config, NamingConfig, WireConfig
@@ -56,7 +55,6 @@ from .required_params import (
     PRESETS,
     REQUIRED_PARAMS,
     SAMPLE_VALUES,
-    required_for,
 )
 
 # Per-run wire flavour; mirrors the same handle in generate.py — the
@@ -572,7 +570,7 @@ def _emit_enum_group(enum_id: str, members: list[dict]) -> str:
     lines: list[str] = []
     getter = _WIRE.value_getter
     parser = _WIRE.from_method
-    lines.append(f"  group('$enum_id (codegen enum)', () {{".replace(
+    lines.append("  group('$enum_id (codegen enum)', () {".replace(
         "$enum_id", enum_id))
     lines.append(
         f"    test('every member round-trips via {getter} / {parser}', () {{"
