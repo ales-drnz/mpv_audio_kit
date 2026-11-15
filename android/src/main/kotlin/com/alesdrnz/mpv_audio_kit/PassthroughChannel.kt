@@ -97,6 +97,10 @@ internal class PassthroughChannel(
     class Device(private val context: Context) : Probe {
         override val sdk: Int get() = Build.VERSION.SDK_INT
 
+        // Deprecated from API 33 for AudioManager.getDirectPlaybackSupport,
+        // whose answer counts offload playback too: switching would change
+        // which codecs are reported, so the call stays.
+        @Suppress("DEPRECATION")
         override fun direct(encoding: Int): Boolean {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return false
             val format = AudioFormat.Builder()
