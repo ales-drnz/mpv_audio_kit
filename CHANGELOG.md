@@ -27,6 +27,10 @@
 - A libmpv download that fails on the network names the release and the asset, and the `libmpv` user define that builds without network.
 - `setVolume` above `volumeMax` and `setVolumeGain` outside `volumeGainMin` and `volumeGainMax` play the value again, as their docs say. On mpv 0.42.0 they threw `MpvCommandException`.
 
+**Docs**
+- A Platforms topic says what each platform has: output drivers, devices, passthrough, media session, SMB, analysis, live PCM and cover.
+- The Network and cache topic and `CacheSettings.onDisk` say the disk cache is not persistent, with a recipe for offline listening. The Output topic says why Android has no audio offload.
+
 ### Android
 **Changed**
 - Media3 1.11.1.
