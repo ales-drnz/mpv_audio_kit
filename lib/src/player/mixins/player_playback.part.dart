@@ -182,8 +182,8 @@ mixin _PlaybackModule on _PlayerBase, _PropertiesModule {
     // mpv clears its playlist on stop but reports the change only when a
     // file was playing. Idle (after a failed load) it stays silent, so the
     // state would keep the old entries and the live sources they hold.
-    final (rc, node) = await _calls.get('playlist', MpvFormat.mpvFormatNode);
-    if (rc >= 0 && node is List && !_disposed) _updatePlaylistFromNode(node);
+    final node = await _readPlaylist();
+    if (node != null) _updatePlaylistFromNode(node);
   }
 
   /// Seeks playback to a position in the current file.
