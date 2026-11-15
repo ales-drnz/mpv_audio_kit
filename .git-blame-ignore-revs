@@ -1,2 +1,14 @@
 # Repo-wide reformat with the tall-style formatter (no logic change).
 493277dedbbf6ce3014138ecded59282ee71c3f4
+# K10 moves of 0.7.2, no logic change: the libmpv functions in ffi/.
+d9521a935435ffdd03d2f8433651f7cd1f0573ca
+# The five structs only the tests use, moved to test/.
+24043bb44c90f78fe2e366aac5e5db01498af34a
+# event_isolate.dart in four files.
+91b6b5b2c7540c242971ee015ab67bd0a96e0b51
+# default_specs.dart in a part per domain.
+12cc3a32d169d78edaf039c5467ec1da385bd3f6
+# The poll and the registry of the live PCM sources in parts.
+b7ff433f6fa360a5bc98f217d3d0ada1aa9e4e25
+# The URI functions of the media session in media_session_uris.dart.
+64c2833523949746ae1f509eb07cc878ff98b61c
