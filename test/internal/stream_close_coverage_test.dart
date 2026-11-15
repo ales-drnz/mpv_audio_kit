@@ -107,10 +107,18 @@ void main() {
       );
       // Closed by PropertyRegistry.closeAll, through the spec that owns
       // the cell.
-      final bySpec = {
+      // buildDefaultSpecs and the parts it spreads its specs from.
+      final library = _read('lib/src/reactive/default_specs.dart');
+      final specs = [
+        _code(library),
         for (final m in RegExp(
-          r'reactive:\s*r\.(\w+)',
-        ).allMatches(_code(_read('lib/src/reactive/default_specs.dart'))))
+          r"^part '(\w+\.dart)';",
+          multiLine: true,
+        ).allMatches(library))
+          _code(_read('lib/src/reactive/${m.group(1)}')),
+      ].join('\n');
+      final bySpec = {
+        for (final m in RegExp(r'reactive:\s*r\.(\w+)').allMatches(specs))
           m.group(1)!,
       };
       final byHand = {

@@ -13,6 +13,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mpv_audio_kit/src/internals/library_loader.dart';
 import 'package:mpv_audio_kit/src/mpv_bindings.dart';
 
+import '../_helpers/fake_mpv_library.dart';
+
 void main() {
   // reapOrphanedHandles is the teardown for libmpv handles leaked across
   // a Hot-Restart (library_loader). The leak the user reported was caused by
@@ -164,13 +166,13 @@ void main() {
 }
 
 /// Stub [MpvLibrary] recording the ordered sequence of the two FFI calls
-/// the reaper makes. Built via [MpvLibrary.uninitializedForTest] so any
-/// stray call to another binding trips a [LateInitializationError]. The
+/// the reaper makes. A [FakeMpvLibrary], so any stray call to another
+/// binding throws. The
 /// reap destroys through [destroy], in place of its default that destroys
 /// a real core in another isolate.
-class _SpyMpvLibrary extends MpvLibrary {
-  _SpyMpvLibrary() : super.uninitializedForTest() {
-    mpvCommandString = (handle, cmd) {
+class _SpyMpvLibrary extends FakeMpvLibrary {
+  _SpyMpvLibrary() {
+    commandString = (handle, cmd) {
       commandStringCalls++;
       final c = cmd.cast<Utf8>().toDartString();
       events.add('$c:${handle.address}');
@@ -179,7 +181,7 @@ class _SpyMpvLibrary extends MpvLibrary {
       }
       return 0;
     };
-    mpvTerminateDestroy = (handle) {
+    terminateDestroy = (handle) {
       terminateDestroyCalls++;
       events.add('terminate:${handle.address}');
     };

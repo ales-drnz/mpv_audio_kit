@@ -64,9 +64,6 @@ final class FakeMpv implements MpvRequests {
     }
   }
 
-  @override
-  bool isClosed = false;
-
   Future<T> _reply<T>(T value) async {
     if (_holding) {
       final c = Completer<void>();

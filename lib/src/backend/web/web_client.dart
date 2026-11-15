@@ -39,9 +39,6 @@ final class WebClient implements MpvRequests {
   bool _closed = false;
 
   @override
-  bool get isClosed => _closed;
-
-  @override
   Future<int> setProperty(String name, String value) {
     if (_closed) return Future.value(MpvError.mpvErrorSuccess);
     return _send(

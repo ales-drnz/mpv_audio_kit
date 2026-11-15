@@ -4,9 +4,10 @@
 
 // Build hook: fetches the libmpv binary for the target from the
 // libmpv-<release> GitHub release, checks its SHA-256 and bundles it as the
-// code asset `package:mpv_audio_kit/libmpv`, which lib/src/mpv_bindings.dart
-// binds with @Native. One script for every platform, in place of a Gradle
-// task, two podspecs, two SwiftPM manifests and two CMake files.
+// code asset `package:mpv_audio_kit/libmpv`, which
+// lib/src/ffi/mpv_library_bundled.dart binds with @Native. One script for
+// every platform, in place of a Gradle task, two podspecs, two SwiftPM
+// manifests and two CMake files.
 //
 // Offline builds and custom binaries: point the app at a local copy with
 //

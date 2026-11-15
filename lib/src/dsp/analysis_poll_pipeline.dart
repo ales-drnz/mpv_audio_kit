@@ -8,6 +8,7 @@ import 'package:meta/meta.dart';
 
 import '../mpv_constants.dart';
 import 'dsp_async_io.dart';
+import 'poll_loop.dart';
 import 'shared_property_writer.dart';
 
 /// The polling shared by the per-file analyses (waveform, loudness scan).
@@ -49,7 +50,7 @@ abstract class AnalysisPollPipeline<T extends Object> {
   final Duration _pollInterval;
 
   final StreamController<T?> _ctrl = StreamController<T?>.broadcast();
-  Timer? _pollTimer;
+  late final PollLoop _loop = PollLoop(_poll, _doPoll);
   T? _result;
   // The result of the file loaded again, kept on screen until the first
   // reply says whether it stands (see [reset]).
@@ -75,8 +76,6 @@ abstract class AnalysisPollPipeline<T extends Object> {
   // No file loaded (after [clear]): mpv still holds the last file's
   // analysis, so nothing is polled until the next [reset].
   bool _idle = false;
-  // Guards against overlapping async polls; see [LoudnessMeterPipeline].
-  bool _polling = false;
 
   Stream<T?> get stream => _ctrl.stream;
 
@@ -214,10 +213,7 @@ abstract class AnalysisPollPipeline<T extends Object> {
   }
 
   @protected
-  void stopPolling() {
-    _pollTimer?.cancel();
-    _pollTimer = null;
-  }
+  void stopPolling() => _loop.disarm();
 
   void _drop() {
     _result = null;
@@ -228,15 +224,13 @@ abstract class AnalysisPollPipeline<T extends Object> {
 
   void _armTimer() {
     if (_disposed || _idle || _result != null) return;
-    _pollTimer?.cancel();
-    _pollTimer = Timer.periodic(_pollInterval, (_) => _poll());
+    _loop.rearm(_pollInterval);
     _poll();
   }
 
   void _poll() {
-    if (_disposed || _polling || _result != null) return;
-    _polling = true;
-    unawaited(_doPoll().whenComplete(() => _polling = false));
+    if (_disposed || _result != null) return;
+    _loop.run();
   }
 
   Future<void> _doPoll() async {

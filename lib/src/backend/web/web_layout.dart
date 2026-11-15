@@ -10,25 +10,12 @@
 import 'package:meta/meta.dart';
 
 import '../../internals/libmpv_release.dart';
+import '../../internals/struct_layout.dart';
 
 /// The `struct` sizes and offsets of the client API on wasm32, in the order
-/// of `mak_web_layout()` (scripts/web/mak_web.c of libmpv-scripts): sizeof
-/// and offsetof of mpv_node, mpv_node_list, mpv_byte_array, mpv_event,
-/// mpv_event_property, mpv_event_log_message, mpv_event_end_file (with the
-/// four fields of the patch read_error) and mpv_event_hook: the offsets
-/// the decoder reads (event_decoder.dart) for a 4-byte pointer.
-const List<int> _kLayout = [
-  16, 8, // mpv_node: size, format
-  12, 4, 8, // mpv_node_list: size, values, keys
-  8, 4, // mpv_byte_array: size, size field
-  24, 4, 8, 16, // mpv_event: size, error, reply_userdata, data
-  12, 4, 8, // mpv_event_property: size, format, data
-  16, 8, 12, // mpv_event_log_message: size, text, log_level
-  56, 4, 8, 16, 24, // mpv_event_end_file: size, error, entry, insert, num
-  28, 32, // mpv_event_end_file: mak_read_error, mak_skipped_segments
-  40, 48, // mpv_event_end_file: mak_duration, mak_position
-  16, 8, // mpv_event_hook: size, id
-];
+/// of `mak_web_layout()`: the ilp32 table the decoder reads
+/// (struct_layout.dart).
+final List<int> _kLayout = StructLayout.ilp32.webTable;
 
 /// Checks [version], what the module's `mak_web_abi_version()` returned
 /// (`null` for a module without it), against [webModuleAbi].

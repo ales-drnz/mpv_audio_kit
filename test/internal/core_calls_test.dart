@@ -313,8 +313,6 @@ final class _OffMainMpv implements MpvHookContinueOffMain {
   void hookContinueOffMain(int id) => offMain.add(id);
 
   @override
-  bool get isClosed => _mpv.isClosed;
-  @override
   Future<int> setProperty(String name, String value) =>
       _mpv.setProperty(name, value);
   @override

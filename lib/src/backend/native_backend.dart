@@ -244,9 +244,6 @@ final class _NativeSession implements MpvSession, MpvHookContinueOffMain {
   // ── MpvRequests, through the async client ─────────────────────────────
 
   @override
-  bool get isClosed => _client.isClosed;
-
-  @override
   Future<int> setProperty(String name, String value) =>
       _client.setProperty(name, value);
 
