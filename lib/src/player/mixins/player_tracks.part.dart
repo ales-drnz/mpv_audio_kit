@@ -136,12 +136,12 @@ mixin _TracksModule on _PlayerBase {
   /// does not reach [PlayerStream.coverArt], which carries only embedded
   /// cover bytes, whatever this setting.
   Future<void> setCoverArtAuto(Cover cover) async {
-    await _gate();
-    await _calls.prop('cover-art-auto', cover.mpvValue);
-    _updateField(
-      (s) => s.copyWith(coverArtAuto: cover),
+    await _write(
+      'cover-art-auto',
+      cover.mpvValue,
       _reactives.coverArtAuto,
       cover,
+      (s) => s.copyWith(coverArtAuto: cover),
     );
   }
 }

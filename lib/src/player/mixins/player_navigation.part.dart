@@ -191,12 +191,12 @@ mixin _NavigationModule on _PlayerBase, _QueueModule {
   /// - an entry with [Media.demuxerLavfOptions], and the entry after it;
   /// - a live [PcmSource] entry, and the entry after it.
   Future<void> setPrefetchPlaylist(bool enabled) async {
-    await _gate();
-    await _calls.prop('prefetch-playlist', enabled ? 'yes' : 'no');
-    _updateField(
-      (s) => s.copyWith(prefetchPlaylist: enabled),
+    await _write(
+      'prefetch-playlist',
+      enabled ? 'yes' : 'no',
       _reactives.prefetchPlaylist,
       enabled,
+      (s) => s.copyWith(prefetchPlaylist: enabled),
     );
   }
 }

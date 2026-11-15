@@ -472,6 +472,23 @@ abstract class _PlayerBase {
     _state = updater(_state);
   }
 
+  /// The body of a typed setter: past the [_gate], writes [wire] to the
+  /// mpv property [name], then, once mpv confirmed the write, folds
+  /// [value] into [cell] and into the state through [fold] (see
+  /// [_updateField]). A failed write throws [MpvCommandException] and
+  /// changes nothing.
+  Future<void> _write<T>(
+    String name,
+    String wire,
+    ReactiveProperty<T> cell,
+    T value,
+    PlayerState Function(PlayerState) fold,
+  ) async {
+    await _gate();
+    await _calls.prop(name, wire);
+    _updateField(fold, cell, value);
+  }
+
   /// mpv reported the output [state]: an output that failed is an error on
   /// [PlayerStream.error], and one that opened may be the null driver.
   void _onAudioOutputState(AudioOutputState state) {

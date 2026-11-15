@@ -334,30 +334,24 @@ mixin _PlaybackModule on _PlayerBase, _PropertiesModule {
   /// of the file seeks back to A again and again. A live [PcmSource] entry
   /// plays on past B.
   Future<void> setAbLoopA(Duration? position) async {
-    await _gate();
-    await _calls.prop(
+    await _write(
       'ab-loop-a',
       position == null ? 'no' : durationToSeconds(position).toStringAsFixed(6),
-    );
-    _updateField(
-      (s) => s.copyWith(abLoopA: position),
       _reactives.abLoopA,
       position,
+      (s) => s.copyWith(abLoopA: position),
     );
   }
 
   /// Sets the A-B loop end point. Pass `null` to disable. Like A, it
   /// belongs to the current file. See [setAbLoopA].
   Future<void> setAbLoopB(Duration? position) async {
-    await _gate();
-    await _calls.prop(
+    await _write(
       'ab-loop-b',
       position == null ? 'no' : durationToSeconds(position).toStringAsFixed(6),
-    );
-    _updateField(
-      (s) => s.copyWith(abLoopB: position),
       _reactives.abLoopB,
       position,
+      (s) => s.copyWith(abLoopB: position),
     );
   }
 
@@ -370,15 +364,12 @@ mixin _PlaybackModule on _PlayerBase, _PropertiesModule {
     if (count != null && count < 0) {
       throw ArgumentError.value(count, 'count', 'must be null (= inf) or >= 0');
     }
-    await _gate();
-    await _calls.prop(
+    await _write(
       'ab-loop-count',
       count == null ? 'inf' : count.toString(),
-    );
-    _updateField(
-      (s) => s.copyWith(abLoopCount: count),
       _reactives.abLoopCount,
       count,
+      (s) => s.copyWith(abLoopCount: count),
     );
   }
 }

@@ -40,12 +40,12 @@ mixin _OutputModule on _PlayerBase, _PropertiesModule {
   ///
   /// Other drivers ignore it.
   Future<void> setAudioExclusive(bool exclusive) async {
-    await _gate();
-    await _calls.prop('audio-exclusive', exclusive ? 'yes' : 'no');
-    _updateField(
-      (s) => s.copyWith(audioExclusive: exclusive),
+    await _write(
+      'audio-exclusive',
+      exclusive ? 'yes' : 'no',
       _reactives.audioExclusive,
       exclusive,
+      (s) => s.copyWith(audioExclusive: exclusive),
     );
   }
 
@@ -56,12 +56,12 @@ mixin _OutputModule on _PlayerBase, _PropertiesModule {
   /// the content type as music: the usage stays media, so routing and
   /// volume do not change. Other drivers ignore it.
   Future<void> setAudioMediaRole(bool enable) async {
-    await _gate();
-    await _calls.prop('audio-set-media-role', enable ? 'yes' : 'no');
-    _updateField(
-      (s) => s.copyWith(audioMediaRole: enable),
+    await _write(
+      'audio-set-media-role',
+      enable ? 'yes' : 'no',
       _reactives.audioMediaRole,
       enable,
+      (s) => s.copyWith(audioMediaRole: enable),
     );
   }
 
@@ -83,12 +83,12 @@ mixin _OutputModule on _PlayerBase, _PropertiesModule {
   Future<void> setAudioSpdif(Set<Spdif> codecs) async {
     // A copy: the caller's set, changed later, must not change the state.
     final value = Set<Spdif>.unmodifiable(codecs);
-    await _gate();
-    await _calls.prop('audio-spdif', Spdif.formatMpvList(value));
-    _updateField(
-      (s) => s.copyWith(audioSpdif: value),
+    await _write(
+      'audio-spdif',
+      Spdif.formatMpvList(value),
       _reactives.audioSpdif,
       value,
+      (s) => s.copyWith(audioSpdif: value),
     );
   }
 
@@ -149,12 +149,12 @@ mixin _OutputModule on _PlayerBase, _PropertiesModule {
   /// resolution. Changed during playback, it reopens the output, with a
   /// short gap. A track in passthrough ([setAudioSpdif]) ignores it.
   Future<void> setAudioFormat(Format format) async {
-    await _gate();
-    await _calls.prop('audio-format', format.mpvValue);
-    _updateField(
-      (s) => s.copyWith(audioFormat: format),
+    await _write(
+      'audio-format',
+      format.mpvValue,
       _reactives.audioFormat,
       format,
+      (s) => s.copyWith(audioFormat: format),
     );
   }
 
@@ -164,23 +164,23 @@ mixin _OutputModule on _PlayerBase, _PropertiesModule {
   /// string. Changed during playback, it reopens the output, with a short
   /// gap. A track in passthrough ([setAudioSpdif]) ignores it.
   Future<void> setAudioChannels(Channels channels) async {
-    await _gate();
-    await _calls.prop('audio-channels', channels.mpvValue);
-    _updateField(
-      (s) => s.copyWith(audioChannels: channels),
+    await _write(
+      'audio-channels',
+      channels.mpvValue,
       _reactives.audioChannels,
       channels,
+      (s) => s.copyWith(audioChannels: channels),
     );
   }
 
   /// Sets the audio client name.
   Future<void> setAudioClientName(String name) async {
-    await _gate();
-    await _calls.prop('audio-client-name', name);
-    _updateField(
-      (s) => s.copyWith(audioClientName: name),
+    await _write(
+      'audio-client-name',
+      name,
       _reactives.audioClientName,
       name,
+      (s) => s.copyWith(audioClientName: name),
     );
   }
 
@@ -196,15 +196,15 @@ mixin _OutputModule on _PlayerBase, _PropertiesModule {
   /// `auto` (setting `ao=auto` fails to initialize any output), so both
   /// are normalized to an empty `ao`, which is mpv's auto-probe value.
   Future<void> setAudioDriver(String driver) async {
-    await _gate();
     // 'auto' is a convenience alias for mpv's empty-string auto-probe;
     // the literal string 'auto' is not a valid AO backend.
     final ao = driver == 'auto' ? '' : driver;
-    await _calls.prop('ao', ao);
-    _updateField(
-      (s) => s.copyWith(audioDriver: ao),
+    await _write(
+      'ao',
+      ao,
       _reactives.audioDriver,
       ao,
+      (s) => s.copyWith(audioDriver: ao),
     );
   }
 }

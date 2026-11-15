@@ -73,15 +73,12 @@ mixin _NetworkModule on _PlayerBase {
   /// [PcmSource] entry opened with `lowLatency`, a new value holds only
   /// until that entry ends.
   Future<void> setAudioBuffer(Duration size) async {
-    await _gate();
-    await _calls.prop(
+    await _write(
       'audio-buffer',
       durationToSeconds(size).toStringAsFixed(6),
-    );
-    _updateField(
-      (s) => s.copyWith(audioBuffer: size),
       _reactives.audioBuffer,
       size,
+      (s) => s.copyWith(audioBuffer: size),
     );
   }
 
@@ -89,12 +86,12 @@ mixin _NetworkModule on _PlayerBase {
   ///
   /// On Android the default `audiotrack` driver streams the silence.
   Future<void> setAudioStreamSilence(bool enable) async {
-    await _gate();
-    await _calls.prop('audio-stream-silence', enable ? 'yes' : 'no');
-    _updateField(
-      (s) => s.copyWith(audioStreamSilence: enable),
+    await _write(
+      'audio-stream-silence',
+      enable ? 'yes' : 'no',
       _reactives.audioStreamSilence,
       enable,
+      (s) => s.copyWith(audioStreamSilence: enable),
     );
   }
 
@@ -114,19 +111,16 @@ mixin _NetworkModule on _PlayerBase {
   /// seconds, with no limit on the reads after it, and a stop, a track
   /// change or a dispose interrupts a connect or a read at once.
   Future<void> setNetworkTimeout(Duration timeout) async {
-    await _gate();
     if (timeout > _kMaxNetworkTimeout) timeout = _kMaxNetworkTimeout;
     // mpv's `network-timeout` accepts a fractional second value (e.g.
     // "0.5"). Truncating with `inSeconds` would collapse any sub-second
     // duration to 0, which mpv interprets as "no timeout".
-    await _calls.prop(
+    await _write(
       'network-timeout',
       durationToSeconds(timeout).toStringAsFixed(6),
-    );
-    _updateField(
-      (s) => s.copyWith(networkTimeout: timeout),
       _reactives.networkTimeout,
       timeout,
+      (s) => s.copyWith(networkTimeout: timeout),
     );
   }
 
@@ -135,12 +129,12 @@ mixin _NetworkModule on _PlayerBase {
   /// Off by default (see [PlayerSettings.tlsVerify]); a later release
   /// turns it on by default.
   Future<void> setTlsVerify(bool enable) async {
-    await _gate();
-    await _calls.prop('tls-verify', enable ? 'yes' : 'no');
-    _updateField(
-      (s) => s.copyWith(tlsVerify: enable),
+    await _write(
+      'tls-verify',
+      enable ? 'yes' : 'no',
       _reactives.tlsVerify,
       enable,
+      (s) => s.copyWith(tlsVerify: enable),
     );
   }
 
@@ -157,12 +151,12 @@ mixin _NetworkModule on _PlayerBase {
   /// this bundle too, on top of the system roots rather than in place of
   /// them, and always verify the certificate, whatever [setTlsVerify].
   Future<void> setTlsCaFile(String path) async {
-    await _gate();
-    await _calls.prop('tls-ca-file', path);
-    _updateField(
-      (s) => s.copyWith(tlsCaFile: path),
+    await _write(
+      'tls-ca-file',
+      path,
       _reactives.tlsCaFile,
       path,
+      (s) => s.copyWith(tlsCaFile: path),
     );
   }
 
@@ -173,12 +167,12 @@ mixin _NetworkModule on _PlayerBase {
   /// next load. The initial policy can also be set via
   /// `PlayerConfiguration.hlsBitrate`.
   Future<void> setHlsBitrate(HlsBitrate hlsBitrate) async {
-    await _gate();
-    await _calls.prop('hls-bitrate', hlsBitrate.mpvValue);
-    _updateField(
-      (s) => s.copyWith(hlsBitrate: hlsBitrate),
+    await _write(
+      'hls-bitrate',
+      hlsBitrate.mpvValue,
       _reactives.hlsBitrate,
       hlsBitrate,
+      (s) => s.copyWith(hlsBitrate: hlsBitrate),
     );
   }
 
@@ -186,12 +180,12 @@ mixin _NetworkModule on _PlayerBase {
   ///
   /// Takes effect on the next load. Default `false`.
   Future<void> setCookies(bool enable) async {
-    await _gate();
-    await _calls.prop('cookies', enable ? 'yes' : 'no');
-    _updateField(
-      (s) => s.copyWith(cookies: enable),
+    await _write(
+      'cookies',
+      enable ? 'yes' : 'no',
       _reactives.cookies,
       enable,
+      (s) => s.copyWith(cookies: enable),
     );
   }
 
@@ -202,9 +196,13 @@ mixin _NetworkModule on _PlayerBase {
   /// `http://` and `https://` sources go through the proxy, `https://`
   /// ones tunnelled with `CONNECT`.
   Future<void> setHttpProxy(String url) async {
-    await _gate();
-    await _calls.prop('http-proxy', url);
-    _updateField((s) => s.copyWith(httpProxy: url), _reactives.httpProxy, url);
+    await _write(
+      'http-proxy',
+      url,
+      _reactives.httpProxy,
+      url,
+      (s) => s.copyWith(httpProxy: url),
+    );
   }
 
   /// Sets the demuxer buffering configuration atomically.
@@ -248,12 +246,12 @@ mixin _NetworkModule on _PlayerBase {
   /// the `null` driver and to the fallback used when the device fails to
   /// open.
   Future<void> setAudioNullUntimed(bool enable) async {
-    await _gate();
-    await _calls.prop('ao-null-untimed', enable ? 'yes' : 'no');
-    _updateField(
-      (s) => s.copyWith(audioNullUntimed: enable),
+    await _write(
+      'ao-null-untimed',
+      enable ? 'yes' : 'no',
       _reactives.audioNullUntimed,
       enable,
+      (s) => s.copyWith(audioNullUntimed: enable),
     );
   }
 }

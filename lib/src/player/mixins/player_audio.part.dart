@@ -17,49 +17,65 @@ mixin _AudioModule on _PlayerBase {
   /// relative steps (`add`, `cycle`) only. Clamp a slider to it yourself.
   Future<void> setVolume(double volume) async {
     _checkRange(volume, 0, double.maxFinite, 'volume');
-    await _gate();
     final value = canonicalFloat(volume);
     // The option, not the property: from mpv 0.42 the property refuses a
     // value above volume-max, the option takes its own 0 to 1000.
-    await _calls.prop('options/volume', value.toString());
-    _updateField((s) => s.copyWith(volume: value), _reactives.volume, value);
+    await _write(
+      'options/volume',
+      value.toString(),
+      _reactives.volume,
+      value,
+      (s) => s.copyWith(volume: value),
+    );
   }
 
   /// Sets playback rate (1.0 = normal speed). Throws [RangeError] outside
   /// mpv's `[0.01, 100]`.
   Future<void> setRate(double rate) async {
     _checkRange(rate, 0.01, 100, 'rate');
-    await _gate();
-    await _calls.prop('speed', rate.toString());
-    _updateField((s) => s.copyWith(rate: rate), _reactives.rate, rate);
+    await _write(
+      'speed',
+      rate.toString(),
+      _reactives.rate,
+      rate,
+      (s) => s.copyWith(rate: rate),
+    );
   }
 
   /// Sets pitch (1.0 = original pitch). Throws [RangeError] outside
   /// mpv's `[0.01, 100]`.
   Future<void> setPitch(double pitch) async {
     _checkRange(pitch, 0.01, 100, 'pitch');
-    await _gate();
-    await _calls.prop('pitch', pitch.toString());
-    _updateField((s) => s.copyWith(pitch: pitch), _reactives.pitch, pitch);
+    await _write(
+      'pitch',
+      pitch.toString(),
+      _reactives.pitch,
+      pitch,
+      (s) => s.copyWith(pitch: pitch),
+    );
   }
 
   /// Mutes or unmutes audio output.
   Future<void> setMute(bool mute) async {
-    await _gate();
-    await _calls.prop('mute', mute ? 'yes' : 'no');
-    _updateField((s) => s.copyWith(mute: mute), _reactives.mute, mute);
+    await _write(
+      'mute',
+      mute ? 'yes' : 'no',
+      _reactives.mute,
+      mute,
+      (s) => s.copyWith(mute: mute),
+    );
   }
 
   /// Enables or disables pitch correction (mpv's `audio-pitch-correction`,
   /// which inserts `scaletempo2`) for non-1.0 playback rates. Enabled by
   /// default. When disabled, raising the rate also raises the pitch.
   Future<void> setPitchCorrection(bool enable) async {
-    await _gate();
-    await _calls.prop('audio-pitch-correction', enable ? 'yes' : 'no');
-    _updateField(
-      (s) => s.copyWith(pitchCorrection: enable),
+    await _write(
+      'audio-pitch-correction',
+      enable ? 'yes' : 'no',
       _reactives.pitchCorrection,
       enable,
+      (s) => s.copyWith(pitchCorrection: enable),
     );
   }
 
@@ -73,15 +89,12 @@ mixin _AudioModule on _PlayerBase {
   ///
   /// Sent to mpv in seconds with six decimals, so microseconds are kept.
   Future<void> setAudioDelay(Duration delay) async {
-    await _gate();
-    await _calls.prop(
+    await _write(
       'audio-delay',
       durationToSeconds(delay).toStringAsFixed(6),
-    );
-    _updateField(
-      (s) => s.copyWith(audioDelay: delay),
       _reactives.audioDelay,
       delay,
+      (s) => s.copyWith(audioDelay: delay),
     );
   }
 
@@ -89,12 +102,12 @@ mixin _AudioModule on _PlayerBase {
   /// available variants. During a live [PcmSource] entry, which plays
   /// without gapless, a new value holds only until that entry ends.
   Future<void> setGapless(Gapless gapless) async {
-    await _gate();
-    await _calls.prop('gapless-audio', gapless.mpvValue);
-    _updateField(
-      (s) => s.copyWith(gapless: gapless),
+    await _write(
+      'gapless-audio',
+      gapless.mpvValue,
       _reactives.gapless,
       gapless,
+      (s) => s.copyWith(gapless: gapless),
     );
   }
 
@@ -153,15 +166,15 @@ mixin _AudioModule on _PlayerBase {
   /// the chain.
   Future<void> setVolumeGain(double gainDb) async {
     _checkFinite(gainDb, 'gainDb');
-    await _gate();
     final value = canonicalFloat(gainDb);
     // The option, as for setVolume: the property refuses a value outside
     // volume-gain-min and volume-gain-max from mpv 0.42.
-    await _calls.prop('options/volume-gain', value.toString());
-    _updateField(
-      (s) => s.copyWith(volumeGain: value),
+    await _write(
+      'options/volume-gain',
+      value.toString(),
       _reactives.volumeGain,
       value,
+      (s) => s.copyWith(volumeGain: value),
     );
   }
 
@@ -172,13 +185,13 @@ mixin _AudioModule on _PlayerBase {
   /// which takes down to -150 whatever this value.
   Future<void> setVolumeGainMin(double gainDb) async {
     _checkFinite(gainDb, 'gainDb');
-    await _gate();
     final value = canonicalFloat(gainDb);
-    await _calls.prop('volume-gain-min', value.toString());
-    _updateField(
-      (s) => s.copyWith(volumeGainMin: value),
+    await _write(
+      'volume-gain-min',
+      value.toString(),
       _reactives.volumeGainMin,
       value,
+      (s) => s.copyWith(volumeGainMin: value),
     );
   }
 
@@ -189,13 +202,13 @@ mixin _AudioModule on _PlayerBase {
   /// up to +150 whatever this value.
   Future<void> setVolumeGainMax(double gainDb) async {
     _checkFinite(gainDb, 'gainDb');
-    await _gate();
     final value = canonicalFloat(gainDb);
-    await _calls.prop('volume-gain-max', value.toString());
-    _updateField(
-      (s) => s.copyWith(volumeGainMax: value),
+    await _write(
+      'volume-gain-max',
+      value.toString(),
       _reactives.volumeGainMax,
       value,
+      (s) => s.copyWith(volumeGainMax: value),
     );
   }
 
@@ -273,13 +286,13 @@ mixin _AudioModule on _PlayerBase {
   /// range.
   Future<void> setVolumeMax(double limit) async {
     _checkFinite(limit, 'limit');
-    await _gate();
     final value = canonicalFloat(limit);
-    await _calls.prop('volume-max', value.toString());
-    _updateField(
-      (s) => s.copyWith(volumeMax: value),
+    await _write(
+      'volume-max',
+      value.toString(),
       _reactives.volumeMax,
       value,
+      (s) => s.copyWith(volumeMax: value),
     );
   }
 
