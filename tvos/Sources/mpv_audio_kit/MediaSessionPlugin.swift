@@ -268,6 +268,9 @@ public class MediaSessionPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
     if let cfg = args["config"] as? [String: Any] { currentConfig = cfg }
     if let meta = args["metadata"] as? [String: Any] { currentMetadata = meta }
     if let pb = args["playback"] as? [String: Any] { currentPlayback = pb }
+    // A scrub of the previous session will not land in this one, as on
+    // Android.
+    frozenElapsed = nil
 
     enabled = true
     // Re-point the static handlers at this instance (engine restart
