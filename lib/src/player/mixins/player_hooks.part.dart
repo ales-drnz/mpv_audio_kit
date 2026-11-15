@@ -79,15 +79,34 @@ mixin _HooksModule on _PlayerBase {
   }) async {
     final name = hook.mpvValue;
     if (timeout != null) _hooks.timeouts[name] = timeout;
-    if (_hooks.registered.contains(name)) return;
+    if (_hooks.registered.contains(name)) {
+      // Being registered by an earlier call: this one completes with it,
+      // once mpv took the hook, or fails with it.
+      await _hookAdds[name];
+      return;
+    }
     // A dispose that started after the caller's gate frees the handle once
     // the runs it knows of settle: no new one may start against it.
     if (_disposed) return;
     _hooks.registered.add(name);
     // Tracked by the session, so dispose waits for it before freeing the
     // core (see [MpvSession.settleHookAdds]).
-    await _session.hookAdd(name, priority);
+    final run = _session.hookAdd(name, priority);
+    _hookAdds[name] = run;
+    try {
+      await run;
+    } catch (_) {
+      // mpv does not have the hook: a later call registers it again.
+      _hooks.registered.remove(name);
+      rethrow;
+    } finally {
+      // The removed value is the run awaited above.
+      unawaited(_hookAdds.remove(name));
+    }
   }
+
+  /// The registrations with mpv under way, by hook name.
+  final Map<String, Future<void>> _hookAdds = {};
 
   /// Signals mpv that hook processing for [id] is complete.
   ///
@@ -268,7 +287,7 @@ mixin _HooksModule on _PlayerBase {
       // resolver runs supersedes the URL it gives for the prefetch.
       final asked = _transport.snapshotLoad();
       final current =
-          await getRawProperty(
+          await _readString(
             early ? 'prefetch-open-filename' : 'stream-open-filename',
           ) ??
           '';
@@ -302,11 +321,16 @@ mixin _HooksModule on _PlayerBase {
         return;
       }
       if (isRetry) _resolverRetried = true;
-      await setRawProperty('stream-open-filename', target);
+      await _calls.prop('stream-open-filename', target);
       // Keep the original Media reachable under the rewritten URL, so a
       // later `on_load_fail` on this entry (expired token on the resolved
       // URL) still hands the resolver the same Media and extras.
-      _mediaCache[target] = media;
+      _mediaCache.putResolved(
+        target,
+        media,
+        load: true,
+        kept: _prefetchResolved?.$2,
+      );
     } catch (e, st) {
       _internalLog(
         'Source resolver threw for ${hook.mpvValue}: $e\n$st',
@@ -402,7 +426,7 @@ mixin _HooksModule on _PlayerBase {
       return;
     }
     _prefetchResolved = (current, target, asked, entry);
-    if (changed) _mediaCache[target] = media;
+    if (changed) _mediaCache.putResolved(target, media, load: false);
   }
 
   /// The [Media] cached under [uri]. On Windows mpv hands a local path
@@ -412,7 +436,7 @@ mixin _HooksModule on _PlayerBase {
     final hit = _mediaCache[uri];
     if (hit != null || !hostIsWindows) return hit;
     final key = uri.replaceAll('/', r'\');
-    for (final entry in _mediaCache.entries) {
+    for (final entry in _mediaCache.byUri.entries) {
       if (entry.key.replaceAll('/', r'\') == key) return entry.value;
     }
     return null;

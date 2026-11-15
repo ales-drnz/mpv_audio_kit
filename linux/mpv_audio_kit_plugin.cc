@@ -51,26 +51,6 @@ MprisHub* hub = nullptr;
 G_DEFINE_TYPE(MpvAudioKitPlugin, mpv_audio_kit_plugin, g_object_get_type())
 
 /**
- * @brief Handles method calls from Dart via the MethodChannel.
- *
- * The package drives libmpv via direct FFI/C bindings, so the MethodChannel
- * carries no platform methods on Linux.
- *
- * @param self The plugin instance.
- * @param method_call The method call details.
- */
-static void mpv_audio_kit_plugin_handle_method_call(
-    MpvAudioKitPlugin* self,
-    FlMethodCall* method_call) {
-  g_autoptr(FlMethodResponse) response = nullptr;
-
-  // No platform methods on the main channel; libmpv is driven via FFI.
-  response = FL_METHOD_RESPONSE(fl_method_not_implemented_response_new());
-
-  fl_method_call_respond(method_call, response, nullptr);
-}
-
-/**
  * @brief Handler for the OS media-session method channel.
  *
  * Routes `enable` / `updateConfig` / `updateMetadata` / `updatePlayback` /
@@ -200,37 +180,21 @@ static void mpv_audio_kit_plugin_init(MpvAudioKitPlugin* self) {
 }
 
 /**
- * @brief Callback for method channel calls, delegating to handle_method_call.
- */
-static void method_call_cb(FlMethodChannel* channel, FlMethodCall* method_call,
-                           gpointer user_data) {
-  MpvAudioKitPlugin* plugin = MPV_AUDIO_KIT_PLUGIN(user_data);
-  mpv_audio_kit_plugin_handle_method_call(plugin, method_call);
-}
-
-/**
  * @brief Public entry point for registering the plugin with the Flutter engine.
  */
 void mpv_audio_kit_plugin_register_with_registrar(FlPluginRegistrar* registrar) {
   MpvAudioKitPlugin* plugin = MPV_AUDIO_KIT_PLUGIN(
       g_object_new(mpv_audio_kit_plugin_get_type(), nullptr));
 
-  g_autoptr(FlStandardMethodCodec) codec = fl_standard_method_codec_new();
-  g_autoptr(FlMethodChannel) channel =
-      fl_method_channel_new(fl_plugin_registrar_get_messenger(registrar),
-                            "mpv_audio_kit",
-                            FL_METHOD_CODEC(codec));
-
-  fl_method_channel_set_method_call_handler(channel, method_call_cb,
-                                            g_object_ref(plugin),
-                                            g_object_unref);
+  // The `mpv_audio_kit` method channel (openFileDescriptor and
+  // closeFileDescriptor) is Android's alone: Dart calls it nowhere else, so
+  // it is not registered here. libmpv is driven via FFI.
 
   // ── OS media session via MPRIS2 (GLib/GDBus) ────────────────────────
   // One MprisServer for the process (MprisHub), shared by every engine.
   // The plugin keeps its event channel, where the server forwards the
   // D-Bus commands while this engine owns the session. The method channel
-  // routes enable/update*/disable to the server; the messenger keeps it,
-  // as the main channel above.
+  // routes enable/update*/disable to the server; the messenger keeps it.
   if (hub == nullptr) hub = new MprisHub();
   hub->plugins++;
   plugin->in_hub = true;

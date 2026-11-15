@@ -20,7 +20,7 @@ MPV_AUDIO_KIT_LIBMPV=/path/to/libmpv_webos-armv7l.so flutter-webos build webos -
 
 ## Audio
 
-The library plays through ALSA, the sound API of the webOS NDK. The media session has no webOS side: turning it on does nothing there.
+The library plays through ALSA, the sound API of the webOS NDK. The media session has no webOS side. `setMediaSession` keeps its value in the player's state and does nothing else there: no entry in the TV's interface, no command from the remote, no artwork URL loaded, and no error.
 
 ## What was checked
 

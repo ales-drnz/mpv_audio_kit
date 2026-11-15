@@ -2,6 +2,8 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
+import '../enums/mpv_value.dart';
+
 /// Lifecycle of mpv's audio output, reported by the `audio-output-state`
 /// mpv property.
 enum AudioOutputState {
@@ -34,11 +36,6 @@ enum AudioOutputState {
   final String mpvValue;
 
   /// Maps a raw mpv-side value back to the enum. Unknown → [closed].
-  static AudioOutputState fromMpv(String raw) => switch (raw) {
-    'closed' => closed,
-    'initializing' => initializing,
-    'active' => active,
-    'failed' => failed,
-    _ => closed,
-  };
+  static AudioOutputState fromMpv(String raw) =>
+      byMpvValue(values, raw, (v) => v.mpvValue) ?? closed;
 }

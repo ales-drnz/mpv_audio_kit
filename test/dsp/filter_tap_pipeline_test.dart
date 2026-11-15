@@ -174,6 +174,42 @@ void main() {
       expect(sets.last, 'A ', reason: 'nothing left to write');
     });
 
+    for (final (how, failure) in [
+      ('mpv refuses', () => Future.value(-1)),
+      (
+        'the core closes on',
+        () => Future<int>.error(StateError('the player is disposed')),
+      ),
+    ]) {
+      test('a write $how is not taken as written', () async {
+        // A's write of the list fails: the process still has the list from
+        // before. B then listens to the same label, and must write it.
+        final a = FilterTapPipeline(
+          asyncGet: (name, format) async => (-10, null),
+          asyncSet: (name, value) {
+            sets.add('A $value');
+            return failure();
+          },
+          pollInterval: const Duration(milliseconds: 5),
+        );
+        final b = player('B');
+        final eq = a.tapPre('aek_equalizer_0').listen((_) {});
+        await settle();
+        expect(sets, ['A aek_equalizer_0']);
+        final same = b.tapPost('aek_equalizer_0').listen((_) {});
+        await settle();
+        expect(sets.last, 'B aek_equalizer_0');
+        await eq.cancel();
+        await same.cancel();
+        await settle();
+        expect(sets.last, 'B ');
+        await a.dispose();
+        await b.dispose();
+        await settle();
+        expect(sets.last, 'B ', reason: 'nothing left to write');
+      });
+    }
+
     test('a write joins the core already writing', () async {
       // A's core is busy (an audio output opening): B's list must not
       // land before A's.

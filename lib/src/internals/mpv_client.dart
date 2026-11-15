@@ -7,6 +7,7 @@ import 'dart:ffi';
 import 'package:ffi/ffi.dart';
 
 import '../mpv_bindings.dart';
+import 'debug_log.dart';
 import 'mpv_requests.dart';
 import 'reply_tracker.dart';
 
@@ -142,7 +143,8 @@ final class MpvClient implements MpvRequests {
   @override
   void hookContinue(int id) {
     if (_closed) return;
-    _lib.mpvHookContinue(_handle, id);
+    final rc = _lib.mpvHookContinue(_handle, id);
+    if (rc < 0) debugLog('mpv_audio_kit: hook continue $id refused: rc=$rc');
   }
 
   /// `mpv_request_log_messages` is thread-safe and works on the shared
@@ -150,12 +152,13 @@ final class MpvClient implements MpvRequests {
   @override
   void requestLogMessages(String level) {
     if (_closed) return;
-    using(
+    final rc = using(
       (arena) => _lib.mpvRequestLogMessages(
         _handle,
         level.toNativeUtf8(allocator: arena),
       ),
     );
+    if (rc < 0) debugLog('mpv_audio_kit: log level $level refused: rc=$rc');
   }
 
   Future<(int, Object?)> _send(

@@ -33,22 +33,26 @@ final class SharedPropertyWriter {
   AsyncPropertySet? _busy;
   int _inFlight = 0;
   // The writes that wait for [_busy], one per core, in arrival order.
-  final Map<AsyncPropertySet, String? Function()> _waiting = {};
+  final Map<AsyncPropertySet, _Waiting> _waiting = {};
 
   /// Writes the value [value] returns, unless it returns `null`, through
   /// [through]. With [anyCore], the value goes through the core already
   /// writing, when there is one. Otherwise a write through another core
   /// waits for it to finish, and [value] is called only then.
+  ///
+  /// [onFailed] gets the value of a write the process did not take: mpv
+  /// refused it, or the core closed on it.
   void write(
     AsyncPropertySet through,
     String? Function() value, {
     bool anyCore = false,
+    void Function(String value)? onFailed,
   }) {
     var via = through;
     final busy = _busy;
     if (busy != null && busy != via) {
       if (!anyCore) {
-        _waiting[via] = value;
+        _waiting[via] = (value: value, onFailed: onFailed);
         return;
       }
       via = busy;
@@ -58,10 +62,16 @@ final class SharedPropertyWriter {
     _busy = via;
     _inFlight++;
     unawaited(
-      via(
-        name,
-        next,
-      ).then<void>((_) {}, onError: (Object _) {}).whenComplete(_settle),
+      via(name, next)
+          .then<void>(
+            (rc) {
+              if (rc < 0) onFailed?.call(next);
+            },
+            onError: (Object _) {
+              onFailed?.call(next);
+            },
+          )
+          .whenComplete(_settle),
     );
   }
 
@@ -70,6 +80,13 @@ final class SharedPropertyWriter {
     _busy = null;
     final waiting = Map.of(_waiting);
     _waiting.clear();
-    waiting.forEach(write);
+    waiting.forEach(
+      (through, w) => write(through, w.value, onFailed: w.onFailed),
+    );
   }
 }
+
+typedef _Waiting = ({
+  String? Function() value,
+  void Function(String value)? onFailed,
+});

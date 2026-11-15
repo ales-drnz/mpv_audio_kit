@@ -62,6 +62,21 @@ class MprisBus {
   Future<Map<String, Object?>> metadata() async =>
       Map<String, Object?>.from(await property(playerIface, 'Metadata') as Map);
 
+  /// Writes one property of [iface], through
+  /// org.freedesktop.DBus.Properties. [value] is GVariant text, e.g.
+  /// `<'Track'>`. A write the service refuses throws a [ProcessException].
+  Future<void> setProperty(String iface, String name, String value) => _gdbus([
+    '--dest',
+    busName,
+    '--object-path',
+    objectPath,
+    '--method',
+    'org.freedesktop.DBus.Properties.Set',
+    iface,
+    name,
+    value,
+  ]);
+
   /// Calls [method] of the player interface. [args] are GVariant text, with
   /// their type when it is not a string, e.g. `int64 500000`.
   Future<void> call(String method, [List<String> args = const []]) => _gdbus([

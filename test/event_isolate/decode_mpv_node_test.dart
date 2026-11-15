@@ -369,4 +369,65 @@ void main() {
       },
     );
   });
+
+  group('materializeCover', () {
+    MpvEventFileLoaded loaded(Object? transfer) => MpvEventFileLoaded(
+      path: '/a.flac',
+      playlist: const [1],
+      timePos: 1.5,
+      chapterIndex: 2,
+      chapterList: const [3],
+      coverMime: 'image/jpeg',
+      coverTransfer: transfer,
+    );
+
+    test('the cover that crossed the isolates becomes its bytes', () {
+      final sent = Uint8List.fromList([0xFF, 0xD8, 0xFF, 0x00]);
+      final event =
+          materializeCover(loaded(TransferableTypedData.fromList([sent])))
+              as MpvEventFileLoaded;
+      expect(event.coverData, [0xFF, 0xD8, 0xFF, 0x00]);
+      expect(event.coverMime, 'image/jpeg');
+      expect(event.coverTransfer, isNull);
+      expect(event.path, '/a.flac');
+      expect(event.playlist, [1]);
+      expect(event.timePos, 1.5);
+      expect(event.chapterIndex, 2);
+      expect(event.chapterList, [3]);
+    });
+
+    test('an empty one is no cover', () {
+      final event =
+          materializeCover(
+                loaded(TransferableTypedData.fromList([Uint8List(0)])),
+              )
+              as MpvEventFileLoaded;
+      expect(event.coverData, isNull);
+      expect(event.coverMime, isNull);
+      expect(event.coverTransfer, isNull);
+      expect(event.path, '/a.flac');
+    });
+
+    test('an event with no cover in transfer is returned as it is', () {
+      final plain = MpvEventFileLoaded(
+        coverData: Uint8List.fromList([1]),
+        coverMime: 'image/png',
+      );
+      expect(identical(materializeCover(plain), plain), isTrue);
+      final other = MpvEventStartFile(3);
+      expect(identical(materializeCover(other), other), isTrue);
+    });
+
+    test('the cover crosses a port inside its event', () async {
+      final port = ReceivePort();
+      addTearDown(port.close);
+      final sent = Uint8List(1 << 16)..[70] = 9;
+      port.sendPort.send(loaded(TransferableTypedData.fromList([sent])));
+      final event =
+          materializeCover(await port.first as MpvIsolateEvent)
+              as MpvEventFileLoaded;
+      expect(event.coverData, hasLength(1 << 16));
+      expect(event.coverData![70], 9);
+    });
+  });
 }

@@ -47,27 +47,27 @@ const _baseUrl =
 /// SHA-256 of every release asset, from the release's manifest.json.
 const _sha256 = <String, String>{
   'libmpv_android-arm64-v8a.so':
-      'b7437907760f813637e330252f2e6d60744d0c535a6128e1c9967bc0688cb1e5',
+      'bf11d648068de5c86cfabe6218a68fea11c853e8e4501bd0c2b8dbf16eded0bb',
   'libmpv_android-armeabi-v7a.so':
-      '8de6e82aa55b29d114b5c6f9c1552e63f04a3c344abd347bc82d046e43aa84a0',
+      'd17d038b9c9802413d64db99171c18742a7caf23c11425cbdc15a5e9e67af746',
   'libmpv_android-x86_64.so':
-      '5ef33c4449d47f5de7dec684ab9c1c1a4299780dbbf3f9420054b7fcb4a2e0c0',
+      '4efb5fc402f1578166af521a236ee4f93f4a1ae47cc62c7dcd815bb9ec39c231',
   'libmpv_ios.xcframework.zip':
-      '0569c18f6f294fb5fed14a6e54f1ee499dfea1809c511f4c29e267bd8a6e5ff8',
+      'e91f608f0da0eb69e14dbab973b48e01b3cc7eb04677bd61e96c8538cc480543',
   'libmpv_linux-aarch64.so':
-      '174c57a3501fba6a8f276ce1c0a13beec1a16cc16fe9b2ac3788a867980911c9',
+      '5ac4bcedf72fa11d511d4485bc9411635ca3a1078147e4f2f165dbd8c000ef20',
   'libmpv_linux-x86_64.so':
-      'f357ec2a1fffc4b8b43b287a3d1e3010f928d10f2904dcc53b999faafbcca717',
+      '3289429c30129da3dd2cafef473290bdc4ab77e7f93f10eb2e41985d59d44a3e',
   'libmpv_macos.xcframework.zip':
-      'dcfcf54eecc7e58b53ec744e2e2cedaf10302f6b49416325234613092551d8aa',
+      'fb6b49b519b9c3df87440b02d5609f03ac42e47ab6166d587147bd1e18be5745',
   'libmpv_tizen-armv7l.so':
-      '3a2148bdeb5f94ffd79e317f549f5d567647c7f8f94af8b19b925a318e1f9c29',
+      '84f9769698b782fbf006d6875f849ccd2058e2c80107646ef3253c5a859742ef',
   'libmpv_tizen-x86_64.so':
-      '67f133a5a8a05d23ff6cc7206a7f9627ba94ce62bf72c07790147925fc467257',
+      '6638c7bec649d52c9f5cf398b6d475378874058c7c9de8eac7ab4575d312291a',
   'libmpv_windows-arm64.dll':
-      'b4514a673239483bd08969aefd146af643a82c27de15a753494f9f7be595ed34',
+      '8c5bf0dfd78b1d98dcf69aa672a4883e26fea730dc5c38eb8e670e82a59964e2',
   'libmpv_windows-x86_64.dll':
-      '0e126fa92c92d903c2b9bce5562cf0ed4a1581dee2a123cf749313db44c63421',
+      'd6cd088c41c4b17a441d0b90b5095fa0316f912165c0122e4e4416a9fe755121',
 };
 
 /// The tizen user define, true or false. Anything else fails the build: an

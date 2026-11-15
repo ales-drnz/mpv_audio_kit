@@ -3,6 +3,7 @@
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
 import '../../models/cover_art.dart';
+import '../../models/media.dart';
 
 /// Artwork shown on the OS media session (lockscreen, Control Center,
 /// SMTC, MPRIS). Set via [MediaSession.artwork].
@@ -103,6 +104,8 @@ final class MediaSessionArtworkUri extends MediaSessionArtwork {
   @override
   int get hashCode => Object.hash(MediaSessionArtworkUri, uri);
 
+  /// Prints [uri] without its user info and with the names of its query
+  /// only: a cover URL often carries credentials.
   @override
-  String toString() => 'MediaSessionArtwork.uri($uri)';
+  String toString() => 'MediaSessionArtwork.uri(${redactUrl(uri.toString())})';
 }

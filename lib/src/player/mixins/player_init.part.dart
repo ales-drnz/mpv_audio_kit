@@ -33,7 +33,11 @@ mixin _InitModule on _PlayerBase {
       // dispose() awaits `_ready`, i.e. this very teardown, before
       // proceeding, so it cannot observe a half-released core.
       _session.requestStop();
-      if (await _session.stop()) await _session.terminateDestroy();
+      if (await _session.stop()) {
+        await _session.terminateDestroy();
+      } else {
+        unawaited(_destroyOnceStopped());
+      }
       return;
     }
 

@@ -2,6 +2,8 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
+import 'mpv_value.dart';
+
 /// HLS variant-selection policy for adaptive streams: mpv's `--hls-bitrate`.
 ///
 /// Chooses which audio rendition mpv picks from an HLS master playlist. The
@@ -26,10 +28,6 @@ enum HlsBitrate {
 
   /// Maps an mpv-side token back to the enum. Unknown values fall back to
   /// [max] (mpv's default), never throwing.
-  static HlsBitrate fromMpv(String raw) => switch (raw) {
-    'no' => no,
-    'min' => min,
-    'max' => max,
-    _ => max,
-  };
+  static HlsBitrate fromMpv(String raw) =>
+      byMpvValue(values, raw, (v) => v.mpvValue) ?? max;
 }

@@ -40,6 +40,17 @@ class EngineOwnership {
     return true;
   }
 
+  // The enable TryEnable accepted for [engine] failed. [owned_before] is
+  // whether [engine] owned the session before that enable (MayUpdate, read
+  // before TryEnable). An engine that took the session with this enable
+  // gives it back, and the caller turns off what it built: true. An owner
+  // whose new enable failed keeps the session it had: false.
+  bool OnEnableFailed(const void* engine, bool owned_before) {
+    if (owned_before || owner_ != engine) return false;
+    owner_ = nullptr;
+    return true;
+  }
+
   // Whether an update from [engine] reaches the session: only the owner's.
   bool MayUpdate(const void* engine) const { return owner_ == engine; }
 

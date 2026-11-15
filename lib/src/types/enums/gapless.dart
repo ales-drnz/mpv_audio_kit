@@ -2,6 +2,8 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
+import 'mpv_value.dart';
+
 /// Gapless playback mode, mirroring `--gapless-audio=<no|yes|weak>`.
 enum Gapless {
   /// Disabled: close and re-open the audio output between tracks.
@@ -22,10 +24,6 @@ enum Gapless {
   final String mpvValue;
 
   /// Maps a raw mpv-side value back to the enum. Unknown → [weak] (mpv default).
-  static Gapless fromMpv(String raw) => switch (raw) {
-    'no' => no,
-    'yes' => yes,
-    'weak' => weak,
-    _ => weak,
-  };
+  static Gapless fromMpv(String raw) =>
+      byMpvValue(values, raw, (v) => v.mpvValue) ?? weak;
 }

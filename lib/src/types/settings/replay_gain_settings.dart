@@ -8,7 +8,7 @@ import '../enums/replay_gain.dart';
 /// `replaygain-preamp`, `replaygain-clip`, `replaygain-fallback`).
 ///
 /// Apply atomically via [Player.setReplayGain]. For one-off tweaks
-/// use `state.replayGain.copyWith(preamp: -3)`. Read the current
+/// use `state.settings.replayGain.copyWith(preamp: -3)`. Read the current
 /// configuration via [PlayerSettings.replayGain] or observe live changes
 /// via [PlayerStream.replayGain].
 final class ReplayGainSettings {

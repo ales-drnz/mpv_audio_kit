@@ -1,0 +1,37 @@
+# The files of lib that an lcov of flutter test --coverage does not hold,
+# read by scripts/ci/coverage.sh. A file of lib missing from the lcov and
+# from this list fails the coverage step, and so does a listed file the
+# lcov holds: the list says exactly what the number leaves out.
+#
+#   web   runs in the browser alone (test/web, in Chrome, without
+#         coverage): counted in the total as lines not covered
+#   none  no line the VM can cover: exports, constants, abstract members
+#         and plain enums. Counted as no line.
+
+web lib/src/backend/web/mpv_module.dart
+web lib/src/backend/web/web_audio.dart
+web lib/src/backend/web/web_client.dart
+web lib/src/backend/web/web_pcm.dart
+web lib/src/backend/web/web_registry.dart
+web lib/src/backend/web/web_session.dart
+web lib/src/backend/web_backend.dart
+web lib/src/internals/debug_log_web.dart
+web lib/src/internals/uri_resolver_web.dart
+web lib/src/media_session/artwork_download_web.dart
+web lib/src/models/media_blob_web.dart
+web lib/src/web/mpv_audio_kit_web.dart
+
+none lib/mpv_audio_kit.dart
+none lib/src/backend/backend.dart
+none lib/src/internals/analysis_commands.dart
+none lib/src/internals/build_mode.dart
+none lib/src/internals/debug_log.dart
+none lib/src/internals/libmpv_release.dart
+none lib/src/internals/mpv_requests.dart
+none lib/src/mpv_constants.dart
+none lib/src/player/player_api.dart
+none lib/src/types/enums/interruption_policy.dart
+none lib/src/types/enums/loop.dart
+none lib/src/types/enums/media_action.dart
+none lib/src/types/enums/tap_side.dart
+none lib/src/types/state/mpv_playback_state.dart

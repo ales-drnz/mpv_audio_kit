@@ -112,8 +112,11 @@ mixin _OpenModule on _PlayerBase, _FfiModule {
     }
   }
 
-  Future<void> _openAll(List<Media> medias, bool? play, int index) async {
+  Future<void> _openAll(List<Media> requested, bool? play, int index) async {
     _checkNotDisposed();
+    // A copy: the list is read across many awaits, and the caller's may
+    // change meanwhile.
+    final medias = List<Media>.of(requested, growable: false);
     if (medias.isEmpty) {
       return;
     }
@@ -281,7 +284,7 @@ mixin _OpenModule on _PlayerBase, _FfiModule {
     _entries.retained = null;
     if (!kept) return null;
     return _entries.retained = int.tryParse(
-      await getRawProperty('playlist/0/id') ?? '',
+      await _readString('playlist/0/id') ?? '',
     );
   }
 
@@ -309,7 +312,7 @@ mixin _OpenModule on _PlayerBase, _FfiModule {
     await _calls.command(['playlist-clear']);
     if (load.superseded) return null;
     final retainedCount =
-        int.tryParse(await getRawProperty('playlist-count') ?? '') ?? 0;
+        int.tryParse(await _readString('playlist-count') ?? '') ?? 0;
     if (load.superseded) return null;
     var parkedAtEof = false;
     if (retainedCount > 0) {
@@ -334,15 +337,33 @@ mixin _OpenModule on _PlayerBase, _FfiModule {
         // entry 0), which would start the incoming album's first track:
         // the exact transient this flow eliminates. Idle lands within a
         // playloop iteration; the bound only guards a wedged core.
-        for (var i = 0; i < 100; i++) {
-          if (await getRawProperty('idle-active') == 'yes') break;
-          if (load.superseded) return null;
-          await Future<void>.delayed(const Duration(milliseconds: 5));
-        }
-        if (load.superseded) return null;
+        if (!await _awaitIdle(load)) return null;
       }
     }
     return retainedCount > 0 && !parkedAtEof;
+  }
+
+  /// The barrier of [_openAllClear]: waits, half a second at most, for the
+  /// core to reach idle. Returns `false` once a later load took over. A
+  /// wait that ran out is logged: the appends go on, and the first new
+  /// entry may start before the jump.
+  Future<bool> _awaitIdle(_LoadTicket load) async {
+    var idle = false;
+    for (var i = 0; i < 100; i++) {
+      idle = await _readString('idle-active') == 'yes';
+      if (load.superseded) return false;
+      if (idle) break;
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+    }
+    if (load.superseded) return false;
+    if (!idle) {
+      _internalLog(
+        'openAll: the core did not reach idle after the removal of the '
+        'parked entry; the first new entry may start before the jump',
+        level: LogLevel.warn,
+      );
+    }
+    return true;
   }
 
   /// Phase 2 of [Player.openAll]: appends [medias] from their [sources].

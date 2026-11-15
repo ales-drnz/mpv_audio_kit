@@ -10,8 +10,8 @@ part of '../player.dart';
 extension _Lifecycle on _PlayerBase {
   /// Whether mpv reached the end of the current file, parked by
   /// `keep-open` or about to park, read from the core's own `eof-reached`
-  /// rather than from `state.completed`. That flag comes from the event
-  /// isolate's [MpvEventEndOfContent] reads, which reach the main isolate
+  /// rather than from `state.playback.completed`. That flag comes from the
+  /// event isolate's [MpvEventEndOfContent] reads, which reach the main isolate
   /// behind the events still queued ahead of them: right after a short
   /// last entry parks, `completed` can still be false. The calls that
   /// replace or jump need the core's answer at the call: an unpause
@@ -20,7 +20,7 @@ extension _Lifecycle on _PlayerBase {
   /// its seek back from the park, to tell a seek that could not leave the
   /// end.
   Future<bool> _parkedAtEof() async =>
-      await getRawProperty('eof-reached') == 'yes';
+      await _readString('eof-reached') == 'yes';
 
   /// Whether mpv is parked: keep-open paused at the end of the file once
   /// the output buffer played out (`keep-open-parked`). In the last buffer
@@ -33,10 +33,10 @@ extension _Lifecycle on _PlayerBase {
   /// WebAssembly, an await there traps once the left side is false (see
   /// `_sendEndOfContent`).
   Future<bool> _parkedPaused() async {
-    if (await getRawProperty('keep-open-parked') == 'yes') return true;
-    if (await getRawProperty('keep-open-pause') != 'no') return false;
+    if (await _readString('keep-open-parked') == 'yes') return true;
+    if (await _readString('keep-open-pause') != 'no') return false;
     if (!await _parkedAtEof()) return false;
-    return await getRawProperty('pause') == 'yes';
+    return await _readString('pause') == 'yes';
   }
 
   /// Clears the per-track fields a consumer is likely to read
@@ -57,6 +57,9 @@ extension _Lifecycle on _PlayerBase {
   /// at ~30Hz during playback. The remaining fields are handled by
   /// custom paths that do not depend on mpv's observer dedup.
   void _clearPerFileState() {
+    // A load that resumes while dispose runs: the streams are closed, or
+    // about to be.
+    if (_disposed) return;
     final r = _reactives;
     r.position.update(Duration.zero);
     r.currentChapter.update(null);
@@ -123,11 +126,11 @@ extension _Lifecycle on _PlayerBase {
   ///
   /// It is a level, read again at every load, restart, `eof-reached`,
   /// `pause` and `loop-*` notification, not the observed `eof-reached` edge
-  /// matched against `state.playlist`: mpv samples observed properties once
-  /// per playloop iteration, so an entry that reaches EOF as soon as it
-  /// loads can go from the previous entry's EOF to its own without a change
-  /// being reported, and the state's playlist position can lag or lead the
-  /// entry an edge belonged to. That raised `completed` at a track
+  /// matched against `state.playback.playlist`: mpv samples observed
+  /// properties once per playloop iteration, so an entry that reaches EOF as
+  /// soon as it loads can go from the previous entry's EOF to its own without
+  /// a change being reported, and the state's playlist position can lag or
+  /// lead the entry an edge belonged to. That raised `completed` at a track
   /// change, cleared by the next load, and missed the real end.
   ///
   /// A live PCM entry ([live]) has no restart either: it plays once and

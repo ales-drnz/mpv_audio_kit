@@ -195,7 +195,9 @@ void main() {
     // A server that stops answering (a sleeping NAS) held a stop for
     // the whole network timeout, here 60 s.
     _ffmpegPatchGroup(
-      'SMB2 connect timed out\n',
+      // A message of the SMB protocol that every release has: the one of
+      // its timeout reads "request" for "connect" from libmpv-r25.
+      'SMB2 connection failed: %s\n',
       'The FFmpeg SMB protocol',
       () {
         // On Windows FFmpeg's poll is a select, which reports a failed

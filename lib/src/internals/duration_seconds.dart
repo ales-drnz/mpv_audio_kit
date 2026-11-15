@@ -16,9 +16,12 @@
 library;
 
 /// Converts a fractional-seconds [double] (as emitted by mpv) into a
-/// [Duration]. Sub-microsecond precision is rounded.
-Duration secondsToDuration(double seconds) =>
-    Duration(microseconds: (seconds * 1e6).round());
+/// [Duration]. Sub-microsecond precision is rounded. A value that is not
+/// finite (NaN or an infinity) gives [Duration.zero]: `double.round`
+/// throws on it.
+Duration secondsToDuration(double seconds) => seconds.isFinite
+    ? Duration(microseconds: (seconds * 1e6).round())
+    : Duration.zero;
 
 /// Converts a [Duration] back into fractional seconds for mpv property
 /// strings. Returns a [double] suitable for `toStringAsFixed(6)`.

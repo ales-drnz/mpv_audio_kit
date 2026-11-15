@@ -20,7 +20,8 @@ import '../types/sealed/channels.dart';
 // `event_isolate.dart` (`Map<String, dynamic>`, `List<dynamic>`, scalar or
 // `null`) and produces a typed model value. They are deliberately
 // side-effect-free so the property dispatch pipeline can stay testable
-// without spinning up a real player.
+// without spinning up a real player. The lists and maps they return
+// cannot be changed: they become the state, which the streams compare.
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Decodes mpv's `playlist` property (`MPV_FORMAT_NODE_ARRAY`) into a
@@ -105,7 +106,7 @@ Playlist parsePlaylistNode({
     // entry yet" and consumers guarding `index >= 0` skip the frame.
     idx = -1;
   }
-  return Playlist(medias, index: idx);
+  return Playlist(List.unmodifiable(medias), index: idx);
 }
 
 /// [raw] without its entry at [skip], when there is one.
@@ -137,15 +138,15 @@ int? retainedEntryAt(dynamic raw, int? id) {
 /// stream.
 List<Device> parseDeviceListNode(dynamic raw) {
   if (raw is! List) return const [];
-  return raw
-      .map((entry) {
-        final m = entry is Map ? entry : const <String, dynamic>{};
-        return Device(
-          name: m['name'] as String? ?? 'unknown',
-          description: m['description'] as String? ?? '',
-        );
-      })
-      .toList(growable: false);
+  return List.unmodifiable(
+    raw.map((entry) {
+      final m = entry is Map ? entry : const <String, dynamic>{};
+      return Device(
+        name: m['name'] as String? ?? 'unknown',
+        description: m['description'] as String? ?? '',
+      );
+    }),
+  );
 }
 
 /// Decodes mpv's `metadata` property (`MPV_FORMAT_NODE_MAP`) into a flat
@@ -159,7 +160,9 @@ Map<String, String>? parseMetadataNode(dynamic raw) {
   if (raw == null) return null;
   if (raw is! Map) return null;
   if (raw.isEmpty) return const <String, String>{};
-  return raw.map((k, v) => MapEntry(k.toString(), v.toString()));
+  return Map.unmodifiable(
+    raw.map((k, v) => MapEntry(k.toString(), v.toString())),
+  );
 }
 
 /// Decodes mpv's `demuxer-cache-state` property (`MPV_FORMAT_NODE_MAP`)
@@ -198,7 +201,7 @@ DemuxerCacheState parseDemuxerCacheStateFull(dynamic raw) {
     }
   }
   return DemuxerCacheState(
-    seekableRanges: ranges,
+    seekableRanges: List.unmodifiable(ranges),
     rawInputRate: (raw['raw-input-rate'] as num?)?.toDouble(),
     eofCached: raw['eof-cached'] == true,
     bofCached: raw['bof-cached'] == true,
@@ -237,7 +240,7 @@ AudioParams parseAudioParamsNode(dynamic raw) {
 /// during track reconfig.
 List<MpvTrack> parseTrackListNode(dynamic raw) {
   if (raw is! List) return const [];
-  return raw.map(_parseTrackEntry).toList(growable: false);
+  return List.unmodifiable(raw.map(_parseTrackEntry));
 }
 
 /// Decodes mpv's `current-tracks/audio` property (`MPV_FORMAT_NODE_MAP`):
@@ -292,14 +295,14 @@ MpvTrack _parseTrackEntry(dynamic entry) {
 /// chapter shouldn't tear down the whole list.
 List<Chapter> parseChapterListNode(dynamic raw) {
   if (raw is! List) return const [];
-  return raw
-      .map((entry) {
-        final m = entry is Map ? entry : const <String, dynamic>{};
-        final t = m['time'];
-        final time = t is num ? secondsToDuration(t.toDouble()) : Duration.zero;
-        return Chapter(time: time, title: _stringOrNull(m['title']));
-      })
-      .toList(growable: false);
+  return List.unmodifiable(
+    raw.map((entry) {
+      final m = entry is Map ? entry : const <String, dynamic>{};
+      final t = m['time'];
+      final time = t is num ? secondsToDuration(t.toDouble()) : Duration.zero;
+      return Chapter(time: time, title: _stringOrNull(m['title']));
+    }),
+  );
 }
 
 String? _stringOrNull(dynamic v) {
@@ -330,5 +333,7 @@ double? _doubleKeepZero(dynamic v) => v is num ? v.toDouble() : null;
 Map<String, String> _stringMap(dynamic v) {
   if (v is! Map) return const <String, String>{};
   if (v.isEmpty) return const <String, String>{};
-  return v.map((k, val) => MapEntry(k.toString(), val.toString()));
+  return Map.unmodifiable(
+    v.map((k, val) => MapEntry(k.toString(), val.toString())),
+  );
 }

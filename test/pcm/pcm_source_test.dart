@@ -92,6 +92,26 @@ void main() {
       expect(native.sources.values.single.capacity, lessThanOrEqualTo(1 << 30));
     });
 
+    test('create rejects a buffer whose size passes 64 bits', () {
+      // Its microseconds times the rate wrap to a negative int: the size
+      // read as under 1 GiB, and ready held back after one frame.
+      const wide = PcmFormat(
+        sampleRate: 384000,
+        channels: 8,
+        encoding: PcmEncoding.f32le,
+      );
+      for (final days in [300, 400, 100000]) {
+        expect(
+          () => PcmSource.create(wide, maxBuffered: Duration(days: days)),
+          throwsA(
+            isA<ArgumentError>().having((e) => e.name, 'name', 'maxBuffered'),
+          ),
+          reason: '$days days',
+        );
+      }
+      expect(native.sources, isEmpty);
+    });
+
     test('create needs MpvAudioKit.ensureInitialized', () {
       debugPcmNativeOverride = null;
       expect(() => PcmSource.create(_mono), throwsStateError);
@@ -361,6 +381,61 @@ void main() {
       final s = PcmSource.create(_mono);
       expect(PcmSource.debugPolling, isTrue);
       s.abort();
+      await Future<void>.delayed(const Duration(milliseconds: 60));
+      expect(PcmSource.debugPolling, isFalse);
+    });
+  });
+
+  group('poll rate', () {
+    Future<int> pollsIn(Duration span) async {
+      final before = native.stateCalls;
+      await Future<void>.delayed(span);
+      return native.stateCalls - before;
+    }
+
+    test('a source no player reads is polled a few times a second', () async {
+      // Queued in a playlist, or never opened: nothing moves until a
+      // reader comes, so the main isolate is not woken 50 times a second.
+      final s = PcmSource.create(
+        _mono,
+        maxBuffered: const Duration(seconds: 1),
+      );
+      s.add(_ramp(0, 5000)); // Past the native buffer: chunks wait in Dart.
+      expect(await pollsIn(const Duration(milliseconds: 400)), lessThan(5));
+      expect(s.state, PcmSourceState.waiting);
+      s.abort();
+    });
+
+    test('a source a player reads is polled every 20 ms', () async {
+      final s = PcmSource.create(
+        _mono,
+        maxBuffered: const Duration(seconds: 1),
+      );
+      s.add(_ramp(0, 5000));
+      native.open(_id(s));
+      // The reader is seen at the next slow poll.
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      expect(s.state, PcmSourceState.reading);
+      expect(await pollsIn(const Duration(milliseconds: 400)), greaterThan(8));
+      // The queue follows the reader within a poll or two.
+      native.readBytes(_id(s), 2000);
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(native[_id(s)].fifo.length, 2000);
+      s.abort();
+    });
+
+    test('with one source read, the others follow at its rate', () async {
+      final idle = PcmSource.create(_mono);
+      final read = PcmSource.create(_mono);
+      native.open(_id(read));
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      expect(read.state, PcmSourceState.reading);
+      // The reader of the first comes while the timer is fast.
+      native.open(_id(idle));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(idle.state, PcmSourceState.reading);
+      read.abort();
+      idle.abort();
       await Future<void>.delayed(const Duration(milliseconds: 60));
       expect(PcmSource.debugPolling, isFalse);
     });

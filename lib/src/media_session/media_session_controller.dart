@@ -15,6 +15,7 @@ import '../types/enums/loop.dart';
 import '../types/sealed/media_session_artwork.dart';
 import '../types/sealed/media_session_command.dart';
 import 'artwork_fetcher.dart';
+import 'artwork_loader.dart';
 import 'media_session_channel.dart';
 import 'media_session_inputs.dart';
 
@@ -56,13 +57,19 @@ class MediaSessionController {
 
   /// Loads artwork URLs ([_fetches]) so the OS gets the image
   /// bytes, never the URL (see [downloadsArtworkOn]). Without one, artwork
-  /// URLs show no artwork.
-  final ArtworkFetcher? _artworkFetcher;
+  /// URLs show no artwork. It runs one load at a time, cancels the one a
+  /// track change leaves behind and keeps the last few covers.
+  final ArtworkLoader? _artworkLoader;
 
   final List<StreamSubscription<dynamic>> _subscriptions = [];
   StreamSubscription<MediaSessionCommand>? _commandSub;
   StreamSubscription<void>? _audioOutputResetSub;
   bool _disposed = false;
+
+  // Whether a native side answered `enable`. Until it has, and for good on
+  // a platform without one (Tizen, webOS), nothing listens to the event
+  // channel, no artwork is loaded and nothing is pushed.
+  bool _native = false;
 
   // ── Coalescing ──────────────────────────────────────────────────────
   // One mpv file-load fans out across up to 4 metadata streams + several
@@ -75,10 +82,10 @@ class MediaSessionController {
   bool _flushScheduled = false;
   MediaSessionMetadataSnapshot? _lastMetadata;
 
-  // ── Artwork download (only with an [_artworkFetcher]) ───────────────
+  // ── Artwork download (only with an [_artworkLoader]) ────────────────
   // The last downloaded URL and its result (`null` on failure), plus the
   // URL whose download is in flight. One cover at a time: a track change
-  // simply supersedes the pending one.
+  // cancels the pending one.
   String? _fetchedArtUri;
   CoverArt? _fetchedArt;
   String? _pendingArtUri;
@@ -107,7 +114,7 @@ class MediaSessionController {
     required void Function(MediaSessionCommand) onCommand,
     void Function()? onAudioOutputReset,
     MediaSessionChannel? channel,
-    ArtworkFetcher? artworkFetcher,
+    ArtworkLoader? artworkLoader,
     Duration artworkRetryAfter = const Duration(seconds: 30),
   }) : _artworkRetryAfter = artworkRetryAfter,
        _stateSnapshot = stateSnapshot,
@@ -115,7 +122,7 @@ class MediaSessionController {
        _onCommand = onCommand,
        _onAudioOutputReset = onAudioOutputReset,
        _channel = channel ?? MediaSessionChannel(),
-       _artworkFetcher = artworkFetcher;
+       _artworkLoader = artworkLoader;
 
   /// Wires the controller up and pushes the initial full state to the
   /// native side. Returns once the initial `enable` call has been
@@ -128,8 +135,9 @@ class MediaSessionController {
   /// [MediaSessionInputs] from raw [StreamController]s and drive
   /// arbitrary event sequences.
   ///
-  /// [artworkFetcher] defaults to [loadArtwork] (see
+  /// [artworkLoader] defaults to one over [loadArtwork] (see
   /// [downloadsArtworkOn]). It gets the artwork URLs [_fetches] names.
+  /// [artworkFetcher] is a plain fetcher for it to run instead.
   static Future<MediaSessionController> create({
     required PlayerState Function() stateSnapshot,
     required MediaSessionInputs inputs,
@@ -137,6 +145,7 @@ class MediaSessionController {
     void Function()? onAudioOutputReset,
     @visibleForTesting MediaSessionChannel? channel,
     @visibleForTesting ArtworkFetcher? artworkFetcher,
+    @visibleForTesting ArtworkLoader? artworkLoader,
     @visibleForTesting Duration artworkRetryAfter = const Duration(seconds: 30),
   }) async {
     final c = MediaSessionController._(
@@ -145,9 +154,13 @@ class MediaSessionController {
       onCommand: onCommand,
       onAudioOutputReset: onAudioOutputReset,
       channel: channel,
-      artworkFetcher:
-          artworkFetcher ??
-          (downloadsArtworkOn(defaultTargetPlatform) ? loadArtwork : null),
+      artworkLoader:
+          artworkLoader ??
+          (artworkFetcher != null
+              ? ArtworkLoader.uncancellable(artworkFetcher)
+              : downloadsArtworkOn(defaultTargetPlatform)
+              ? ArtworkLoader.platform()
+              : null),
       artworkRetryAfter: artworkRetryAfter,
     );
     try {
@@ -218,7 +231,29 @@ class MediaSessionController {
       }),
     );
 
-    // Inbound commands from the OS event channel.
+    // Push the initial full state. An artwork URL is not loaded yet: the
+    // platform may have no session to show it on.
+    final state = _stateSnapshot();
+    final session = state.settings.mediaSession;
+    if (session == null) return;
+    final metadata = _computeMetadata();
+    _lastMetadata = metadata;
+    final native = await _channel.enable(
+      session: session,
+      metadata: metadata,
+      playback: _computePlayback(),
+    );
+    if (_disposed) return;
+    if (!native) {
+      // No plugin on this platform: the session is a no-op. Listening to
+      // the event channel would make Flutter report an error.
+      await _cancelInputs();
+      return;
+    }
+    _native = true;
+
+    // Inbound commands from the OS event channel. The native side keeps
+    // the sink of each engine whatever the order of `listen` and `enable`.
     _commandSub = _channel.commandStream.listen(_onCommand);
     final onReset = _onAudioOutputReset;
     if (onReset != null) {
@@ -226,29 +261,25 @@ class MediaSessionController {
         (_) => onReset(),
       );
     }
+    // What changed while `enable` was in flight, and the artwork URL the
+    // first snapshot left out.
+    _markMetadata();
+  }
 
-    // Push the initial full state.
-    final state = _stateSnapshot();
-    final session = state.settings.mediaSession;
-    if (session == null) return;
-    final metadata = _computeMetadata();
-    _lastMetadata = metadata;
-    await _channel.enable(
-      session: session,
-      metadata: metadata,
-      playback: _computePlayback(),
-    );
+  Future<void> _cancelInputs() async {
+    for (final s in _subscriptions) {
+      await s.cancel();
+    }
+    _subscriptions.clear();
   }
 
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
     _artRetry?.cancel();
+    _artworkLoader?.cancel();
 
-    for (final s in _subscriptions) {
-      await s.cancel();
-    }
-    _subscriptions.clear();
+    await _cancelInputs();
     await _commandSub?.cancel();
     _commandSub = null;
     await _audioOutputResetSub?.cancel();
@@ -285,7 +316,7 @@ class MediaSessionController {
   }
 
   void _scheduleFlush() {
-    if (_flushScheduled || _disposed) return;
+    if (_flushScheduled || _disposed || !_native) return;
     _flushScheduled = true;
     scheduleMicrotask(_flush);
   }
@@ -298,7 +329,12 @@ class MediaSessionController {
   /// previous file's title, tags and duration unavailable before the new
   /// ones arrive, and pushing that gap would flash an empty entry on the
   /// lockscreen. The end of loading pushes it once.
-  Future<void> _flush() async {
+  ///
+  /// Both pushes are sent in this turn, metadata first: the channel keeps
+  /// the order of the sends, and the play state of a track change does not
+  /// wait for the native side to answer a message with a cover in it.
+  /// Nothing is sent after an await, so nothing follows a `disable`.
+  void _flush() {
     _flushScheduled = false;
     if (_disposed || _stateSnapshot().settings.mediaSession == null) {
       _metadataDirty = false;
@@ -311,14 +347,14 @@ class MediaSessionController {
       final snap = _computeMetadata();
       if (_lastMetadata == null || snap != _lastMetadata) {
         _lastMetadata = snap;
-        await _channel.updateMetadata(snap);
+        unawaited(_channel.updateMetadata(snap));
       }
     }
     if (_playbackDirty) {
       final seek = _playbackSeek;
       _playbackDirty = false;
       _playbackSeek = false;
-      await _channel.updatePlayback(_computePlayback(seek: seek));
+      unawaited(_channel.updatePlayback(_computePlayback(seek: seek)));
     }
   }
 
@@ -431,7 +467,7 @@ class MediaSessionController {
   ) {
     final uri = artwork.uri;
     if (uri == null) return (cover: artwork.bytes, artworkUrl: null);
-    final cover = _artworkFetcher != null && _fetches(uri)
+    final cover = _native && _artworkLoader != null && _fetches(uri)
         ? _downloadedArtwork(uri)
         : null;
     final showUrl = passesArtworkUrl && cover == null && _isHttp(uri);
@@ -467,10 +503,26 @@ class MediaSessionController {
         // A host, or no `//`: not a path of this machine as mpv reads it.
         return parsed?.toString();
       }
-      path = _unescape(uri.substring('file://'.length));
-      // `/C:/Music` names `C:/Music`, as mpv reads it on Windows.
-      if (_drivePath.hasMatch(path)) path = path.substring(1);
+      final bytes = _unescape(uri.substring('file://'.length));
+      path = utf8.decode(bytes, allowMalformed: true);
+      // On Windows `/C:/Music` names `C:/Music`, as mpv reads it there.
+      // Elsewhere it is the path it looks like, and so is `/a:b`.
+      final drive = _onWindows && _drivePath.hasMatch(path);
+      if (drive) path = path.substring(1);
+      if (!_isUtf8(bytes)) {
+        // A name that is not UTF-8 (Latin-1): no string holds its bytes,
+        // so the URI is written from them. The string stands in for the
+        // name where a path no URI can name is told.
+        if (_pathUri(path) == null) return null;
+        return 'file://${_encodePath(bytes, windows: drive)}';
+      }
     }
+    return _pathUri(path);
+  }
+
+  /// The path [path] as a `file:` URI, a relative one under the working
+  /// directory. `null` for a path no URI can name.
+  static String? _pathUri(String path) {
     final drive = Uri.tryParse(path)?.scheme.length == 1;
     try {
       return Uri.base
@@ -482,21 +534,82 @@ class MediaSessionController {
   }
 
   static final RegExp _drivePath = RegExp('^/[A-Za-z]:');
-  static final RegExp _escape = RegExp('%([0-9A-Fa-f]{2})');
 
-  /// [s] with each `%` and two hex digits decoded, the way mpv decodes a
-  /// `file:` URI. A `%` without them is kept.
-  static String _unescape(String s) {
+  /// Whether paths are read as Windows reads them: the platform the app
+  /// runs on, or the host whose rules `Uri.file` follows. The two differ
+  /// under `flutter test`, where the platform is Android on every host
+  /// while `Uri.file` still takes a backslash for a separator on Windows.
+  static bool get _onWindows =>
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.windows ||
+          Uri.file(r'a\b').pathSegments.length == 2);
+
+  /// The bytes of [s] with each `%` and two hex digits decoded, the way
+  /// mpv decodes a `file:` URI (and `fileUrlToPath` after it). A `%`
+  /// without them is kept with the two characters after it, so an escape
+  /// that starts inside those is not one: `%%41` stays as it is.
+  static List<int> _unescape(String s) {
+    final src = utf8.encode(s);
     final bytes = <int>[];
-    var i = 0;
-    for (final m in _escape.allMatches(s)) {
-      bytes
-        ..addAll(utf8.encode(s.substring(i, m.start)))
-        ..add(int.parse(m[1]!, radix: 16));
-      i = m.end;
+    for (var i = 0; i < src.length;) {
+      if (src[i] != 0x25 || i + 2 >= src.length) {
+        bytes.add(src[i++]);
+        continue;
+      }
+      final hi = _hexDigit(src[i + 1]);
+      final lo = _hexDigit(src[i + 2]);
+      if (hi >= 0 && lo >= 0) {
+        bytes.add(hi * 16 + lo);
+      } else {
+        bytes.addAll(src.sublist(i, i + 3));
+      }
+      i += 3;
     }
-    bytes.addAll(utf8.encode(s.substring(i)));
-    return utf8.decode(bytes, allowMalformed: true);
+    return bytes;
+  }
+
+  static bool _isUtf8(List<int> bytes) {
+    try {
+      utf8.decode(bytes);
+      return true;
+    } on FormatException {
+      return false;
+    }
+  }
+
+  /// The absolute path [bytes] as the path of a URI: what `Uri.file`
+  /// leaves as it is stays, every other byte is percent-encoded. On
+  /// [windows] a backslash separates, as a slash does.
+  static String _encodePath(List<int> bytes, {required bool windows}) {
+    const hex = '0123456789ABCDEF';
+    final out = StringBuffer();
+    for (final byte in bytes) {
+      if (windows && byte == 0x5c) {
+        out.write('/');
+      } else if (byte < 0x80 && _pathBytes.contains(byte)) {
+        out.writeCharCode(byte);
+      } else {
+        out
+          ..write('%')
+          ..write(hex[byte >> 4])
+          ..write(hex[byte & 0xf]);
+      }
+    }
+    return out.toString();
+  }
+
+  // The characters a URI path holds as they are, the ones `Uri.file`
+  // does not encode.
+  static final Set<int> _pathBytes =
+      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+              r"-._~!$&'()*+,;=:@/"
+          .codeUnits
+          .toSet();
+
+  static int _hexDigit(int c) {
+    if (c >= 0x30 && c <= 0x39) return c - 0x30;
+    final letter = c | 0x20;
+    return letter >= 0x61 && letter <= 0x66 ? letter - 0x61 + 10 : -1;
   }
 
   /// Whether [uri] is an `http(s)://` URL.
@@ -506,7 +619,7 @@ class MediaSessionController {
     return scheme == 'http' || scheme == 'https';
   }
 
-  /// Whether the artwork [uri] goes through [_artworkFetcher]: an
+  /// Whether the artwork [uri] goes through [_artworkLoader]: an
   /// `http(s)://`, `file://` or `asset://` URL, a `content://` or
   /// `android.resource://` one on Android and a `blob:` one in the browser.
   /// Any other scheme shows no artwork.
@@ -538,10 +651,24 @@ class MediaSessionController {
   }
 
   /// The cover loaded from the artwork [uri], or `null` while the load is
-  /// in flight or after it failed. Starts the load on first sight of [uri];
-  /// its completion re-pushes metadata.
+  /// in flight or after it failed. Starts the load on first sight of [uri],
+  /// which cancels the one in flight; its completion re-pushes metadata. A
+  /// cover the loader still keeps (the track before, most often) comes
+  /// back at once.
   CoverArt? _downloadedArtwork(String uri) {
     if (uri == _fetchedArtUri) return _fetchedArt;
+    final loader = _artworkLoader!;
+    final caFile = _stateSnapshot().settings.tlsCaFile;
+    final kept = loader.cached(uri, caFile);
+    if (kept != null) {
+      // The load of the track skipped past is not worth finishing.
+      if (_pendingArtUri != null) loader.cancel();
+      _pendingArtUri = null;
+      _artRetry?.cancel();
+      _fetchedArtUri = uri;
+      _fetchedArt = kept;
+      return kept;
+    }
     if (uri != _pendingArtUri) {
       _pendingArtUri = uri;
       _artRetry?.cancel();
@@ -551,10 +678,7 @@ class MediaSessionController {
       }
       _artAttempts++;
       unawaited(
-        _artworkFetcher!(
-          uri,
-          _stateSnapshot().settings.tlsCaFile,
-        ).catchError((Object _) => null).then((cover) {
+        loader.load(uri, caFile).then((cover) {
           if (_disposed || uri != _pendingArtUri) return;
           _pendingArtUri = null;
           _fetchedArtUri = uri;

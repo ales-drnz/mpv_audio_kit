@@ -100,20 +100,27 @@ MpvModule? _moduleOf(JSObject instance) {
   }
 }
 
+// A module that aborted throws at every call. A core that cannot be
+// destroyed is passed over, and so is the rest of the cleanup: what throws
+// here would fail the load of the page for every player.
 void _reap(MpvModule m, List<_Core> cores, {required bool closeOutput}) {
   final c = m.c;
   for (final core in cores) {
     debugWebReapTrace?.call(core.handle);
-    m.detachWakeup(core.reads, core.readsBridge);
-    m.detachWakeup(core.handle, core.handleBridge);
-    for (final command in analysisOffCommands) {
-      m.withStrings([command], (p) => c.mpvCommandString(core.handle, p[0]));
-    }
-    c.mpvDestroy(core.reads);
-    c.mpvTerminateDestroy(core.handle);
+    try {
+      m.detachWakeup(core.reads, core.readsBridge);
+      m.detachWakeup(core.handle, core.handleBridge);
+      for (final command in analysisOffCommands) {
+        m.withStrings([command], (p) => c.mpvCommandString(core.handle, p[0]));
+      }
+      c.mpvDestroy(core.reads);
+      c.mpvTerminateDestroy(core.handle);
+    } catch (_) {}
   }
-  c.pcmReleaseAll();
-  if (closeOutput) c.makWebAudio.close().toDart.ignore();
+  try {
+    c.pcmReleaseAll();
+    if (closeOutput) c.makWebAudio.close().toDart.ignore();
+  } catch (_) {}
 }
 
 /// Records the core of a player, once its bring-up kept it.

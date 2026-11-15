@@ -104,12 +104,17 @@ void main() {
         }, timeout: const Timeout(Duration(seconds: 30)));
 
         // The loudness of a stream whose channel count changes may end
-        // failed: the waveform has to read the mono half.
+        // failed, or unavailable from libmpv-r25, which gives no figure
+        // for part of a file: the waveform has to read the mono half.
         test('a file whose channel layout changes is analysed', () async {
           final (wave, scan) = await analyse(stereoMono);
           expect(
             scan.state,
-            isIn([LoudnessScanState.ready, LoudnessScanState.failed]),
+            isIn([
+              LoudnessScanState.ready,
+              LoudnessScanState.failed,
+              LoudnessScanState.unavailable,
+            ]),
           );
           // mpv takes the length from the bitrate of the stereo half, so
           // the mono half starts about two thirds in, after a gap of the

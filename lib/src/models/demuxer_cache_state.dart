@@ -2,6 +2,8 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
+import '../internals/equality.dart';
+
 /// A contiguous time range currently held in the demuxer cache.
 ///
 /// Used to render the already-buffered regions on a network seek bar.
@@ -71,17 +73,11 @@ final class DemuxerCacheState {
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     if (other is! DemuxerCacheState) return false;
-    if (other.rawInputRate != rawInputRate ||
-        other.eofCached != eofCached ||
-        other.bofCached != bofCached ||
-        other.underrun != underrun ||
-        other.seekableRanges.length != seekableRanges.length) {
-      return false;
-    }
-    for (var i = 0; i < seekableRanges.length; i++) {
-      if (other.seekableRanges[i] != seekableRanges[i]) return false;
-    }
-    return true;
+    return other.rawInputRate == rawInputRate &&
+        other.eofCached == eofCached &&
+        other.bofCached == bofCached &&
+        other.underrun == underrun &&
+        iterableEq(other.seekableRanges, seekableRanges);
   }
 
   @override

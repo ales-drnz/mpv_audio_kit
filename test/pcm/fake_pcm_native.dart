@@ -12,7 +12,6 @@ final class FakeSource {
   final int capacity;
   final BytesBuilder fifo = BytesBuilder();
   final List<int> writes = [];
-  int consumed = 0;
   int state = PcmNative.stateOpen;
   bool released = false;
   bool opened = false;
@@ -29,6 +28,9 @@ final class FakePcmNative implements PcmNative {
   static const int firstId = 1 << 40;
   int _next = firstId - 1;
   int releaseAllCalls = 0;
+
+  /// How many times [state] was read: once per poll of a live source.
+  int stateCalls = 0;
 
   FakeSource operator [](int id) => sources[id]!;
 
@@ -88,13 +90,8 @@ final class FakePcmNative implements PcmNative {
   }
 
   @override
-  int consumed(int id) {
-    final s = sources[id];
-    return s == null || s.freed ? PcmNative.errUnknown : s.consumed;
-  }
-
-  @override
   int state(int id) {
+    stateCalls++;
     final s = sources[id];
     if (s == null || s.freed) return PcmNative.errUnknown;
     return s.state;
@@ -135,7 +132,6 @@ final class FakePcmNative implements PcmNative {
     final all = s.fifo.takeBytes();
     final take = n < all.length ? n : all.length;
     s.fifo.add(Uint8List.sublistView(all, take));
-    s.consumed += take;
     s.read.addAll(all.sublist(0, take));
     _maybeDrained(s);
     return Uint8List.sublistView(all, 0, take);

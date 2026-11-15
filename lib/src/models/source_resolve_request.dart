@@ -62,6 +62,6 @@ final class SourceResolveRequest {
 
   @override
   String toString() =>
-      'SourceResolveRequest(uri: ${redactUserInfo(uri)}, isRetry: $isRetry, '
+      'SourceResolveRequest(uri: ${redactUrl(uri)}, isRetry: $isRetry, '
       'media: $media)';
 }

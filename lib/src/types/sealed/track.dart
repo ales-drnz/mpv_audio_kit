@@ -41,11 +41,17 @@ sealed class Track {
 /// The [Track.auto] variant: defer to mpv's automatic track choice.
 final class TrackAuto extends Track {
   const TrackAuto._() : super._();
+
+  @override
+  String toString() => 'Track.auto';
 }
 
 /// The [Track.off] variant: disable audio output entirely.
 final class TrackOff extends Track {
   const TrackOff._() : super._();
+
+  @override
+  String toString() => 'Track.off';
 }
 
 /// The [Track.id] variant: select a specific track by mpv track id.

@@ -123,4 +123,33 @@ void main() {
     expect(w.rms!.sublist(10), everyElement(0));
     await p.dispose();
   });
+
+  test('a ready envelope with a NaN is the same after a reload', () async {
+    // The same file loaded again: mpv gives back the envelope it kept, and
+    // the bins are compared by their bits, so a NaN bin equals itself.
+    Map<String, Object?> ready() => {
+      'state': 'ready',
+      'duration_us': 10000000,
+      'min': _floats(20, -0.5),
+      'max': _floats(20, 0.5),
+      'rms': _floats(20, 0.25)..buffer.asFloat32List()[7] = double.nan,
+      'filled': Uint8List(20)..fillRange(0, 20, 1),
+    };
+    final p = WaveformPipeline(
+      asyncGet: (name, format) async => (0, ready()),
+      asyncSet: (name, value) async => 0,
+      pollInterval: const Duration(milliseconds: 10),
+    );
+    final got = <WaveformData?>[];
+    p.stream.listen(got.add);
+    p.setEnabled(true);
+    await _ticks(2, const Duration(milliseconds: 10));
+    expect(got, hasLength(1));
+    expect(got.single!.rms![7], isNaN);
+
+    p.reset(sameFile: true);
+    await _ticks(3, const Duration(milliseconds: 10));
+    expect(got, hasLength(1), reason: 'the same envelope is not sent again');
+    await p.dispose();
+  });
 }

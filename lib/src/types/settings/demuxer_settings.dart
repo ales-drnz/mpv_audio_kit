@@ -6,7 +6,7 @@
 /// (`demuxer-max-bytes`, `demuxer-max-back-bytes`, `demuxer-readahead-secs`).
 ///
 /// Apply atomically via [Player.setDemuxer]. For one-off tweaks use
-/// `state.demuxer.copyWith(...)`. Read the current configuration via
+/// `state.settings.demuxer.copyWith(...)`. Read the current configuration via
 /// [PlayerSettings.demuxer] or observe live changes via [PlayerStream.demuxer].
 final class DemuxerSettings {
   /// Maximum bytes the demuxer is allowed to cache ahead of the playhead.

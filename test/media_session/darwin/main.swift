@@ -365,6 +365,48 @@ func runNoTitlePoisonGuard() {
   }
 }
 
+/// A stop that empties the playlist takes the title away. The poison guard
+/// keeps the last entry rather than publish an empty one, and that entry
+/// must not stay in "playing" with its rate: the slider of the lock screen
+/// would go on for a track that stopped. It stays, paused and at rate 0.
+func runTitleGoneAfterPublishPausesTheEntry() {
+  scenario("a title that goes after a publish leaves the entry paused at rate 0") {
+    let h = Harness(); defer { h.reset() }
+    enable(h, playback: makePlayback(playing: true, positionMs: 30_000))
+    check(Frame.capture().playbackState == .playing, "precondition: playing")
+    check(Frame.capture().rate == 1.0, "precondition: rate 1")
+
+    // The metadata of the stop first, then its playback: the order in
+    // which the entry kept its playing state.
+    h.call("updateMetadata", args: ["durationMs": 0])
+    check(Frame.capture().playbackState == .playing,
+          "no title while it plays changes nothing; got \(Frame.capture().description)")
+    let before = h.plugin.publishCount
+    h.call("updatePlayback", args: makePlayback(playing: false, positionMs: 0))
+    let f = Frame.capture()
+    check(f.playbackState == .paused, "must be .paused, got \(f.description)")
+    check(f.rate == 0, "rate must be 0, got \(f.description)")
+    check(f.title == "Test Track",
+          "the last entry stays; got \(String(describing: f.title))")
+    check(h.plugin.publishCount == before + 1,
+          "one write; got \(h.plugin.publishCount - before)")
+
+    // The same push again writes nothing.
+    h.call("updatePlayback", args: makePlayback(playing: false, positionMs: 0))
+    check(h.plugin.publishCount == before + 1, "an identical push is not written")
+
+    // The next track publishes as usual.
+    var next = makeMetadata()
+    next["title"] = "Next Track"
+    h.call("updateMetadata", args: next)
+    h.call("updatePlayback", args: makePlayback(playing: true, positionMs: 0))
+    let g = Frame.capture()
+    check(g.title == "Next Track", "got \(String(describing: g.title))")
+    check(g.playbackState == .playing, "must be .playing, got \(g.description)")
+    check(g.rate == 1.0, "rate must be 1, got \(g.description)")
+  }
+}
+
 /// A routine push (loop/shuffle/rate) that lands while a scrub-initiated
 /// seek is still in flight carries the stale pre-seek position. It must NOT
 /// release the freeze — otherwise the slider snaps back from the drop
@@ -543,6 +585,7 @@ runRepeatShuffleVisualState()
 runDedupCoalescesIdenticalPushes()
 runDisableClearsNowPlaying()
 runNoTitlePoisonGuard()
+runTitleGoneAfterPublishPausesTheEntry()
 runNonOwnerDisableKeepsOwnerEntry()
 runSecondEngineEnableIsRefused()
 runDetachRetiresTheOwnersEntry()

@@ -9,6 +9,7 @@
 
 #include <chrono>
 #include <future>
+#include <utility>
 
 namespace mpv_audio_kit {
 
@@ -53,8 +54,10 @@ std::string RepeatToLoop(wm::MediaPlaybackAutoRepeatMode mode) {
 // setter is projected as `Thumbnail(RandomAccessStreamReference const&)`, and
 // the interface does not implicitly convert back up to the concrete class.
 wss::RandomAccessStreamReference MakeThumbnail(const std::vector<uint8_t>& bytes) {
+  // By reference: the caller waits in get() below until the worker is done,
+  // so the bytes outlive it and are not copied for it.
   return std::async(std::launch::async,
-                    [bytes]() -> wss::RandomAccessStreamReference {
+                    [&bytes]() -> wss::RandomAccessStreamReference {
     // `.get()` is only safe on an MTA thread; this dedicated worker is MTA.
     // init_apartment can throw RPC_E_CHANGED_MODE on a pooled/reused thread —
     // swallow it (agile work is fine regardless). Do NOT uninit_apartment():
@@ -106,19 +109,6 @@ SmtcController::SmtcController(
     std::function<void(flutter::EncodableValue)> command_sink)
     : command_sink_(std::move(command_sink)) {}
 
-SmtcController::~SmtcController() {
-  // Stop in-flight OS handlers from dereferencing command_sink_ before we revoke
-  // their tokens (revoke does not join a handler already running on a pool thread).
-  alive_.store(false);
-  if (created_) {
-    smtc_.ButtonPressed(button_token_);
-    smtc_.PlaybackPositionChangeRequested(position_token_);
-    smtc_.AutoRepeatModeChangeRequested(repeat_token_);
-    smtc_.ShuffleEnabledChangeRequested(shuffle_token_);
-    smtc_.PlaybackRateChangeRequested(rate_token_);
-  }
-}
-
 void SmtcController::EnsureCreated() {
   if (created_) return;
 
@@ -151,7 +141,6 @@ void SmtcController::EnsureCreated() {
   position_token_ = smtc_.PlaybackPositionChangeRequested(
       [this](wm::SystemMediaTransportControls const&,
              wm::PlaybackPositionChangeRequestedEventArgs const& args) {
-        if (!alive_.load()) return;
         command_sink_(flutter::EncodableValue(flutter::EncodableMap{
             {flutter::EncodableValue("type"), flutter::EncodableValue("seekTo")},
             {flutter::EncodableValue("positionMs"),
@@ -162,7 +151,6 @@ void SmtcController::EnsureCreated() {
   repeat_token_ = smtc_.AutoRepeatModeChangeRequested(
       [this](wm::SystemMediaTransportControls const&,
              wm::AutoRepeatModeChangeRequestedEventArgs const& args) {
-        if (!alive_.load()) return;
         command_sink_(flutter::EncodableValue(flutter::EncodableMap{
             {flutter::EncodableValue("type"),
              flutter::EncodableValue("setRepeatMode")},
@@ -174,7 +162,6 @@ void SmtcController::EnsureCreated() {
   shuffle_token_ = smtc_.ShuffleEnabledChangeRequested(
       [this](wm::SystemMediaTransportControls const&,
              wm::ShuffleEnabledChangeRequestedEventArgs const& args) {
-        if (!alive_.load()) return;
         command_sink_(flutter::EncodableValue(flutter::EncodableMap{
             {flutter::EncodableValue("type"), flutter::EncodableValue("setShuffle")},
             {flutter::EncodableValue("shuffle"),
@@ -185,7 +172,6 @@ void SmtcController::EnsureCreated() {
   rate_token_ = smtc_.PlaybackRateChangeRequested(
       [this](wm::SystemMediaTransportControls const&,
              wm::PlaybackRateChangeRequestedEventArgs const& args) {
-        if (!alive_.load()) return;
         command_sink_(flutter::EncodableValue(flutter::EncodableMap{
             {flutter::EncodableValue("type"),
              flutter::EncodableValue("setPlaybackRate")},
@@ -198,7 +184,6 @@ void SmtcController::EnsureCreated() {
 }
 
 void SmtcController::OnButton(wm::SystemMediaTransportControlsButton button) {
-  if (!alive_.load()) return;
   using B = wm::SystemMediaTransportControlsButton;
   switch (button) {
     case B::Play:
@@ -287,16 +272,16 @@ void SmtcController::PublishMetadata() {
   // Every cover arrives as bytes: the package downloads a URL and reads a
   // file:// itself.
   if (!metadata_.artwork.empty()) {
-    if (metadata_.artwork != artwork_cache_key_) {
+    if (artwork_changed_) {
       wss::RandomAccessStreamReference thumb = MakeThumbnail(metadata_.artwork);
       du.Thumbnail(thumb);
-      artwork_cache_key_ = metadata_.artwork;
+      artwork_changed_ = false;
     }
   } else {
     // A bare `nullptr` is ambiguous for the projected property setter — pass an
     // explicitly typed empty reference to clear the thumbnail.
     du.Thumbnail(wss::RandomAccessStreamReference{nullptr});
-    artwork_cache_key_.clear();
+    artwork_changed_ = false;
   }
   du.Update();  // commits the DisplayUpdater changes to the OS.
 }
@@ -342,10 +327,12 @@ void SmtcController::PublishPlayback() {
   smtc_.UpdateTimelineProperties(tl);
 }
 
-void SmtcController::Enable(const SmtcConfig& config, const SmtcMetadata& metadata,
+void SmtcController::Enable(const SmtcConfig& config, SmtcMetadata metadata,
                             const SmtcPlayback& playback) {
   config_ = config;
-  metadata_ = metadata;
+  // A session that starts has no thumbnail yet: Disable cleared it.
+  artwork_changed_ = true;
+  metadata_ = std::move(metadata);
   playback_ = playback;
   ff_ms_ = config.fast_forward_ms;
   rw_ms_ = config.rewind_ms;
@@ -374,8 +361,12 @@ void SmtcController::UpdateConfig(const SmtcConfig& config) {
   ++publish_count_;
 }
 
-void SmtcController::UpdateMetadata(const SmtcMetadata& metadata) {
-  metadata_ = metadata;
+void SmtcController::UpdateMetadata(SmtcMetadata metadata) {
+  // Compared with the cover already held, then moved in: one copy of the
+  // cover lives here, not a second one as a cache key. The flag stays up
+  // until a thumbnail is made of it (PublishMetadata).
+  if (metadata.artwork != metadata_.artwork) artwork_changed_ = true;
+  metadata_ = std::move(metadata);
   if (enabled_) {
     PublishMetadata();
     // Duration lives in metadata → refresh the timeline too.
@@ -409,7 +400,7 @@ void SmtcController::Disable() {
   config_ = SmtcConfig{};
   metadata_ = SmtcMetadata{};
   playback_ = SmtcPlayback{};
-  artwork_cache_key_.clear();
+  artwork_changed_ = false;
   ++publish_count_;
 }
 

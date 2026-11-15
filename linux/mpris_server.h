@@ -79,10 +79,13 @@ class MprisServer {
   void FlushChanged();
   void RepublishAll();
   GVariant* PlayerPropertyValue(const char* property);
+  bool HasAction(const char* action) const;
+  bool CanPlayAction() const;
+  bool CanPauseAction() const;
   GVariant* BuildMetadata();
   void Emit(const gchar* type);
   void EmitWith(FlValue* command);  // takes ownership of command
-  void WriteArtwork(const std::vector<uint8_t>& bytes, const std::string& mime);
+  void WriteArtwork(const uint8_t* data, size_t size, const std::string& mime);
   void SweepArtwork();
   static void RemoveStaleArtDirs(const std::string& root);
   int64_t ExtrapolatedPositionUs() const;
@@ -142,7 +145,6 @@ class MprisServer {
   bool has_prev_ = true;
   std::string loop_ = "off";
   bool shuffle_ = false;
-  double volume_ = 1.0;
   double min_rate_ = 0.5;
   double max_rate_ = 2.0;
 

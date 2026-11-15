@@ -16,7 +16,15 @@ What it reads:
   `lib/src/internals/libmpv_licenses.dart` are left out. lib may grow: a
   growth past 300 lines only warns, and the commit says why.
 - **Tests per lib**: the lines of code of `test` (`test/generated` left
-  out) per line of lib, in thousandths. It must not go down.
+  out) per line of lib, in thousandths. It must not go down unnoticed: a
+  cleanup of the tests (duplicates removed, cases turned into a table)
+  lowers it and checks nothing less, so a fall is declared with its reason,
+
+      dart tool/metrics/bin/metrics.dart --write --test-ratio-drop="<why>"
+
+  which writes the baseline with the reason in it (`test_per_lib_drop`).
+  Without the flag `--write` refuses to lower the ratio, and the check
+  fails on a fall; with the flag the check only warns.
 - **Complexity** of each function of the same files: 1, plus one for each
   `if`, `for`, `while`, `do`, `case`, `catch`, `?:`, `&&`, `||` and `??`.
   `?.` and `??=` count nothing. Also counted: the `if` and `for` of a
@@ -34,6 +42,13 @@ What it reads:
 - **Struct layout** (`struct_layout.txt`): the fields of the `Struct` and
   `Union` classes of `mpv_bindings.dart`, and the wasm32 table of
   `web_layout.dart`. Any change fails.
+
+Beside the ratchet, Test (Linux) holds the **line coverage** of the same
+files of lib (`scripts/ci/coverage.sh`) over `coverage_floor.txt`, a
+percentage that may rise, by hand, and never fall. Every file counts: one
+the lcov does not hold must be in `coverage_unmeasured.txt`, as `web` (it
+runs in the browser alone, and counts as lines not covered, estimated) or
+`none` (it has no line to cover).
 
 The numbers are this tool's own: another script that counts the same
 things can give others. Compare a version only with this tool.

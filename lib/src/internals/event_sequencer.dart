@@ -24,24 +24,20 @@ typedef TakenEvent = (bool taken, Future<void>? reads, bool last);
 @internal
 final class EventSequencer {
   /// A sequencer over [take], which takes the next event of the queue and
-  /// hands it to the logic. [flushTrailing] sends the values the logic
-  /// held whose window closed; [waitSeconds] says when the next one
-  /// closes (`null` when none is held). [idle], when given, runs in its
-  /// place once the queue is empty, and may return reads to wait for.
-  /// [onError] gets what an event threw.
+  /// hands it to the logic. [idle] runs after every event and once the
+  /// queue is empty: it sends the values the logic held whose window
+  /// closed, and may return reads to wait for. [waitSeconds] says when
+  /// the next window closes (`null` when no value is held). [onError]
+  /// gets what an event threw.
   EventSequencer({
     required this.take,
-    required this.flushTrailing,
+    required this.idle,
     required this.waitSeconds,
     required this.onError,
-    this.idle,
   });
 
   /// Takes the next event of mpv's queue and dispatches it.
   final TakenEvent Function() take;
-
-  /// Sends the held values whose window has closed.
-  final void Function() flushTrailing;
 
   /// Seconds until the earliest held value's window closes; `null` when
   /// none is held.
@@ -50,9 +46,9 @@ final class EventSequencer {
   /// Gets an error an event threw, synchronously or from its reads.
   final void Function(Object error, StackTrace stack) onError;
 
-  /// Flushes as [flushTrailing] does, then starts the reads that are due,
-  /// if any, and returns their future.
-  final Future<void>? Function()? idle;
+  /// Sends the held values whose window has closed, then starts the reads
+  /// that are due, if any, and returns their future.
+  final Future<void>? Function() idle;
 
   bool _stepping = false;
   bool _stopped = false;
@@ -133,13 +129,8 @@ final class EventSequencer {
   }
 
   Future<void>? _idle() {
-    final run = idle;
-    if (run == null) {
-      flushTrailing();
-      return null;
-    }
     try {
-      return run();
+      return idle();
     } catch (e, st) {
       onError(e, st);
       return null;

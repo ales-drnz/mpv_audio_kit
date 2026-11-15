@@ -74,8 +74,15 @@ class MpvEventFileLoaded extends MpvIsolateEvent {
   /// `null` so consumers clear stale artwork.
   final Uint8List? coverData;
 
-  /// MIME type of [coverData]; `null` iff [coverData] is `null`.
+  /// MIME type of the cover; `null` when the file has none.
   final String? coverMime;
+
+  /// The embedded cover as the native pump sends it to the main isolate:
+  /// the bytes in the transport's own form, which cross without a second
+  /// copy. `null` on the web, and once the receiving side has put the
+  /// bytes in [coverData] with [withCover], before the player gets the
+  /// event.
+  final Object? coverTransfer;
 
   /// Carries the file-load payload; every field is `null`-tolerant so a
   /// partially failed read still delivers the event.
@@ -87,7 +94,20 @@ class MpvEventFileLoaded extends MpvIsolateEvent {
     this.chapterList,
     this.coverData,
     this.coverMime,
+    this.coverTransfer,
   });
+
+  /// This event with [bytes] as its cover and no [coverTransfer]. `null`
+  /// bytes are no cover, and no [coverMime].
+  MpvEventFileLoaded withCover(Uint8List? bytes) => MpvEventFileLoaded(
+    path: path,
+    playlist: playlist,
+    timePos: timePos,
+    chapterIndex: chapterIndex,
+    chapterList: chapterList,
+    coverData: bytes,
+    coverMime: bytes == null ? null : coverMime,
+  );
 }
 
 /// mpv fired MPV_EVENT_PLAYBACK_RESTART: the seek (or file load) has

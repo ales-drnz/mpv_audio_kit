@@ -208,13 +208,25 @@ class SlowCoreShim {
   /// the player behind those reads. `counter('deferred_sent')` counts the
   /// requests sent. A request an earlier call still defers goes to mpv at
   /// once.
-  void deferRequest(String name, {required int afterEvent, int skip = 0}) {
+  ///
+  /// With [afterParkRead] the event is not enough: the isolate must also
+  /// have read the keep-open park after it. A restart reaches the isolate
+  /// before mpv has found the end again, by a few turns of its playloop,
+  /// so the reads of the restart of a seek to the end can still answer
+  /// that the file is not at its end; the park then comes with its own
+  /// notifications, and their read is the one waited for.
+  void deferRequest(
+    String name, {
+    required int afterEvent,
+    int skip = 0,
+    bool afterParkRead = false,
+  }) {
     final fn = _lib
         .lookupFunction<
-          Void Function(Pointer<Utf8>, Int32, Int32),
-          void Function(Pointer<Utf8>, int, int)
+          Void Function(Pointer<Utf8>, Int32, Int32, Int32),
+          void Function(Pointer<Utf8>, int, int, int)
         >('mak_shim_defer_request');
-    _withString(name, (p) => fn(p, afterEvent, skip));
+    _withString(name, (p) => fn(p, afterEvent, skip, afterParkRead ? 1 : 0));
   }
 
   /// Holds the next async request naming [name] (a command's first

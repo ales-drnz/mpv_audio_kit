@@ -2,6 +2,8 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
+import 'mpv_value.dart';
+
 /// S/PDIF (or HDMI) compressed-audio passthrough codec.
 ///
 /// Mirrors mpv's `--audio-spdif=<codecs>` option: the wire-level value is
@@ -50,25 +52,17 @@ enum Spdif {
   /// Maps a single mpv-side codec token to [Spdif]. Returns `null` for
   /// unknown values (forward-compat with future mpv builds adding new
   /// passthrough codecs).
-  static Spdif? fromMpv(String raw) => switch (raw) {
-    'ac3' => ac3,
-    'dts' => dts,
-    'dts-hd' => dtsHd,
-    'eac3' => eac3,
-    'truehd' => trueHd,
-    _ => null,
-  };
+  static Spdif? fromMpv(String raw) =>
+      byMpvValue(values, raw, (v) => v.mpvValue);
 
   /// Parses mpv's wire-level CSV (`'ac3,dts,truehd'`) into a typed set.
   /// Empty or whitespace-only input → empty set. Unknown tokens are
-  /// dropped silently.
+  /// dropped silently. The set cannot be changed, empty or not.
   static Set<Spdif> parseMpvList(String raw) {
     if (raw.trim().isEmpty) return const <Spdif>{};
-    return raw
-        .split(',')
-        .map((s) => fromMpv(s.trim()))
-        .whereType<Spdif>()
-        .toSet();
+    return Set.unmodifiable(
+      raw.split(',').map((s) => fromMpv(s.trim())).whereType<Spdif>(),
+    );
   }
 
   /// Serialises a set into the comma-separated wire format mpv expects.

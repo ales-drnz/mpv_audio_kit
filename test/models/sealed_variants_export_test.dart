@@ -57,4 +57,10 @@ void main() {
     expect((custom as ChannelsCustom).mpvLayout, 'fl-fr-lfe');
     expect(Channels.stereo, isNot(isA<ChannelsCustom>()));
   });
+
+  test('every Track variant prints its factory', () {
+    expect(Track.auto.toString(), 'Track.auto');
+    expect(Track.off.toString(), 'Track.off');
+    expect(const Track.id(2).toString(), 'Track.id(2)');
+  });
 }

@@ -29,13 +29,17 @@ import 'dsp_async_io.dart';
 ///   1. Poll the property → MAP_NODE { sample_rate, channels, pts_ns, samples }.
 ///   2. Skip a stream when `pts_ns` matches the frame it got last (no new
 ///      audio). A stream's first listener gets the current frame, paused too.
-///   3. Mix down to mono (mean of channels).
-///   4. Multiply by the configured window function.
-///   5. Real FFT (fftea) → magnitude per bin.
-///   6. Power → 10·log₁₀ → clip [minDb, maxDb] → normalise [0, 1].
-///   7. Aggregate bins into log-spaced bands (mean per band).
-///   8. Apply asymmetric EMA on the bands (fast attack, slow release).
-///   9. Emit [FftFrame] (raw bins + smoothed bands) and [PcmFrame].
+///   3. Keep only the audio the spectrum has not analyzed: the frame
+///      holds the latest 4096 samples per channel and overlaps the one
+///      before (see [BandProcessor]). A read with less new audio than an
+///      FFT hop sends its [PcmFrame] and no [FftFrame].
+///   4. Mix down to mono (mean of channels).
+///   5. Multiply by the configured window function.
+///   6. Real FFT (fftea) → magnitude per bin.
+///   7. Power → 10·log₁₀ → clip [minDb, maxDb] → normalise [0, 1].
+///   8. Aggregate bins into log-spaced bands (mean per band).
+///   9. Apply asymmetric EMA on the bands (fast attack, slow release).
+///   10. Emit [FftFrame] (raw bins + smoothed bands) and [PcmFrame].
 @internal
 class SpectrumPipeline {
   SpectrumPipeline({required AsyncPropertyGet asyncGet})
@@ -75,7 +79,6 @@ class SpectrumPipeline {
   Stream<PcmFrame> get pcmStream => _pcmCtrl.stream;
 
   SpectrumSettings _settings = SpectrumSettings.defaults;
-  SpectrumSettings get settings => _settings;
 
   bool _fftActive = false;
   bool _pcmActive = false;

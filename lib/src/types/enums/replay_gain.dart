@@ -2,6 +2,8 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
+import 'mpv_value.dart';
+
 /// ReplayGain normalization mode, mirroring `--replaygain=<no|track|album>`.
 enum ReplayGain {
   /// Disabled: no normalization.
@@ -20,10 +22,6 @@ enum ReplayGain {
   final String mpvValue;
 
   /// Maps a raw mpv-side value back to the enum. Unknown → [no].
-  static ReplayGain fromMpv(String raw) => switch (raw) {
-    'no' => no,
-    'track' => track,
-    'album' => album,
-    _ => no,
-  };
+  static ReplayGain fromMpv(String raw) =>
+      byMpvValue(values, raw, (v) => v.mpvValue) ?? no;
 }
