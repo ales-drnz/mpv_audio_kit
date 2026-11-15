@@ -39,6 +39,16 @@
 ### iOS, tvOS, macOS
 **Fixed**
 - The build hook checks the unpacked libmpv against the hash it recorded on unpacking, and unpacks it again when they differ.
+- Enabling the media session again drops a seek bar still held by a scrub of the session before.
+- On iOS an interruption that only means the app was suspended is told by its reason key, which replaced the older key in iOS 14.5.
+
+### Linux
+**Fixed**
+- An app in a Flatpak sandbox shows its cover in the desktop media controls.
+
+### Windows
+**Fixed**
+- The cover of the media controls is built without a thread of its own, so a cover can no longer freeze the app.
 
 ## [0.7.1] - 15-11-2026
 
