@@ -307,9 +307,8 @@ String generateComposite(
     ..writeln('      identical(this, other) ||')
     ..writeln('      (other is ${c.name} &&')
     ..writeln(
-      [
-        for (final g in groups) '          other.${g.name} == _self.${g.name}',
-      ].join(' &&\n'),
+      [for (final g in groups) '          other.${g.name} == _self.${g.name}']
+          .join(' &&\n'),
     )
     ..writeln('      );')
     ..writeln()
