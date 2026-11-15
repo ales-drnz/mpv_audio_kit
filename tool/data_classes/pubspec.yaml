@@ -3,7 +3,7 @@ description: Generates ==, hashCode and copyWith of the data classes of mpv_audi
 publish_to: none
 
 environment:
-  sdk: ^3.10.0
+  sdk: ^3.13.0
 
 dependencies:
   analyzer: ^14.7.0

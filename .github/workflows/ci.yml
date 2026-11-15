@@ -131,15 +131,22 @@ jobs:
         working-directory: test_app
       # flutter analyze reads the packages of tool too (analysis_options.yaml
       # leaves out tool/codegen alone), each with its own dependencies.
+      # metrics and data_classes need Dart 3.13 (analyzer 14): they are
+      # development tools, so the floor analyzes everything else.
       - name: Dependencies of the tool packages
         run: |
-          for package in metrics data_classes mutation; do
+          packages="metrics data_classes mutation"
+          [[ "${{ matrix.flutter }}" == floor ]] && packages="mutation"
+          for package in $packages; do
             dart pub get -C "tool/$package"
           done
       - name: Format
         if: matrix.flutter == 'stable'
         run: dart format --output=none --set-exit-if-changed lib test example test_app/lib test_app/integration_test hook tool
       - run: flutter analyze
+        if: matrix.flutter != 'floor'
+      - run: flutter analyze lib test hook example test_app tool/mutation
+        if: matrix.flutter == 'floor'
       # The dry run of a checkout without the web module, which is out of
       # git: what goes to pub.dev is checked by scripts/publish.sh, on the
       # checkout it is published from. Its check of the versions (pubspec,
