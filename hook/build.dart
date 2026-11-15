@@ -34,7 +34,6 @@
 import 'dart:io';
 
 import 'package:code_assets/code_assets.dart';
-import 'package:crypto/crypto.dart';
 import 'package:hooks/hooks.dart';
 
 import 'package:mpv_audio_kit/src/internals/hook_download.dart';
@@ -120,7 +119,8 @@ void main(List<String> args) async {
         await asset.copy(out.path);
       } else {
         // A pinned download never changes, so its unpacked copy is kept
-        // beside it; a local zip may, so it is unpacked again each build.
+        // beside it and its binary checked on each build; a local zip may,
+        // so it is unpacked again each build.
         final unpacked = local == null
             ? Directory('${asset.parent.path}/unzipped')
             : Directory.fromUri(input.outputDirectory.resolve('unzipped'));
@@ -133,6 +133,7 @@ void main(List<String> args) async {
           target,
           code.targetArchitecture,
           out,
+          zipSha256: local == null ? _sha256[target.asset] : null,
         );
       }
     }
@@ -265,60 +266,44 @@ Future<File> _localAsset(Uri dir, String asset) async {
 }
 
 /// The release [asset], downloaded once into [cacheDir] and reused by every
-/// build that asks for the same checksum.
+/// build that asks for the same checksum. The assets of other releases are
+/// pruned from [cacheDir] after it.
 Future<File> _fetch(String asset, Uri cacheDir) async {
   final expected = _sha256[asset];
   if (expected == null || expected.isEmpty) {
     throw StateError('mpv_audio_kit: no SHA-256 pinned for $asset');
   }
-  final cached = File.fromUri(cacheDir.resolve('$expected/$asset'));
-  if (await _matches(cached, expected)) return cached;
-
-  await cached.parent.create(recursive: true);
-  // One partial file per build: Flutter can run the hook for two
-  // architectures at once, and both would download the same asset.
-  final partial = File('${cached.path}.$pid.part');
-  try {
-    await download('$_baseUrl/$asset', partial);
-    if (!await _matches(partial, expected)) {
-      throw StateError(
-        'mpv_audio_kit: SHA-256 mismatch for $asset from $_baseUrl',
-      );
-    }
-    return await partial.rename(cached.path);
-  } finally {
-    if (await partial.exists()) await partial.delete();
-  }
+  final file = await fetchPinned(
+    asset: asset,
+    release: _release,
+    url: '$_baseUrl/$asset',
+    sha256Hex: expected,
+    cacheDir: cacheDir,
+  );
+  await pruneCache(cacheDir, _sha256.values);
+  return file;
 }
 
 /// Copies the libmpv binary of the xcframework slice, unpacked from [zip]
-/// into [dir], into [out], thinned to [arch] when the slice is universal:
-/// Flutter runs the hook once per architecture and merges the results
-/// itself.
+/// into [dir] and checked by [unpackedBinary], into [out], thinned to
+/// [arch] when the slice is universal: Flutter runs the hook once per
+/// architecture and merges the results itself.
 Future<void> _extractAppleSlice(
   File zip,
   Directory dir,
   _Target target,
   Architecture arch,
-  File out,
-) async {
-  final framework =
-      '${dir.path}/libmpv.xcframework/${target.appleSlice}/libmpv.framework';
-  if (!await dir.exists()) {
-    // Unpack beside it and rename into place, so an interrupted unzip
-    // never leaves a half directory that a later build would trust.
-    await dir.parent.create(recursive: true);
-    final staging = await dir.parent.createTemp('unzip-');
-    await _run('unzip', ['-q', zip.path, '-d', staging.path]);
-    try {
-      await staging.rename(dir.path);
-    } on FileSystemException {
-      // Another build unpacked the same zip first; its copy is identical.
-      await staging.delete(recursive: true);
-    }
-  }
-  // A macOS framework keeps its binary under Versions/; follow the link.
-  final binary = await File('$framework/libmpv').resolveSymbolicLinks();
+  File out, {
+  String? zipSha256,
+}) async {
+  // A macOS framework keeps its binary under Versions/; the path returned
+  // follows the link.
+  final binary = await unpackedBinary(
+    zip,
+    dir,
+    'libmpv.xcframework/${target.appleSlice}/libmpv.framework/libmpv',
+    zipSha256: zipSha256,
+  );
   final lipoArch = switch (arch) {
     Architecture.arm64 => 'arm64',
     Architecture.x64 => 'x86_64',
@@ -336,12 +321,6 @@ Future<void> _extractAppleSlice(
   } else {
     await _run('lipo', [binary, '-thin', lipoArch, '-output', out.path]);
   }
-}
-
-Future<bool> _matches(File file, String sha256Hex) async {
-  if (!await file.exists()) return false;
-  final digest = await sha256.bind(file.openRead()).first;
-  return digest.toString() == sha256Hex;
 }
 
 Future<String> _run(String executable, List<String> arguments) async {
