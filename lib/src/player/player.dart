@@ -101,6 +101,7 @@ part 'mixins/player_playback.part.dart';
 part 'mixins/player_properties.part.dart';
 part 'mixins/player_queue.part.dart';
 part 'mixins/player_raw.part.dart';
+part 'mixins/player_teardown.part.dart';
 part 'mixins/player_tracks.part.dart';
 part 'player_base.part.dart';
 part 'transport.part.dart';
@@ -125,7 +126,6 @@ class Player extends _PlayerBase
         _FileEventsModule,
         _HooksModule,
         _DispatchModule,
-        _InitModule,
         _PlaybackModule,
         _QueueModule,
         _NavigationModule,
@@ -133,7 +133,9 @@ class Player extends _PlayerBase
         _TracksModule,
         _OutputModule,
         _NetworkModule,
-        _MediaSessionModule
+        _MediaSessionModule,
+        _TeardownModule,
+        _InitModule
     implements PlayerApi {
   /// Creates a [Player] instance with optional [configuration].
   Player({super.configuration}) {
@@ -209,36 +211,4 @@ class Player extends _PlayerBase
   @override
   Future<void> openPlaylistFile(Media playlist, {bool? play}) =>
       _transport.trackLoad(() => _openPlaylistFile(playlist, play));
-
-  @override
-  Future<void> _disposeImpl() async {
-    // New calls are refused from the first line, as the teardown order
-    // in [_PlayerBase.dispose] says.
-    _disposed = true;
-    // Before the first await: a hook timer firing during the session
-    // release would drop its id without continuing it (it skips the FFI
-    // call once disposed), and mpv would wait on that hook at shutdown.
-    // Every pending hook continues now, so the `quit` that follows finds
-    // no operation held by this client. (The event isolate exits anyway,
-    // on its stop flag, and mpv_terminate_destroy completes the hooks of
-    // the removed client; the continue keeps the core from waiting on them
-    // meanwhile.) An event is pending only once bring-up delivered it, so
-    // the handle exists here.
-    for (final (mpvId, name) in _hooks.takeAll()) {
-      _continueMpvHook(mpvId, name);
-    }
-    // Before the quit: an ended source wakes a reader blocked on it.
-    _entries.endLive();
-    // Release the OS media session BEFORE tearing libmpv down. After
-    // the base teardown the FFI handle is gone: leaving the native
-    // session published would surface a stale lockscreen entry
-    // pointing at a dead Player, and incoming commands (play from
-    // the lockscreen) would land on disposed state.
-    try {
-      await _releaseMediaSession();
-    } catch (_) {
-      // Best effort: session teardown must never block disposal.
-    }
-    await super._disposeImpl();
-  }
 }

@@ -9,7 +9,7 @@ part of '../player.dart';
 /// tracking and TLS bundle. Also owns the pre-/post-init option recipes and
 /// the `mpv_observe_property` spec list. `_start` is what the constructors
 /// of [Player] call; the rest are internal to this mixin.
-mixin _InitModule on _PlayerBase, _DispatchModule {
+mixin _InitModule on _PlayerBase, _DispatchModule, _TeardownModule {
   /// Builds the recipe and hands it to the session, which starts the core
   /// off the UI thread's way. Called by the constructors of [Player], once
   /// the base set up the registry and the streams. A failed init reaches
