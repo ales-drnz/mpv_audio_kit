@@ -95,6 +95,7 @@ part 'mixins/player_media_session.part.dart';
 part 'mixins/player_navigation.part.dart';
 part 'mixins/player_network.part.dart';
 part 'mixins/player_open.part.dart';
+part 'mixins/player_open_all.part.dart';
 part 'mixins/player_output.part.dart';
 part 'mixins/player_pcm.part.dart';
 part 'mixins/player_pcm_cut.part.dart';

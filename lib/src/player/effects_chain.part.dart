@@ -40,13 +40,13 @@ final class _EffectsChain {
   /// resume point that still holds a chain.
   String? _held;
 
-  /// Write + commit shared by [Player.setAudioEffects] and [Player.updateAudioEffects].
-  /// The diff computation, the wire enqueue and the state commit are all
-  /// SUSPENSION-FREE: [Player.updateAudioEffects] relies on mapper → enqueue →
-  /// commit happening in one microtask so that concurrent un-awaited calls
-  /// each observe the previous commit, and the async client API enqueues
-  /// in call order so the core sees the writes FIFO. Only the mpv
-  /// confirmation (the returned future) is deferred.
+  /// Write + commit shared by [Player.setAudioEffects] and
+  /// [Player.updateAudioEffects]. The diff computation, the wire enqueue and
+  /// the state commit are all SUSPENSION-FREE: [Player.updateAudioEffects]
+  /// relies on mapper → enqueue → commit happening in one microtask so that
+  /// concurrent un-awaited calls each observe the previous commit, and the
+  /// async client API enqueues in call order so the core sees the writes FIFO.
+  /// Only the mpv confirmation (the returned future) is deferred.
   ///
   /// Parameter-only changes on command-capable filters go through
   /// `af-command`: the live graph updates in place instead of being

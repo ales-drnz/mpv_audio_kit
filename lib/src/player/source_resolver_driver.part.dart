@@ -56,9 +56,10 @@ final class _SourceResolverDriver {
   /// deadline continued it) is dropped: mpv is past that load, and the
   /// write would land on whatever entry is loading now.
   ///
-  /// Never throws: the hook MUST reach its continue in `_HooksModule._routeHookEvent`
-  /// regardless of what the consumer callback does, so failures are
-  /// logged on [PlayerStream.internalLog] and resolution is skipped.
+  /// Never throws: the hook MUST reach its continue in
+  /// `_HooksModule._routeHookEvent` regardless of what the consumer
+  /// callback does, so failures are logged on [PlayerStream.internalLog]
+  /// and resolution is skipped.
   Future<void> run(
     SourceResolver resolver,
     Hook hook,
