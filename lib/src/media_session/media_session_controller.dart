@@ -3,7 +3,6 @@
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
@@ -18,6 +17,7 @@ import 'artwork_fetcher.dart';
 import 'artwork_loader.dart';
 import 'media_session_channel.dart';
 import 'media_session_inputs.dart';
+import 'media_session_uris.dart';
 
 /// Orchestrates the bridge between the [Player]'s reactive state and
 /// the OS media session.
@@ -55,7 +55,7 @@ class MediaSessionController {
   final void Function()? _onAudioOutputReset;
   final MediaSessionChannel _channel;
 
-  /// Loads artwork URLs ([_fetches]) so the OS gets the image
+  /// Loads artwork URLs ([fetchesArtwork]) so the OS gets the image
   /// bytes, never the URL (see [downloadsArtworkOn]). Without one, artwork
   /// URLs show no artwork. It runs one load at a time, cancels the one a
   /// track change leaves behind and keeps the last few covers.
@@ -136,7 +136,7 @@ class MediaSessionController {
   /// arbitrary event sequences.
   ///
   /// [artworkLoader] defaults to one over [loadArtwork] (see
-  /// [downloadsArtworkOn]). It gets the artwork URLs [_fetches] names.
+  /// [downloadsArtworkOn]). It gets the artwork URLs [fetchesArtwork] names.
   /// [artworkFetcher] is a plain fetcher for it to run instead.
   static Future<MediaSessionController> create({
     required PlayerState Function() stateSnapshot,
@@ -378,7 +378,7 @@ class MediaSessionController {
     // itself falls back to the filename for files without a title tag).
     // For a network item that last fallback is derived from the URL, so its
     // query string (often credentials) is stripped first.
-    final remote = item != null && !_isLocalUri(item.uri);
+    final remote = item != null && !isLocalUri(item.uri);
     final title =
         override?.title ??
         _firstTagValue(mpvMeta, const ['title']) ??
@@ -420,7 +420,7 @@ class MediaSessionController {
     // a bare path is not one. Only local files: the bus is readable by every
     // process in the session, and a network URL can carry credentials
     // (Subsonic `u`, `t` and `s`, Jellyfin `api_key`).
-    final url = remote || item == null ? null : _fileUri(item.uri);
+    final url = remote || item == null ? null : fileUri(item.uri);
 
     final (:cover, :artworkUrl) = _artworkFor(
       _resolveArtwork(override, state.file.coverArt, extras),
@@ -454,7 +454,7 @@ class MediaSessionController {
   /// derived from the URL.
   static String? _mediaTitle(String mediaTitle, {required bool remote}) {
     if (mediaTitle.isEmpty) return null;
-    return remote ? _redactUrlTitle(mediaTitle) : mediaTitle;
+    return remote ? redactUrlTitle(mediaTitle) : mediaTitle;
   }
 
   /// The picture of [artwork] for the native side, and the URL the browser
@@ -467,10 +467,10 @@ class MediaSessionController {
   ) {
     final uri = artwork.uri;
     if (uri == null) return (cover: artwork.bytes, artworkUrl: null);
-    final cover = _native && _artworkLoader != null && _fetches(uri)
+    final cover = _native && _artworkLoader != null && fetchesArtwork(uri)
         ? _downloadedArtwork(uri)
         : null;
-    final showUrl = passesArtworkUrl && cover == null && _isHttp(uri);
+    final showUrl = passesArtworkUrl && cover == null && isHttpUri(uri);
     return (cover: cover, artworkUrl: showUrl ? uri : null);
   }
 
@@ -481,173 +481,6 @@ class MediaSessionController {
   String? _extra(Map<String, Object?>? extras, String key) {
     final v = extras?[key];
     return (v is String && v.isNotEmpty) ? v : null;
-  }
-
-  /// Whether [uri] names a local file: a `file:` URI, a plain path, or a
-  /// Windows drive path (which parses with a one-letter scheme).
-  static bool _isLocalUri(String uri) {
-    final scheme = Uri.tryParse(uri)?.scheme ?? '';
-    return scheme.isEmpty || scheme == 'file' || scheme.length == 1;
-  }
-
-  /// The local item [uri] as a `file:` URI, percent-encoded from the path
-  /// mpv opens: a path as it is, a relative one under the working
-  /// directory. mpv takes all that follows `file://` as the path,
-  /// percent-decoded, so a `#` or a `?` there is part of the name (and so
-  /// is a raw space). `null` for a path no URI can name.
-  static String? _fileUri(String uri) {
-    final parsed = Uri.tryParse(uri);
-    var path = uri;
-    if (parsed?.scheme == 'file' || uri.toLowerCase().startsWith('file:')) {
-      if (!uri.toLowerCase().startsWith('file:///')) {
-        // A host, or no `//`: not a path of this machine as mpv reads it.
-        return parsed?.toString();
-      }
-      final bytes = _unescape(uri.substring('file://'.length));
-      path = utf8.decode(bytes, allowMalformed: true);
-      // On Windows `/C:/Music` names `C:/Music`, as mpv reads it there.
-      // Elsewhere it is the path it looks like, and so is `/a:b`.
-      final drive = _onWindows && _drivePath.hasMatch(path);
-      if (drive) path = path.substring(1);
-      if (!_isUtf8(bytes)) {
-        // A name that is not UTF-8 (Latin-1): no string holds its bytes,
-        // so the URI is written from them. The string stands in for the
-        // name where a path no URI can name is told.
-        if (_pathUri(path) == null) return null;
-        return 'file://${_encodePath(bytes, windows: drive)}';
-      }
-    }
-    return _pathUri(path);
-  }
-
-  /// The path [path] as a `file:` URI, a relative one under the working
-  /// directory. `null` for a path no URI can name.
-  static String? _pathUri(String path) {
-    final drive = Uri.tryParse(path)?.scheme.length == 1;
-    try {
-      return Uri.base
-          .resolveUri(Uri.file(path, windows: drive ? true : null))
-          .toString();
-    } on ArgumentError {
-      return null;
-    }
-  }
-
-  static final RegExp _drivePath = RegExp('^/[A-Za-z]:');
-
-  /// Whether paths are read as Windows reads them: the platform the app
-  /// runs on, or the host whose rules `Uri.file` follows. The two differ
-  /// under `flutter test`, where the platform is Android on every host
-  /// while `Uri.file` still takes a backslash for a separator on Windows.
-  static bool get _onWindows =>
-      !kIsWeb &&
-      (defaultTargetPlatform == TargetPlatform.windows ||
-          Uri.file(r'a\b').pathSegments.length == 2);
-
-  /// The bytes of [s] with each `%` and two hex digits decoded, the way
-  /// mpv decodes a `file:` URI (and `fileUrlToPath` after it). A `%`
-  /// without them is kept with the two characters after it, so an escape
-  /// that starts inside those is not one: `%%41` stays as it is.
-  static List<int> _unescape(String s) {
-    final src = utf8.encode(s);
-    final bytes = <int>[];
-    for (var i = 0; i < src.length;) {
-      if (src[i] != 0x25 || i + 2 >= src.length) {
-        bytes.add(src[i++]);
-        continue;
-      }
-      final hi = _hexDigit(src[i + 1]);
-      final lo = _hexDigit(src[i + 2]);
-      if (hi >= 0 && lo >= 0) {
-        bytes.add(hi * 16 + lo);
-      } else {
-        bytes.addAll(src.sublist(i, i + 3));
-      }
-      i += 3;
-    }
-    return bytes;
-  }
-
-  static bool _isUtf8(List<int> bytes) {
-    try {
-      utf8.decode(bytes);
-      return true;
-    } on FormatException {
-      return false;
-    }
-  }
-
-  /// The absolute path [bytes] as the path of a URI: what `Uri.file`
-  /// leaves as it is stays, every other byte is percent-encoded. On
-  /// [windows] a backslash separates, as a slash does.
-  static String _encodePath(List<int> bytes, {required bool windows}) {
-    const hex = '0123456789ABCDEF';
-    final out = StringBuffer();
-    for (final byte in bytes) {
-      if (windows && byte == 0x5c) {
-        out.write('/');
-      } else if (byte < 0x80 && _pathBytes.contains(byte)) {
-        out.writeCharCode(byte);
-      } else {
-        out
-          ..write('%')
-          ..write(hex[byte >> 4])
-          ..write(hex[byte & 0xf]);
-      }
-    }
-    return out.toString();
-  }
-
-  // The characters a URI path holds as they are, the ones `Uri.file`
-  // does not encode.
-  static final Set<int> _pathBytes =
-      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-              r"-._~!$&'()*+,;=:@/"
-          .codeUnits
-          .toSet();
-
-  static int _hexDigit(int c) {
-    if (c >= 0x30 && c <= 0x39) return c - 0x30;
-    final letter = c | 0x20;
-    return letter >= 0x61 && letter <= 0x66 ? letter - 0x61 + 10 : -1;
-  }
-
-  /// Whether [uri] is an `http(s)://` URL.
-  static bool _isHttp(String? uri) {
-    if (uri == null) return false;
-    final scheme = Uri.tryParse(uri)?.scheme.toLowerCase();
-    return scheme == 'http' || scheme == 'https';
-  }
-
-  /// Whether the artwork [uri] goes through [_artworkLoader]: an
-  /// `http(s)://`, `file://` or `asset://` URL, a `content://` or
-  /// `android.resource://` one on Android and a `blob:` one in the browser.
-  /// Any other scheme shows no artwork.
-  static bool _fetches(String uri) {
-    return switch (Uri.tryParse(uri)?.scheme.toLowerCase()) {
-      'http' || 'https' || 'file' || 'asset' => true,
-      'content' || 'android.resource' =>
-        !kIsWeb && defaultTargetPlatform == TargetPlatform.android,
-      'blob' => kIsWeb,
-      _ => false,
-    };
-  }
-
-  /// Removes what could be credentials from a title mpv derived from a URL:
-  /// a trailing `key=value` query or fragment, and the userinfo of a full
-  /// URL. A real title with a `?` in it ("Who Are You?") has no `=` after
-  /// it and is left alone. `null` when nothing is left.
-  static String? _redactUrlTitle(String title) {
-    var t = title;
-    final query = RegExp(r'[?#]\S*$').firstMatch(t);
-    if (query != null && query.group(0)!.contains('=')) {
-      t = t.substring(0, query.start);
-    }
-    t = t.replaceFirstMapped(
-      RegExp(r'^([a-z][a-z0-9+.-]*://)[^/@\s]*@', caseSensitive: false),
-      (m) => m.group(1)!,
-    );
-    return t.isEmpty ? null : t;
   }
 
   /// The cover loaded from the artwork [uri], or `null` while the load is
