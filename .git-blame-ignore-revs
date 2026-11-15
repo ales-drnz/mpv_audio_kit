@@ -1,2 +1,7 @@
 # Repo-wide reformat with the tall-style formatter (no logic change).
 493277dedbbf6ce3014138ecded59282ee71c3f4
+
+# The settings class emitter of tool/codegen split into one function per section (no logic change).
+abc5d40885ffc5fd5285b9a70218a92933797d9a
+# Each generated effect class moved into its own part of audio_effects_settings (no logic change).
+dc1e1b0821a3bd85b4452c9adba82d9ea6173c39
