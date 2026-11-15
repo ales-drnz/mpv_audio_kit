@@ -24,14 +24,16 @@ Coverage strategy:
       test is closer to a realistic in-range write than a random
       pick.
   - Per enum:
-    * Every member's `mpvValue` round-trips through `fromMpv`.
+    * Every member's `mpvValue` round-trips through `fromMpv`, and the
+      members carry the FFmpeg names of the schema, in order.
     * `fromMpv(<unknown>)` falls back to the first member (per the
       project convention "Unknown values fall back to a safe default;
       never throw").
 
-The coverage file is deliberately long (~17k lines): every test is mechanical, no
-human picks. The codegen owns the assertion shape so a regression in
-`generate.py` is caught here at unit-test speed.
+The coverage cases are a table, one line each, in a part of the test
+(`_audio_effects_coverage_cases.dart`), and the test runs them in a loop:
+every case is mechanical, no human picks. The codegen owns the assertion
+shape so a regression in `generate.py` is caught here at unit-test speed.
 """
 from __future__ import annotations
 
@@ -81,6 +83,11 @@ def _chain_label(filter_name: str) -> str:
     )
 
 _CONSUMER_PACKAGE: str = "mpv_audio_kit"
+
+# Basenames of the coverage test and of the part with its cases (set in
+# run() from the output paths).
+_COVERAGE_FILE: str = "audio_effects_coverage_test.dart"
+_CASES_FILE: str = "_audio_effects_coverage_cases.dart"
 
 DART_RESERVED_WORDS = {
     "abstract", "as", "assert", "async", "await", "break", "case", "catch",
@@ -396,6 +403,7 @@ def _emit_header() -> str:
     pkg = _CONSUMER_PACKAGE
     getter = _WIRE.value_getter
     parser = _WIRE.from_method
+    cases = _CASES_FILE
     return (
         "// Copyright © 2026 & onwards, Alessandro Di Ronza <ales.drnz@gmail.com>.\n"
         "// All rights reserved.\n"
@@ -410,191 +418,283 @@ def _emit_header() -> str:
         "has at\n"
         "// least one test pinning the wire shape, and every typed enum\n"
         "// has its `" + getter + "` and `" + parser + "` round-trip checked exhaustively.\n"
-        "// ignore_for_file: prefer_const_constructors,"
-        " prefer_const_literals_to_create_immutables,"
-        " unused_local_variable, unnecessary_const,"
-        " prefer_adjacent_string_concatenation,"
-        " prefer_interpolation_to_compose_strings\n"
+        f"// The cases are data, in {cases}; this file runs them.\n"
         "\n"
         "import 'package:test/test.dart';\n"
         "import 'package:" + pkg + "/" + pkg + ".dart';\n"
         "import 'package:" + pkg + "/src/generated/audio_effects_settings.dart'\n"
         "    show audioEffectsChain;\n"
         "\n"
+        f"part '{cases}';\n"
+        "\n"
         "void main() {\n"
+        "  group('Per-filter wire coverage', () {\n"
+        "    for (final f in _filters) {\n"
+        "      group('${f.cls} (${f.name})', () {\n"
+        "        final label = '" + _chain_label("${f.name}") + _WIRE.label_prefix + "${f.name}';\n"
+        "        test('disabled → drops out of the chain', () {\n"
+        "          expect(audioEffectsChain([f.disabled]), '');\n"
+        "        });\n"
+        "\n"
+        "        if (f.required.isEmpty) {\n"
+        "          test('enabled with every param at default → bare lavfi name', () {\n"
+        "            expect(audioEffectsChain([f.enabled]), label);\n"
+        "          });\n"
+        "        } else {\n"
+        "          test(\n"
+        "            'enabled with required params → wire carries the filter name '\n"
+        "            'and required options',\n"
+        "            () {\n"
+        "              expect(audioEffectsChain([f.enabled]), startsWith(label));\n"
+        "              for (final p in f.required) {\n"
+        "                expect(audioEffectsChain([f.enabled]), contains('$p='));\n"
+        "              }\n"
+        "            },\n"
+        "          );\n"
+        "        }\n"
+        "\n"
+        "        for (final (param, effect, wire) in f.wire) {\n"
+        "          test('param `$param` lands in wire when set to a non-default value', () {\n"
+        "            expect(effect.toFilterString(), contains(wire));\n"
+        "          });\n"
+        "        }\n"
+        "\n"
+        "        for (final (param, bound, effect) in f.bounds) {\n"
+        "          test('param `$param` const `$bound` is accepted by toFilterString', () {\n"
+        "            expect(effect.toFilterString, returnsNormally);\n"
+        "          });\n"
+        "        }\n"
+        "\n"
+        "        for (final (param, effect, wire) in f.digits) {\n"
+        "          test('digit-prefix param `$param` lands in wire via params map', () {\n"
+        "            expect(effect.toFilterString(), contains(wire));\n"
+        "          });\n"
+        "        }\n"
+        "      });\n"
+        "    }\n"
+        "  });\n"
+        "\n"
+        "  group('Per-enum round-trip coverage', () {\n"
+        "    for (final e in _enums) {\n"
+        "      group('${e.name} (codegen enum)', e.run);\n"
+        "    }\n"
+        "  });\n"
+        "}\n"
     )
 
 
-def _emit_filter_group(filter_name: str, fdata: dict, enum_lookup: dict) -> str:
+def _emit_cases_header() -> str:
+    getter = _WIRE.value_getter
+    parser = _WIRE.from_method
+    return (
+        "// Copyright © 2026 & onwards, Alessandro Di Ronza <ales.drnz@gmail.com>.\n"
+        "// All rights reserved.\n"
+        "// Use of this source code is governed by BSD 3-Clause license\n"
+        "// that can be found in the LICENSE file.\n"
+        "//\n"
+        "// AUTO-GENERATED: do NOT edit by hand.\n"
+        "//\n"
+        f"// The cases of {_COVERAGE_FILE}, one line each, from the schema.\n"
+        "\n"
+        f"part of '{_COVERAGE_FILE}';\n"
+        "\n"
+        "/// One filter: [disabled] drops out of the chain, [enabled] is the\n"
+        "/// bare entry (with its [required] options), [wire] sets one option\n"
+        "/// off its default and names the text the entry carries, [bounds] sets\n"
+        "/// one option to a `Min`, `Max` or `Default` constant, and [digits]\n"
+        "/// sets a digit-prefix option through `params`.\n"
+        "final class _Filter {\n"
+        "  const _Filter(\n"
+        "    this.name,\n"
+        "    this.cls,\n"
+        "    this.disabled,\n"
+        "    this.enabled, {\n"
+        "    this.required = const [],\n"
+        "    this.wire = const [],\n"
+        "    this.bounds = const [],\n"
+        "    this.digits = const [],\n"
+        "  });\n"
+        "\n"
+        "  final String name;\n"
+        "  final String cls;\n"
+        "  final AudioEffect disabled;\n"
+        "  final AudioEffect enabled;\n"
+        "  final List<String> required;\n"
+        "  final List<(String, AudioEffect, String)> wire;\n"
+        "  final List<(String, String, AudioEffect)> bounds;\n"
+        "  final List<(String, AudioEffect, String)> digits;\n"
+        "}\n"
+        "\n"
+        "/// One enum: every member round-trips through `" + getter + "` and\n"
+        "/// `" + parser + "`, the members carry [wires] in order, and an unknown\n"
+        "/// or null value parses to [first].\n"
+        "final class _Enum<T extends Enum> {\n"
+        "  const _Enum(this.name, this.values, this.parse, this.wire, this.first, this.wires);\n"
+        "\n"
+        "  final String name;\n"
+        "  final List<T> values;\n"
+        "  final T Function(String?) parse;\n"
+        "  final String Function(T) wire;\n"
+        "  final T first;\n"
+        "  final List<String> wires;\n"
+        "\n"
+        "  void run() {\n"
+        f"    test('every member round-trips via {getter} / {parser}', () {{\n"
+        "      for (final v in values) {\n"
+        "        expect(wire(v), isNotEmpty);\n"
+        "        expect(parse(wire(v)), v);\n"
+        "      }\n"
+        "      expect([for (final v in values) wire(v)], wires);\n"
+        "    });\n"
+        "\n"
+        f"    test('{parser} unknown / null → first member (safe fallback)', () {{\n"
+        "      expect(parse('this_will_never_match'), first);\n"
+        "      expect(parse(null), first);\n"
+        "    });\n"
+        "  }\n"
+        "}\n"
+        "\n"
+    )
+
+
+def _bare(literal: str) -> str:
+    """[literal] inside a const table: a leading `const ` is implied."""
+    return literal[len("const "):] if literal.startswith("const ") else literal
+
+
+def _ctor(cls: str, *args: str) -> str:
+    return f"{cls}({', '.join(a for a in args if a)})"
+
+
+def _required_args(filter_name: str, skip: Optional[str]) -> str:
+    return _required_args_fragment_except(filter_name, skip).lstrip(", ")
+
+
+def _filter_entry(filter_name: str, fdata: dict, enum_lookup: dict) -> list[str]:
+    """The `_Filter` of one filter, as table lines."""
     cls = _settings_class_name(filter_name)
     # Mirror generate.py: readonly+export options aren't input
     # parameters, so they don't get a Settings field and don't get a
-    # coverage test either.
+    # coverage case either.
     params = effect_params(fdata)
     invalid = {
         n: p
         for n, p in fdata.get("params_invalid", {}).items()
         if not p.get("readonly")
     }
-    req_frag = _required_args_fragment(filter_name)
-    lines: list[str] = []
-    lines.append(f"  group('{cls} ($filter_name)', () {{".replace(
-        "$filter_name", filter_name))
-    lines.append("    test('disabled → drops out of the chain', () {")
-    lines.append(f"      const fx = [{cls}(enabled: false{req_frag})];")
-    lines.append("      expect(audioEffectsChain(fx), '');")
-    lines.append("    });")
-    lines.append("")
-    if req_frag:
-        # Required-param filters ALWAYS emit their mandatory options, so an
-        # enabled instance is never the bare `lavfi-NAME`. Assert the name
-        # and each required option are present in the wire instead.
+    req = _required_args(filter_name, None)
+    lines = [
+        f"  _Filter('{filter_name}', '{cls}', "
+        f"{_ctor(cls, 'enabled: false', req)}, {_ctor(cls, req)},"
+    ]
+    required = REQUIRED_PARAMS.get(filter_name, [])
+    if required:
         lines.append(
-            "    test('enabled with required params → wire carries the filter name "
-            "and required options', () {")
-        lines.append(
-            f"      const fx = [{cls}({req_frag.lstrip(', ')})];")
-        lines.append(
-            "      expect(audioEffectsChain(fx), "
-            f"startsWith('{_chain_label(filter_name)}{_WIRE.label_prefix}{filter_name}'));")
-        for pname in REQUIRED_PARAMS.get(filter_name, []):
-            lines.append(f"      expect(audioEffectsChain(fx), contains('{pname}='));")
-        lines.append("    });")
-    else:
-        lines.append("    test('enabled with every param at default → bare lavfi name', () {")
-        lines.append(f"      const fx = [{cls}()];")
-        lines.append(
-            "      expect(audioEffectsChain(fx), "
-            f"'{_chain_label(filter_name)}{_WIRE.label_prefix}{filter_name}');")
-        lines.append("    });")
+            "    required: [" + ", ".join(f"'{p}'" for p in required) + "],"
+        )
 
-    # Per-param tests.
+    wire: list[str] = []
     for pname, p in params.items():
         sentinel = _sentinel(p, enum_lookup)
         if sentinel is None:
             continue
         literal, wire_token = sentinel
-        param_dart = _param_dart_name(pname)
-        lines.append("")
-        lines.append(
-            f"    test('param `{pname}` lands in wire when set to a"
-            f" non-default value', () {{"
+        # The value is checked where it is known: numbers and enums.
+        token = (
+            f"{pname}={wire_token}"
+            if p["type"] in ("double", "int", "enum")
+            else f"{pname}="
         )
-        extra = _required_args_fragment_except(filter_name, pname)
-        lines.append(
-            f"      final s = const {cls}(enabled: true, "
-            f"{param_dart}: {literal}{extra});"
+        effect = _ctor(
+            cls,
+            f"{_param_dart_name(pname)}: {_bare(literal)}",
+            _required_args(filter_name, pname),
         )
-        lines.append(
-            f"      expect(s.toFilterString(), contains('{pname}='));"
-        )
-        # Best-effort value check too — for double we know toStringAsFixed(3).
-        if p["type"] in ("double", "int"):
-            lines.append(
-                f"      expect(s.toFilterString(), contains('{pname}={wire_token}'));"
-            )
-        elif p["type"] == "enum":
-            lines.append(
-                f"      expect(s.toFilterString(), contains('{pname}={wire_token}'));"
-            )
-        lines.append("    });")
+        wire.append(f"      ('{pname}', {effect}, '{token}'),")
 
-    # Const-bound smoke tests. For every numeric (double/int) param,
-    # build the Settings with the field set to `<name>Min`, `<name>Max`,
-    # and `<name>Default` consts and verify `toFilterString()` doesn't
-    # trip the runtime assert that gates the same bound. Regression
-    # guard against codegen drift between the `static const` emission
-    # and the `assert(...)` emission — they share `p['min']` /
-    # `p['max']` as input, so any future divergence would surface here
-    # immediately.
+    # Const-bound smoke cases. For every numeric (double/int) param,
+    # the field set to its `<name>Min`, `<name>Max` and `<name>Default`
+    # consts must not trip the assert of `toFilterString()` that gates
+    # the same bound: both come from `p['min']` / `p['max']`, so a
+    # divergence between the two emissions surfaces here.
+    bounds: list[str] = []
     for pname, p in params.items():
         if p["type"] not in ("double", "int"):
             continue
         param_dart = _param_dart_name(pname)
-        suffix_keys = [
+        for suffix, raw in (
             ("Min", p.get("min")),
             ("Max", p.get("max")),
             ("Default", p.get("default")),
-        ]
-        for suffix, raw in suffix_keys:
+        ):
             if raw is None:
                 continue
-            const_ref = f"{cls}.{param_dart}{suffix}"
-            extra = _required_args_fragment_except(filter_name, pname)
-            lines.append("")
-            lines.append(
-                f"    test('param `{pname}` const `{param_dart}{suffix}`"
-                f" is accepted by toFilterString', () {{"
+            effect = _ctor(
+                cls,
+                f"{param_dart}: {cls}.{param_dart}{suffix}",
+                _required_args(filter_name, pname),
             )
-            lines.append(
-                f"      final s = {cls}(enabled: true,"
-                f" {param_dart}: {const_ref}{extra});"
+            bounds.append(
+                f"      ('{pname}', '{param_dart}{suffix}', {effect}),"
             )
-            lines.append(
-                "      expect(s.toFilterString, returnsNormally);"
-            )
-            lines.append("    });")
 
     # Invalid (digit-prefix) params route through the `params` Map field.
-    if invalid:
-        for pname, p in invalid.items():
-            sentinel = _sentinel(p, enum_lookup)
-            if sentinel is None:
-                continue
-            literal, wire_token = sentinel
-            lines.append("")
-            lines.append(
-                f"    test('digit-prefix param `{pname}` lands in wire via"
-                f" params map', () {{"
-            )
-            req_extra = _required_args_fragment(filter_name)
-            lines.append(
-                f"      final s = const {cls}(enabled: true{req_extra}, "
-                f"params: {{'{pname}': {literal}}});"
-            )
-            lines.append(
-                f"      expect(s.toFilterString(), contains('{pname}='));"
-            )
-            if p["type"] in ("double", "int"):
-                lines.append(
-                    f"      expect(s.toFilterString(),"
-                    f" contains('{pname}={wire_token}'));"
-                )
-            lines.append("    });")
+    digits: list[str] = []
+    for pname, p in invalid.items():
+        sentinel = _sentinel(p, enum_lookup)
+        if sentinel is None:
+            continue
+        literal, wire_token = sentinel
+        token = (
+            f"{pname}={wire_token}"
+            if p["type"] in ("double", "int")
+            else f"{pname}="
+        )
+        effect = _ctor(cls, req, f"params: {{'{pname}': {_bare(literal)}}}")
+        digits.append(f"      ('{pname}', {effect}, '{token}'),")
 
-    lines.append("  });")
-    return "\n".join(lines)
+    for key, rows in (("wire", wire), ("bounds", bounds), ("digits", digits)):
+        if rows:
+            lines.append(f"    {key}: [")
+            lines.extend(rows)
+            lines.append("    ],")
+    lines.append("  ),")
+    return lines
 
 
-def _emit_enum_group(enum_id: str, members: list[dict]) -> str:
-    lines: list[str] = []
+def _enum_entry(enum_id: str, members: list[dict]) -> str:
     getter = _WIRE.value_getter
     parser = _WIRE.from_method
-    lines.append("  group('$enum_id (codegen enum)', () {".replace(
-        "$enum_id", enum_id))
-    lines.append(
-        f"    test('every member round-trips via {getter} / {parser}', () {{"
+    first = _enum_member_dart_name(members[0]["name"])
+    wires = ", ".join(_dart_string(m["name"]) for m in members)
+    return (
+        f"  _Enum<{enum_id}>('{enum_id}', {enum_id}.values, {enum_id}.{parser}, "
+        f"(v) => v.{getter}, {enum_id}.{first}, [{wires}]),"
     )
-    lines.append(f"      for (final v in {enum_id}.values) {{")
-    lines.append(f"        expect(v.{getter}, isNotEmpty);")
-    lines.append(f"        expect({enum_id}.{parser}(v.{getter}), v);")
-    lines.append("      }")
-    lines.append("    });")
-    lines.append("")
-    lines.append(
-        f"    test('{parser} unknown / null → first member (safe fallback)', () {{"
-    )
-    first_member = _enum_member_dart_name(members[0]["name"])
-    lines.append(
-        f"      expect({enum_id}.{parser}('this_will_never_match'), "
-        f"{enum_id}.{first_member});"
-    )
-    lines.append(
-        f"      expect({enum_id}.{parser}(null), {enum_id}.{first_member});"
-    )
-    lines.append("    });")
-    lines.append("  });")
-    return "\n".join(lines)
+
+
+def _emit_cases(filters: dict, sorted_names: list[str], enum_lookup: dict) -> tuple[str, int]:
+    """The part with the case tables; returns it and the enum count."""
+    out: list[str] = [_emit_cases_header()]
+    # One case a line: the formatter would split most of them over
+    # several, for a table five times as long.
+    out.append("// dart format off")
+    out.append("const _filters = <_Filter>[")
+    for fname in sorted_names:
+        out.extend(_filter_entry(fname, filters[fname], enum_lookup))
+    out.append("];")
+    out.append("")
+    out.append("final _enums = <_Enum<Enum>>[")
+    seen: set[str] = set()
+    for fname in sorted_names:
+        for enum_id, members in filters[fname]["enums"].items():
+            if enum_id in seen or not members:
+                continue
+            seen.add(enum_id)
+            out.append(_enum_entry(enum_id, members))
+    out.append("];")
+    out.append("// dart format on")
+    return "\n".join(out) + "\n", len(seen)
 
 
 def _dart_string(s: str) -> str:
@@ -1252,6 +1352,7 @@ def run(config: Config) -> int:
             "[output].test_coverage AND [output].test_param_corners"
         )
     global _WIRE, _CONSUMER_PACKAGE, _LABELS, _NAMING
+    global _COVERAGE_FILE, _CASES_FILE
     _WIRE = config.wire
     _CONSUMER_PACKAGE = config.consumer.name
     _LABELS = config.features.emit_af_labels
@@ -1264,43 +1365,32 @@ def run(config: Config) -> int:
     for fname in sorted_names:
         for enum_id, members in filters[fname]["enums"].items():
             enum_lookup[enum_id] = members
-    pieces: list[str] = [_emit_header()]
-
-    pieces.append("  group('Per-filter wire coverage', () {")
-    for fname in sorted_names:
-        pieces.append(_emit_filter_group(fname, filters[fname], enum_lookup))
-    pieces.append("  });")
-
-    pieces.append("")
-    pieces.append("  group('Per-enum round-trip coverage', () {")
-    seen: set[str] = set()
-    for fname in sorted_names:
-        for enum_id, members in filters[fname]["enums"].items():
-            if enum_id in seen or not members:
-                continue
-            seen.add(enum_id)
-            pieces.append(_emit_enum_group(enum_id, members))
-    pieces.append("  });")
-
-    pieces.append("}")
     out = config.output.test_coverage
+    cases = config.output.test_coverage_cases or out.with_name(
+        "_" + out.name.removesuffix("_test.dart") + "_cases.dart"
+    )
+    _COVERAGE_FILE = out.name
+    _CASES_FILE = cases.name
+    cases_text, n_enums = _emit_cases(filters, sorted_names, enum_lookup)
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text("\n".join(pieces) + "\n")
-    try:
-        subprocess.run(
-            ["dart", "format", str(out)],
-            check=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-    except (FileNotFoundError, subprocess.CalledProcessError):
-        print(f"WARN: `dart format` failed for {out}", file=sys.stderr)
+    out.write_text(_emit_header())
+    cases.write_text(cases_text)
+    for path in (out, cases):
+        try:
+            subprocess.run(
+                ["dart", "format", str(path)],
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        except (FileNotFoundError, subprocess.CalledProcessError):
+            print(f"WARN: `dart format` failed for {path}", file=sys.stderr)
     try:
         rel = out.relative_to(config.consumer_root)
     except ValueError:
         rel = out
     print(
-        f"Wrote {rel} ({len(sorted_names)} filters, {len(seen)} enums)",
+        f"Wrote {rel} and {cases.name} ({len(sorted_names)} filters, {n_enums} enums)",
         file=sys.stderr,
     )
 

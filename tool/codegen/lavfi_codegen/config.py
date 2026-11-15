@@ -125,6 +125,7 @@ class OutputPaths:
     test_filter_names: Path
     schema: Path
     test_coverage: Optional[Path] = None
+    test_coverage_cases: Optional[Path] = None
     test_param_corners: Optional[Path] = None
     test_runtime: Optional[Path] = None
     test_af_command: Optional[Path] = None
@@ -242,6 +243,7 @@ def load_config(toml_path: Path) -> Config:
             "schema", f".build/{consumer.name}/schema.json"
         ),
         test_coverage=_consumer_path("test_coverage"),
+        test_coverage_cases=_consumer_path("test_coverage_cases"),
         test_param_corners=_consumer_path("test_param_corners"),
         test_runtime=_consumer_path("test_runtime"),
         test_af_command=_consumer_path("test_af_command"),
