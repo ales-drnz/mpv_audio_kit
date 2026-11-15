@@ -21,6 +21,8 @@ import 'package:mpv_audio_kit/src/internals/struct_layout.dart';
 import 'package:mpv_audio_kit/src/mpv_bindings.dart' as ffi;
 import 'package:test/test.dart';
 
+import '../_helpers/mpv_test_structs.dart' as ffi;
+
 typedef _Layout = Map<String, ({int size, Map<String, int> fields})>;
 
 _Layout _model(String name) {

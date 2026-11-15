@@ -26,6 +26,8 @@ import 'package:mpv_audio_kit/src/mpv_bindings.dart' as ffi;
 import 'package:mpv_audio_kit/src/mpv_constants.dart';
 import 'package:test/test.dart';
 
+import '../_helpers/mpv_test_structs.dart' as ffi;
+
 /// Writes structs into a memory and hands it to the decoder.
 abstract class _Heap {
   CoreMemory get memory;
