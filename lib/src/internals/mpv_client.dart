@@ -36,8 +36,8 @@ final class MpvClient implements MpvRequests {
   );
   bool _closed = false;
 
-  /// Whether [close] was called.
-  @override
+  /// Whether [close] was called: no request reaches libmpv any more, and
+  /// the calls resolve at once (writes as accepted, reads as failed).
   bool get isClosed => _closed;
 
   @override

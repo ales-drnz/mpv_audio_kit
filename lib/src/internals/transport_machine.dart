@@ -106,7 +106,9 @@ final class TransportMachine {
   /// The load epoch, which each content-replacing call moves.
   int get loadEpoch => _loadEpoch;
 
-  /// The park generation the core is in.
+  /// The park generation the core is in. The tests check the generation
+  /// through it; the player reads the intents it spends instead.
+  @visibleForTesting
   int get park => _park;
 
   /// mpv started a file (MPV_EVENT_START_FILE).

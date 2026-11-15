@@ -398,9 +398,6 @@ final class WebSession implements MpvSession {
   // ── MpvRequests, through the player's client ──────────────────────────
 
   @override
-  bool get isClosed => _client.isClosed;
-
-  @override
   Future<int> setProperty(String name, String value) =>
       _client.setProperty(name, value);
 

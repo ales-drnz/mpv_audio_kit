@@ -12,10 +12,6 @@ import 'package:meta/meta.dart';
 /// on `dart:ffi` can implement it, and so can a fake in the tests.
 @internal
 abstract interface class MpvRequests {
-  /// Whether the client was closed: no request reaches libmpv any more,
-  /// and the calls resolve at once (writes as accepted, reads as failed).
-  bool get isClosed;
-
   /// Writes property [name] as a string. Resolves with mpv's rc.
   Future<int> setProperty(String name, String value);
 
