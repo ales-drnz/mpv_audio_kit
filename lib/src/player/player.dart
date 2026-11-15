@@ -116,27 +116,29 @@ part 'transport.part.dart';
 class Player extends _PlayerBase
     with
         _PcmCutModule,
+        _PropertiesModule,
         _LoadfileModule,
         _RawModule,
         _OpenModule,
-        _InitModule,
-        _PropertiesModule,
+        _PcmModule,
+        _EffectsModule,
         _FileEventsModule,
+        _HooksModule,
         _DispatchModule,
+        _InitModule,
         _PlaybackModule,
         _QueueModule,
         _NavigationModule,
         _AudioModule,
         _TracksModule,
         _OutputModule,
-        _EffectsModule,
         _NetworkModule,
-        _PcmModule,
-        _HooksModule,
         _MediaSessionModule
     implements PlayerApi {
   /// Creates a [Player] instance with optional [configuration].
-  Player({super.configuration});
+  Player({super.configuration}) {
+    _start();
+  }
 
   /// Test-only. The event isolate writes to [wakeupCounterAddress] on
   /// every wakeup: a bogus value corrupts process memory.
@@ -144,7 +146,9 @@ class Player extends _PlayerBase
   Player.testInstrumented({
     super.configuration,
     required int super.wakeupCounterAddress,
-  });
+  }) {
+    _start();
+  }
 
   // --- Public Specialized API ---
 

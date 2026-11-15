@@ -5,7 +5,7 @@ part of '../player.dart';
 
 /// The queue: add, insert, remove, move, replace and clear. Navigation
 /// and the repeat, shuffle and prefetch modes live in `_NavigationModule`.
-mixin _QueueModule on _PlayerBase {
+mixin _QueueModule on _PlayerBase, _LoadfileModule {
   /// Appends [media] to the end of the current playlist.
   ///
   /// `media.httpHeaders` ride along as the 4th `loadfile` argument

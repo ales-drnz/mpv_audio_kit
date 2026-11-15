@@ -130,7 +130,6 @@ mixin _PropertiesModule on _PlayerBase {
     _updateField((s) => s.copyWith(loop: next), _loop, next);
   }
 
-  @override
   void _updatePlaylistFromNode(dynamic raw) {
     try {
       // Forget the entries mpv no longer has. mpv numbers entries in
@@ -161,7 +160,6 @@ mixin _PropertiesModule on _PlayerBase {
     }
   }
 
-  @override
   void _updateActiveAudioDevice(String name) {
     // mpv only echoes the device name back on `audio-device`. Recover
     // the proper description by looking it up in the parsed

@@ -6,7 +6,7 @@ part of '../player.dart';
 /// The audio output: the device and the driver, the exclusive mode and
 /// the media role, passthrough, and the rate, format and channel layout
 /// asked of the output.
-mixin _OutputModule on _PlayerBase {
+mixin _OutputModule on _PlayerBase, _PropertiesModule {
   /// Sets the active audio output device.
   ///
   /// The `description` field of [device] is ignored: the description

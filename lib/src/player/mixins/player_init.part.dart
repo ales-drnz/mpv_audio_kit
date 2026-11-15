@@ -7,10 +7,16 @@ part of '../player.dart';
 /// Cold-start bring-up: hands the init recipe to the session, which starts
 /// the core and its event pump, then wires the calls, DSP pipelines, orphan
 /// tracking and TLS bundle. Also owns the pre-/post-init option recipes and
-/// the `mpv_observe_property` spec list. `_bringUp` is the abstract member
-/// `_PlayerBase`'s constructor calls; the rest are internal to this mixin.
-mixin _InitModule on _PlayerBase {
-  @override
+/// the `mpv_observe_property` spec list. `_start` is what the constructors
+/// of [Player] call; the rest are internal to this mixin.
+mixin _InitModule on _PlayerBase, _DispatchModule {
+  /// Builds the recipe and hands it to the session, which starts the core
+  /// off the UI thread's way. Called by the constructors of [Player], once
+  /// the base set up the registry and the streams. A failed init reaches
+  /// every call that awaits [_ready]; a player nobody uses yet must not
+  /// report it as an unhandled error.
+  void _start() => _ready = _bringUp()..ignore();
+
   Future<void> _bringUp() async {
     final recipe = CoreRecipe(
       preInitOptions: _buildPreInitOptions(),

@@ -210,24 +210,18 @@ abstract class _PlayerBase {
   /// events.
   late final PlayerStream stream;
 
-  // ── Cross-mixin surface ──────────────────────────────────────────────────
-  // These members live in the `.part` mixins below but are declared here
-  // (abstract) so `_PlayerBase`'s constructor, `dispose` and the sibling
-  // domain mixins can call across part boundaries: `on _PlayerBase` only
-  // exposes what `_PlayerBase` itself declares.
-
-  /// See `_LoadfileModule` (player_loadfile.part.dart).
-  Future<void> _loadfile(List<String> args, Media media, OwnedSource source);
-
-  /// See `_PropertiesModule` (player_properties.part.dart).
-  void _updatePlaylistFromNode(dynamic raw);
-
   /// Every call to libmpv once the player runs, on top of [_session]. All
   /// of them ride the async client API (`mpv_*_async`): the main isolate
   /// never waits for the playloop. Most setters update the state once the
   /// reply confirms the write; the play-pause intent and the settings
   /// bundles ([CoreCalls.writeBundle]) update it before the write.
   late final CoreCalls _calls;
+
+  // The mixins reach one another through their `on` clauses, and the
+  // constructors of [Player] start the bring-up: the base declares none
+  // of their members. These two stay, as they were before the mixins
+  // declared their dependencies: they are part of the API surface that
+  // tool/metrics checks line by line.
 
   /// See `_RawModule`: the raw property escape hatches of the public API.
   /// The player's own reads and writes go through [_readString] and
@@ -244,27 +238,6 @@ abstract class _PlayerBase {
     final (rc, value) = await _calls.get(name, MpvFormat.mpvFormatString);
     return rc < 0 ? null : value as String?;
   }
-
-  /// See `_HooksModule` (player_hooks.part.dart): called by the dispatch
-  /// layer for every MPV_EVENT_HOOK: runs the source resolver when one is
-  /// installed, then either surfaces the event on [PlayerStream.hook]
-  /// (user-registered hook) or continues it internally.
-  Future<void> _routeHookEvent(int id, Hook hook, String name);
-
-  /// mpv loaded a file, after applying the resume point it may hold: see
-  /// `_EffectsModule` (player_effects.part.dart).
-  void _reassertAfChain();
-
-  /// See `_InitModule` (player_init.part.dart): called by the constructor.
-  Future<void> _bringUp();
-
-  /// See `_DispatchModule` (player_dispatch.part.dart): wired as the event
-  /// pump's `onEvent` during bring-up.
-  void _handleEvent(MpvIsolateEvent event);
-
-  /// See `_PropertiesModule`: `setAudioDevice` reuses it to optimistically
-  /// resolve the device description from the parsed `audio-device-list`.
-  void _updateActiveAudioDevice(String name);
 
   _PlayerBase({
     this.configuration = const PlayerConfiguration(),
@@ -326,11 +299,8 @@ abstract class _PlayerBase {
       mediaSessionCommands: _mediaSessionCommandsCtrl.stream,
     );
 
-    // Build the recipe and hand it to the session, which starts the core
-    // off the UI thread's way. A failed init reaches every call that awaits
-    // it; a player nobody uses yet must not report it as an unhandled
-    // error.
-    _ready = _bringUp()..ignore();
+    // The bring-up starts in the constructors of [Player], right after
+    // this one: see `_InitModule._start`.
   }
 
   /// The controllers of the analysis streams (fft, pcm, waveform, loudness
@@ -409,6 +379,8 @@ abstract class _PlayerBase {
   @visibleForTesting
   Future<void> get ready => _ready;
 
+  /// Set by `_InitModule._start`, which the constructors of [Player]
+  /// call.
   late final Future<void> _ready;
   bool _bringUpCompleted = false;
 

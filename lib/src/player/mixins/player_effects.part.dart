@@ -190,7 +190,6 @@ mixin _EffectsModule on _PlayerBase {
   /// chain it did not write gives way to the state's. Before that, a
   /// chain already there stays until the first write, as documented on
   /// [setAudioEffects].
-  @override
   void _reassertAfChain() {
     if (_afAccepted != null) {
       unawaited(_reassertAfChainFor(_transport.fileStarts));

@@ -9,7 +9,7 @@ part of '../player.dart';
 /// references still plays, and ends a source as stopped when its entry
 /// leaves the playlist unread or the player is disposed. The cut of a
 /// source being aborted lives in `_PcmCutModule`.
-mixin _PcmModule on _PlayerBase {
+mixin _PcmModule on _PlayerBase, _OpenModule {
   /// Creates a live [PcmSource] of [format] and opens it as the sole
   /// playlist entry, like [Player.open] with its [PcmSource.toMedia].
   /// Feed the returned source and [PcmSource.close] it when the input
@@ -54,7 +54,9 @@ mixin _PcmModule on _PlayerBase {
       lowLatency: lowLatency,
     );
     try {
-      await (this as Player).open(source.toMedia(extras: extras), play: play);
+      // As [Player.open] runs it.
+      final media = source.toMedia(extras: extras);
+      await _transport.trackLoad(() => _open(media, play));
     } catch (_) {
       source.abort();
       rethrow;

@@ -8,7 +8,7 @@ part of '../player.dart';
 /// (position, chapters, embedded cover, source path, playlist),
 /// PLAYBACK_RESTART, END_FILE and the end-of-content reads taken by the
 /// event isolate.
-mixin _FileEventsModule on _PlayerBase, _PropertiesModule {
+mixin _FileEventsModule on _PlayerBase, _PropertiesModule, _EffectsModule {
   /// MPV_EVENT_PLAYBACK_RESTART at [timePos].
   void _onPlaybackRestart(double? timePos) {
     // A restart is a seek that landed: it left the park, even when

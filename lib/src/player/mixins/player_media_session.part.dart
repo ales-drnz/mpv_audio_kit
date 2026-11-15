@@ -28,7 +28,8 @@ part of '../player.dart';
 /// than one entry and [MediaSession.autoApplyPlaylistNavigation] is on;
 /// otherwise they only emit on the consumer stream so the app's queue
 /// logic can react.
-mixin _MediaSessionModule on _PlayerBase {
+mixin _MediaSessionModule
+    on _PlayerBase, _PlaybackModule, _NavigationModule, _AudioModule {
   /// Single-instance guard for the OS media session. A static, so it
   /// holds per isolate, and so per Flutter engine: the players of two
   /// engines do not see each other's. Across engines the native side
@@ -40,7 +41,7 @@ mixin _MediaSessionModule on _PlayerBase {
   /// MPRIS could support multiple instances via `instance<PID>`
   /// suffixing, but we ban it universally for cross-OS consistency.
   /// Cleared on `dispose()` and on `setMediaSession(null)`.
-  static Player? _sessionOwner;
+  static _MediaSessionModule? _sessionOwner;
 
   /// The media-session work of every [Player] in this isolate, one call
   /// after the other. See [_queueMediaSessionSync].
@@ -84,7 +85,7 @@ mixin _MediaSessionModule on _PlayerBase {
           'enabling this one.',
         );
       }
-      _sessionOwner = this as Player;
+      _sessionOwner = this;
     } else if (identical(_sessionOwner, this)) {
       _sessionOwner = null;
     }
@@ -223,48 +224,48 @@ mixin _MediaSessionModule on _PlayerBase {
     // confirms. A late rejection is caught by [_applySessionCommand].
     switch (command) {
       case MediaSessionCommandPlay():
-        _applySessionCommand((this as Player).play());
+        _applySessionCommand(play());
       // Pause and stop as the session's, not the app's: the pause of a
       // focus loss must keep the resume of the call armed, and a
       // controller's disarms it on the native side already.
       case MediaSessionCommandPause():
-        _applySessionCommand((this as Player)._pause());
+        _applySessionCommand(_pause());
       case MediaSessionCommandPlayPause():
         // Resolve against the INTENT axis, not actual output: `_state.playing`
         // (core-idle inverted) toggles transiently on every seek and buffer, so
         // a single-button PlayPause landing during a transient would flip the
         // wrong way. The OS button itself binds to `playWhenReady`; match it.
         if (_state.playback.playWhenReady) {
-          _applySessionCommand((this as Player)._pause());
+          _applySessionCommand(_pause());
         } else {
-          _applySessionCommand((this as Player).play());
+          _applySessionCommand(play());
         }
       case MediaSessionCommandStop():
-        _applySessionCommand((this as Player)._stop());
+        _applySessionCommand(_stop());
       case MediaSessionCommandNext():
-        _applySessionNav((this as Player).next);
+        _applySessionNav(next);
       case MediaSessionCommandPrevious():
-        _applySessionNav((this as Player).previous);
+        _applySessionNav(previous);
       case MediaSessionCommandLike():
         // Emit-only: there is no built-in favourite concept, so it is not
         // auto-applied. The consumer reacts on the stream below and reflects
         // the new state via `MediaSession.isFavorite`.
         break;
       case MediaSessionCommandSeekTo(:final position):
-        _applySessionCommand((this as Player).seek(position));
+        _applySessionCommand(seek(position));
       case MediaSessionCommandSeekBy(:final offset):
         // Apply as a TRUE relative seek so mpv does the base-position
         // arithmetic against its own live playhead. Computing an absolute
         // target from `_state.position` here would compose off a stale
         // base when skip buttons repeat faster than the position observer
         // updates; rapid lockscreen or headset double-taps would under-skip.
-        _applySessionCommand((this as Player).seek(offset, relative: true));
+        _applySessionCommand(seek(offset, relative: true));
       case MediaSessionCommandSetRepeatMode(:final loop):
-        _applySessionCommand((this as Player).setLoop(loop));
+        _applySessionCommand(setLoop(loop));
       case MediaSessionCommandSetShuffle(:final shuffle):
-        _applySessionCommand((this as Player).setShuffle(shuffle));
+        _applySessionCommand(setShuffle(shuffle));
       case MediaSessionCommandSetPlaybackRate(:final rate):
-        _applySessionCommand((this as Player).setRate(rate));
+        _applySessionCommand(setRate(rate));
     }
     // Always emit on the consumer-facing stream, regardless of
     // whether the command was auto-applied. Even for next and previous
@@ -292,7 +293,7 @@ mixin _MediaSessionModule on _PlayerBase {
   void _reloadAudioOutput() {
     // Through the gate: the session can exist before the core runs, and
     // stays when the core could not start.
-    _applySessionCommand((this as Player).reloadAudio());
+    _applySessionCommand(reloadAudio());
   }
 
   /// Fires an inbound-command action without awaiting it (the command-stream

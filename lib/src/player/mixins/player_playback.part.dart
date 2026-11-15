@@ -5,7 +5,7 @@ part of '../player.dart';
 
 /// Transport setters: play, pause, stop, seek, chapter navigation,
 /// and the A-B loop controls.
-mixin _PlaybackModule on _PlayerBase {
+mixin _PlaybackModule on _PlayerBase, _PropertiesModule {
   /// Starts or resumes playback. Idempotent: a no-op when already
   /// playing, including the last moments of the queue while the output
   /// buffer still plays. Once the queue has ended ([PlaybackState.completed])

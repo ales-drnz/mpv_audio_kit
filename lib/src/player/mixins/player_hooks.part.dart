@@ -235,7 +235,6 @@ mixin _HooksModule on _PlayerBase {
   /// When no resolver is installed and the hook is consumer-registered,
   /// no await runs before the stream add: delivery stays in the same
   /// microtask as the native event, preserving the pre-resolver timing.
-  @override
   Future<void> _routeHookEvent(int id, Hook hook, String name) async {
     bool pending() => _hooks.isPending(id);
     final resolver = _sourceResolver;

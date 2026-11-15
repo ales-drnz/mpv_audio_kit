@@ -11,10 +11,10 @@ part of '../player.dart';
 /// against the core: every such call waits for the playloop, and during
 /// audio-output init (a Bluetooth or AirPlay device waking up takes seconds)
 /// that wait would freeze the main isolate: the macOS beachball.
-/// `_handleEvent` is the abstract member bring-up wires as the isolate's
+/// `_handleEvent` is what bring-up wires as the isolate's
 /// `onEvent`; the rest are internal to this mixin.
-mixin _DispatchModule on _PlayerBase, _PropertiesModule, _FileEventsModule {
-  @override
+mixin _DispatchModule
+    on _PlayerBase, _PropertiesModule, _FileEventsModule, _HooksModule {
   void _handleEvent(MpvIsolateEvent event) {
     // Async-reply completion runs BEFORE the dispose fence: a reply that
     // arrives while dispose is unwinding must still complete its pending
