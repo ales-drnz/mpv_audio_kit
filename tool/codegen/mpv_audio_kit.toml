@@ -32,7 +32,6 @@ test_param_corners = "test/generated/_audio_effects_param_corners.dart"
 test_runtime = "test/generated/audio_effects_runtime_coverage_test.dart"
 test_af_command = "test/generated/audio_effects_af_command_test.dart"
 schema = ".build/mpv_audio_kit/schema.json"
-schema_runtime = ".build/mpv_audio_kit/schema_runtime.json"
 
 [features]
 emit_extensions = true

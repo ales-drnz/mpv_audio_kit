@@ -7,8 +7,7 @@ One TOML per target (``tool/codegen/<target>.toml``). Paths resolve as:
   write_manifest.sh, copied here by scripts/update_libmpv.sh): its
   ``audioFilters`` are the filters compiled into the binary, and its
   ``ffmpeg`` version picks the FFmpeg source parsed for their options.
-* ``[output].schema`` /
-  ``[output].schema_runtime`` → relative to tool/codegen (build products,
+* ``[output].schema`` → relative to tool/codegen (a build product,
   git-ignored under .build/).
 * every other ``[output].*`` → relative to the mpv_audio_kit package root.
 * ``[extensions].source``    → a file in tool/codegen/static/.
@@ -117,7 +116,7 @@ class FeatureFlags:
 
 @dataclass(frozen=True)
 class OutputPaths:
-    """Every path absolute. ``schema`` / ``schema_runtime`` resolve
+    """Every path absolute. ``schema`` resolves
     against the shared repo; every other path resolves against the
     consumer Flutter pkg root."""
 
@@ -132,7 +131,6 @@ class OutputPaths:
     extensions: Optional[Path] = None
     filter_catalog: Optional[Path] = None
     example_pages_dir: Optional[Path] = None
-    schema_runtime: Optional[Path] = None
 
 
 @dataclass(frozen=True)
@@ -250,7 +248,6 @@ def load_config(toml_path: Path) -> Config:
         extensions=_consumer_path("extensions"),
         filter_catalog=_consumer_path("filter_catalog"),
         example_pages_dir=_consumer_path("example_pages_dir"),
-        schema_runtime=_shared_path("schema_runtime"),
     )
 
     ext_src: Optional[Path] = None

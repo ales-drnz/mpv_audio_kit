@@ -7,7 +7,7 @@ mpv_studio's filter catalog. Configured by the TOML files next to it.
 
 Public entry points are in :mod:`lavfi_codegen.cli` and the dataclass
 in :mod:`lavfi_codegen.config`. Each stage (parse / generate /
-generate_tests / parse_from_help / audit) is also importable on its
+generate_tests / generate_studio_catalog) is also importable on its
 own — see the module docstrings.
 """
 from __future__ import annotations
