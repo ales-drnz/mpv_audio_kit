@@ -9,12 +9,8 @@ Stages:
     generate   → schema.json → Dart effect classes + enums + extensions
     tests      → schema.json → coverage + param-corner Dart tests
     studio_catalog → schema.json → mpv_studio's filter catalog (not in `all`)
-    runtime    → ffmpeg -h filter → schema_runtime.json
-    diff       → runtime ↔ C-source diff (also runs `runtime`)
-    audit      → highlight string params needing hand-written extensions
-    all        → parse + generate + tests + diff + audit
-                 (each optional stage is skipped when its feature flag
-                 is off or its output path is unset)
+    all        → parse + generate + tests
+                 (tests is skipped when its feature flag is off)
 
 Picks the right stages based on the consumer's feature flags; nothing
 re-runs that the config didn't ask for.
@@ -25,19 +21,16 @@ import argparse
 import sys
 from pathlib import Path
 
-from . import audit_string_params, generate, generate_studio_catalog
+from . import generate, generate_studio_catalog
 from . import generate_tests
-from . import parse, parse_from_help
+from . import parse
 from .config import Config, load_config
 
 
-STAGES = (
-    "parse", "generate", "tests", "studio_catalog",
-    "runtime", "diff", "audit", "all",
-)
+STAGES = ("parse", "generate", "tests", "studio_catalog", "all")
 
 
-def _do(stage: str, config: Config, *, ffmpeg: str | None = None) -> int:
+def _do(stage: str, config: Config) -> int:
     """Run a single stage. ``stage='all'`` runs the canonical sequence.
     Optional stages (tests/catalog) silently skip when their feature
     flag is off; required stages always run."""
@@ -54,26 +47,11 @@ def _do(stage: str, config: Config, *, ffmpeg: str | None = None) -> int:
         # Standalone target: emits MPV Studio-styled filter cards into the
         # sibling `mpv_studio` package. Not part of `all`.
         return generate_studio_catalog.run(config)
-    if stage == "runtime":
-        return parse_from_help.run(config, ffmpeg=ffmpeg, diff_mode=False)
-    if stage == "diff":
-        return parse_from_help.run(config, ffmpeg=ffmpeg, diff_mode=True)
-    if stage == "audit":
-        return audit_string_params.run(config)
     if stage == "all":
         for s in ("parse", "generate", "tests"):
-            rc = _do(s, config, ffmpeg=ffmpeg)
+            rc = _do(s, config)
             if rc != 0:
                 return rc
-        # Diff is best-effort — surface failures but don't gate the run.
-        try:
-            _do("diff", config, ffmpeg=ffmpeg)
-        except SystemExit as e:
-            print(f"diff: {e}", file=sys.stderr)
-        try:
-            _do("audit", config, ffmpeg=ffmpeg)
-        except Exception as e:  # noqa: BLE001 — audit is informational
-            print(f"audit: {e}", file=sys.stderr)
         return 0
     sys.exit(f"unknown stage: {stage} (pick one of {STAGES})")
 
@@ -90,12 +68,6 @@ def main(argv: list[str] | None = None) -> int:
         help="Path to the consumer's codegen.toml",
     )
     ap.add_argument(
-        "--ffmpeg",
-        default=None,
-        help="Override the ffmpeg binary used by the runtime parser "
-        "(default: $PATH lookup).",
-    )
-    ap.add_argument(
         "stage",
         choices=STAGES,
         default="all",
@@ -104,7 +76,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = ap.parse_args(argv)
     config = load_config(args.config)
-    return _do(args.stage, config, ffmpeg=args.ffmpeg)
+    return _do(args.stage, config)
 
 
 if __name__ == "__main__":

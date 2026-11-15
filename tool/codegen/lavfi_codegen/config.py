@@ -7,8 +7,7 @@ One TOML per target (``tool/codegen/<target>.toml``). Paths resolve as:
   write_manifest.sh, copied here by scripts/update_libmpv.sh): its
   ``audioFilters`` are the filters compiled into the binary, and its
   ``ffmpeg`` version picks the FFmpeg source parsed for their options.
-* ``[output].schema`` /
-  ``[output].schema_runtime`` → relative to tool/codegen (build products,
+* ``[output].schema`` → relative to tool/codegen (a build product,
   git-ignored under .build/).
 * every other ``[output].*`` → relative to the mpv_audio_kit package root.
 * ``[extensions].source``    → a file in tool/codegen/static/.
@@ -117,7 +116,7 @@ class FeatureFlags:
 
 @dataclass(frozen=True)
 class OutputPaths:
-    """Every path absolute. ``schema`` / ``schema_runtime`` resolve
+    """Every path absolute. ``schema`` resolves
     against the shared repo; every other path resolves against the
     consumer Flutter pkg root."""
 
@@ -126,13 +125,13 @@ class OutputPaths:
     test_filter_names: Path
     schema: Path
     test_coverage: Optional[Path] = None
+    test_coverage_cases: Optional[Path] = None
     test_param_corners: Optional[Path] = None
     test_runtime: Optional[Path] = None
     test_af_command: Optional[Path] = None
     extensions: Optional[Path] = None
     filter_catalog: Optional[Path] = None
     example_pages_dir: Optional[Path] = None
-    schema_runtime: Optional[Path] = None
 
 
 @dataclass(frozen=True)
@@ -244,13 +243,13 @@ def load_config(toml_path: Path) -> Config:
             "schema", f".build/{consumer.name}/schema.json"
         ),
         test_coverage=_consumer_path("test_coverage"),
+        test_coverage_cases=_consumer_path("test_coverage_cases"),
         test_param_corners=_consumer_path("test_param_corners"),
         test_runtime=_consumer_path("test_runtime"),
         test_af_command=_consumer_path("test_af_command"),
         extensions=_consumer_path("extensions"),
         filter_catalog=_consumer_path("filter_catalog"),
         example_pages_dir=_consumer_path("example_pages_dir"),
-        schema_runtime=_shared_path("schema_runtime"),
     )
 
     ext_src: Optional[Path] = None

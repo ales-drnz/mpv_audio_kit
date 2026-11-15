@@ -1,7 +1,7 @@
 {
-  "loc": 16832,
-  "test_per_lib_permille": 2593,
-  "test_per_lib_drop": "from 2602 to 2593: lib/src/internals/hook_download.dart grew with the hook's download, cache pruning and Apple check, covered by test/packaging/hook_cache_test.dart and hook_download_test.dart; no test was removed",
+  "loc": 16914,
+  "test_per_lib_permille": 2580,
+  "test_per_lib_drop": "from 2593 to 2580: lib/mpv_audio_kit.dart names the 88 exported effect classes instead of hiding 6 internal names, 82 lines of export list; no test was removed",
   "complexity_over_15": 3,
   "complexity_over_10": 40,
   "player_base_fields": 54,

@@ -1,0 +1,212 @@
+// Copyright © 2026 & onwards, Alessandro Di Ronza <ales.drnz@gmail.com>.
+// All rights reserved.
+// Use of this source code is governed by BSD 3-Clause license
+// that can be found in the LICENSE file.
+//
+// AUTO-GENERATED: do NOT edit by hand.
+//
+// The cases of audio_effects_coverage_test.dart, one line each, from the schema.
+
+part of 'audio_effects_coverage_test.dart';
+
+/// One filter: [disabled] drops out of the chain, [enabled] is the
+/// bare entry (with its [required] options), [wire] sets one option
+/// off its default and names the text the entry carries, [bounds] sets
+/// one option to a `Min`, `Max` or `Default` constant, and [digits]
+/// sets a digit-prefix option through `params`.
+final class _Filter {
+  const _Filter(
+    this.name,
+    this.cls,
+    this.disabled,
+    this.enabled, {
+    this.required = const [],
+    this.wire = const [],
+    this.bounds = const [],
+    this.digits = const [],
+  });
+
+  final String name;
+  final String cls;
+  final AudioEffect disabled;
+  final AudioEffect enabled;
+  final List<String> required;
+  final List<(String, AudioEffect, String)> wire;
+  final List<(String, String, AudioEffect)> bounds;
+  final List<(String, AudioEffect, String)> digits;
+}
+
+/// One enum: every member round-trips through `mpvValue` and
+/// `fromMpv`, the members carry [wires] in order, and an unknown
+/// or null value parses to [first].
+final class _Enum<T extends Enum> {
+  const _Enum(this.name, this.values, this.parse, this.wire, this.first, this.wires);
+
+  final String name;
+  final List<T> values;
+  final T Function(String?) parse;
+  final String Function(T) wire;
+  final T first;
+  final List<String> wires;
+
+  void run() {
+    test('every member round-trips via mpvValue / fromMpv', () {
+      for (final v in values) {
+        expect(wire(v), isNotEmpty);
+        expect(parse(wire(v)), v);
+      }
+      expect([for (final v in values) wire(v)], wires);
+    });
+
+    test('fromMpv unknown / null → first member (safe fallback)', () {
+      expect(parse('this_will_never_match'), first);
+      expect(parse(null), first);
+    });
+  }
+}
+
+
+// dart format off
+const _filters = <_Filter>[
+  _Filter('acompressor', 'AcompressorEffect', AcompressorEffect(enabled: false), AcompressorEffect(),
+    wire: [
+      ('attack', AcompressorEffect(attack: 2000.0), 'attack=2000.000'),
+      ('detection', AcompressorEffect(detection: AcompressorDetection.peak), 'detection=peak'),
+      ('knee', AcompressorEffect(knee: 8.0), 'knee=8.000'),
+      ('level_in', AcompressorEffect(levelIn: 64.0), 'level_in=64.000'),
+      ('level_sc', AcompressorEffect(levelSc: 64.0), 'level_sc=64.000'),
+      ('link', AcompressorEffect(link: AcompressorLink.maximum), 'link=maximum'),
+      ('makeup', AcompressorEffect(makeup: 64.0), 'makeup=64.000'),
+      ('mix', AcompressorEffect(mix: 0.0), 'mix=0.000'),
+      ('mode', AcompressorEffect(mode: AcompressorMode.upward), 'mode=upward'),
+      ('ratio', AcompressorEffect(ratio: 20.0), 'ratio=20.000'),
+      ('release', AcompressorEffect(release: 9000.0), 'release=9000.000'),
+      ('threshold', AcompressorEffect(threshold: 1.0), 'threshold=1.000'),
+    ],
+    bounds: [
+      ('attack', 'attackMin', AcompressorEffect(attack: AcompressorEffect.attackMin)),
+      ('attack', 'attackMax', AcompressorEffect(attack: AcompressorEffect.attackMax)),
+      ('attack', 'attackDefault', AcompressorEffect(attack: AcompressorEffect.attackDefault)),
+      ('knee', 'kneeMin', AcompressorEffect(knee: AcompressorEffect.kneeMin)),
+      ('knee', 'kneeMax', AcompressorEffect(knee: AcompressorEffect.kneeMax)),
+      ('knee', 'kneeDefault', AcompressorEffect(knee: AcompressorEffect.kneeDefault)),
+      ('level_in', 'levelInMin', AcompressorEffect(levelIn: AcompressorEffect.levelInMin)),
+      ('level_in', 'levelInMax', AcompressorEffect(levelIn: AcompressorEffect.levelInMax)),
+      ('level_in', 'levelInDefault', AcompressorEffect(levelIn: AcompressorEffect.levelInDefault)),
+      ('level_sc', 'levelScMin', AcompressorEffect(levelSc: AcompressorEffect.levelScMin)),
+      ('level_sc', 'levelScMax', AcompressorEffect(levelSc: AcompressorEffect.levelScMax)),
+      ('level_sc', 'levelScDefault', AcompressorEffect(levelSc: AcompressorEffect.levelScDefault)),
+      ('makeup', 'makeupMin', AcompressorEffect(makeup: AcompressorEffect.makeupMin)),
+      ('makeup', 'makeupMax', AcompressorEffect(makeup: AcompressorEffect.makeupMax)),
+      ('makeup', 'makeupDefault', AcompressorEffect(makeup: AcompressorEffect.makeupDefault)),
+      ('mix', 'mixMin', AcompressorEffect(mix: AcompressorEffect.mixMin)),
+      ('mix', 'mixMax', AcompressorEffect(mix: AcompressorEffect.mixMax)),
+      ('mix', 'mixDefault', AcompressorEffect(mix: AcompressorEffect.mixDefault)),
+      ('ratio', 'ratioMin', AcompressorEffect(ratio: AcompressorEffect.ratioMin)),
+      ('ratio', 'ratioMax', AcompressorEffect(ratio: AcompressorEffect.ratioMax)),
+      ('ratio', 'ratioDefault', AcompressorEffect(ratio: AcompressorEffect.ratioDefault)),
+      ('release', 'releaseMin', AcompressorEffect(release: AcompressorEffect.releaseMin)),
+      ('release', 'releaseMax', AcompressorEffect(release: AcompressorEffect.releaseMax)),
+      ('release', 'releaseDefault', AcompressorEffect(release: AcompressorEffect.releaseDefault)),
+      ('threshold', 'thresholdMin', AcompressorEffect(threshold: AcompressorEffect.thresholdMin)),
+      ('threshold', 'thresholdMax', AcompressorEffect(threshold: AcompressorEffect.thresholdMax)),
+      ('threshold', 'thresholdDefault', AcompressorEffect(threshold: AcompressorEffect.thresholdDefault)),
+    ],
+  ),
+  _Filter('aeval', 'AevalEffect', AevalEffect(enabled: false, exprs: 'val(0)|val(1)'), AevalEffect(exprs: 'val(0)|val(1)'),
+    required: ['exprs'],
+    wire: [
+      ('channel_layout', AevalEffect(channelLayout: 'wire_test_alt', exprs: 'val(0)|val(1)'), 'channel_layout='),
+      ('exprs', AevalEffect(exprs: 'wire_test_alt'), 'exprs='),
+    ],
+  ),
+  _Filter('afade', 'AfadeEffect', AfadeEffect(enabled: false), AfadeEffect(),
+    wire: [
+      ('curve', AfadeEffect(curve: AfadeCurve.nofade), 'curve=nofade'),
+      ('duration', AfadeEffect(duration: Duration(microseconds: 1000000)), 'duration='),
+      ('nb_samples', AfadeEffect(nbSamples: 9223372036854775807), 'nb_samples=9223372036854775807'),
+      ('silence', AfadeEffect(silence: 1.0), 'silence=1.000'),
+      ('start_sample', AfadeEffect(startSample: 9223372036854775807), 'start_sample=9223372036854775807'),
+      ('start_time', AfadeEffect(startTime: Duration(microseconds: 1000000)), 'start_time='),
+      ('type', AfadeEffect(type: AfadeType.out), 'type=out'),
+      ('unity', AfadeEffect(unity: 0.0), 'unity=0.000'),
+    ],
+    bounds: [
+      ('nb_samples', 'nbSamplesMin', AfadeEffect(nbSamples: AfadeEffect.nbSamplesMin)),
+      ('nb_samples', 'nbSamplesMax', AfadeEffect(nbSamples: AfadeEffect.nbSamplesMax)),
+      ('nb_samples', 'nbSamplesDefault', AfadeEffect(nbSamples: AfadeEffect.nbSamplesDefault)),
+      ('silence', 'silenceMin', AfadeEffect(silence: AfadeEffect.silenceMin)),
+      ('silence', 'silenceMax', AfadeEffect(silence: AfadeEffect.silenceMax)),
+      ('silence', 'silenceDefault', AfadeEffect(silence: AfadeEffect.silenceDefault)),
+      ('start_sample', 'startSampleMin', AfadeEffect(startSample: AfadeEffect.startSampleMin)),
+      ('start_sample', 'startSampleMax', AfadeEffect(startSample: AfadeEffect.startSampleMax)),
+      ('start_sample', 'startSampleDefault', AfadeEffect(startSample: AfadeEffect.startSampleDefault)),
+      ('unity', 'unityMin', AfadeEffect(unity: AfadeEffect.unityMin)),
+      ('unity', 'unityMax', AfadeEffect(unity: AfadeEffect.unityMax)),
+      ('unity', 'unityDefault', AfadeEffect(unity: AfadeEffect.unityDefault)),
+    ],
+  ),
+  _Filter('compand', 'CompandEffect', CompandEffect(enabled: false), CompandEffect(),
+    wire: [
+      ('attacks', CompandEffect(attacks: 'wire_test_alt'), 'attacks='),
+      ('decays', CompandEffect(decays: 'wire_test_alt'), 'decays='),
+      ('delay', CompandEffect(delay: 20.0), 'delay=20.000'),
+      ('gain', CompandEffect(gain: 900.0), 'gain=900.000'),
+      ('points', CompandEffect(points: 'wire_test_alt'), 'points='),
+      ('volume', CompandEffect(volume: -900.0), 'volume=-900.000'),
+    ],
+    bounds: [
+      ('delay', 'delayMin', CompandEffect(delay: CompandEffect.delayMin)),
+      ('delay', 'delayMax', CompandEffect(delay: CompandEffect.delayMax)),
+      ('delay', 'delayDefault', CompandEffect(delay: CompandEffect.delayDefault)),
+      ('gain', 'gainMin', CompandEffect(gain: CompandEffect.gainMin)),
+      ('gain', 'gainMax', CompandEffect(gain: CompandEffect.gainMax)),
+      ('gain', 'gainDefault', CompandEffect(gain: CompandEffect.gainDefault)),
+      ('volume', 'volumeMin', CompandEffect(volume: CompandEffect.volumeMin)),
+      ('volume', 'volumeMax', CompandEffect(volume: CompandEffect.volumeMax)),
+      ('volume', 'volumeDefault', CompandEffect(volume: CompandEffect.volumeDefault)),
+    ],
+    digits: [
+      ('soft-knee', CompandEffect(params: {'soft-knee': 900.0}), 'soft-knee=900.000'),
+    ],
+  ),
+  _Filter('ebur128', 'Ebur128Effect', Ebur128Effect(enabled: false), Ebur128Effect(),
+    wire: [
+      ('dualmono', Ebur128Effect(dualmono: true), 'dualmono='),
+      ('framelog', Ebur128Effect(framelog: Ebur128Level.info), 'framelog=info'),
+      ('gauge', Ebur128Effect(gauge: Ebur128Gaugetype.m), 'gauge=m'),
+      ('metadata', Ebur128Effect(metadata: true), 'metadata='),
+      ('meter', Ebur128Effect(meter: 18), 'meter=18'),
+      ('panlaw', Ebur128Effect(panlaw: 0.0), 'panlaw=0.000'),
+      ('peak', Ebur128Effect(peak: {Ebur128Mode.none}), 'peak='),
+      ('scale', Ebur128Effect(scale: Ebur128Scaletype.lufs), 'scale=LUFS'),
+      ('size', Ebur128Effect(size: 'wire_test_alt'), 'size='),
+      ('target', Ebur128Effect(target: 0), 'target=0'),
+      ('video', Ebur128Effect(video: true), 'video='),
+    ],
+    bounds: [
+      ('meter', 'meterMin', Ebur128Effect(meter: Ebur128Effect.meterMin)),
+      ('meter', 'meterMax', Ebur128Effect(meter: Ebur128Effect.meterMax)),
+      ('meter', 'meterDefault', Ebur128Effect(meter: Ebur128Effect.meterDefault)),
+      ('panlaw', 'panlawMin', Ebur128Effect(panlaw: Ebur128Effect.panlawMin)),
+      ('panlaw', 'panlawMax', Ebur128Effect(panlaw: Ebur128Effect.panlawMax)),
+      ('panlaw', 'panlawDefault', Ebur128Effect(panlaw: Ebur128Effect.panlawDefault)),
+      ('target', 'targetMin', Ebur128Effect(target: Ebur128Effect.targetMin)),
+      ('target', 'targetMax', Ebur128Effect(target: Ebur128Effect.targetMax)),
+      ('target', 'targetDefault', Ebur128Effect(target: Ebur128Effect.targetDefault)),
+    ],
+  ),
+];
+
+final _enums = <_Enum<Enum>>[
+  _Enum<AcompressorDetection>('AcompressorDetection', AcompressorDetection.values, AcompressorDetection.fromMpv, (v) => v.mpvValue, AcompressorDetection.peak, ['peak', 'rms']),
+  _Enum<AcompressorLink>('AcompressorLink', AcompressorLink.values, AcompressorLink.fromMpv, (v) => v.mpvValue, AcompressorLink.average, ['average', 'maximum']),
+  _Enum<AcompressorMode>('AcompressorMode', AcompressorMode.values, AcompressorMode.fromMpv, (v) => v.mpvValue, AcompressorMode.downward, ['downward', 'upward']),
+  _Enum<AfadeCurve>('AfadeCurve', AfadeCurve.values, AfadeCurve.fromMpv, (v) => v.mpvValue, AfadeCurve.nofade, ['nofade', 'tri', 'qsin', 'esin', 'hsin', 'log', 'ipar', 'qua', 'cub', 'squ', 'cbr', 'par', 'exp', 'iqsin', 'ihsin', 'dese', 'desi', 'losi', 'sinc', 'isinc', 'quat', 'quatr', 'qsin2', 'hsin2']),
+  _Enum<AfadeType>('AfadeType', AfadeType.values, AfadeType.fromMpv, (v) => v.mpvValue, AfadeType.in_, ['in', 'out']),
+  _Enum<Ebur128Gaugetype>('Ebur128Gaugetype', Ebur128Gaugetype.values, Ebur128Gaugetype.fromMpv, (v) => v.mpvValue, Ebur128Gaugetype.momentary, ['momentary', 'm', 'shortterm', 's']),
+  _Enum<Ebur128Level>('Ebur128Level', Ebur128Level.values, Ebur128Level.fromMpv, (v) => v.mpvValue, Ebur128Level.quiet, ['quiet', 'info', 'verbose']),
+  _Enum<Ebur128Mode>('Ebur128Mode', Ebur128Mode.values, Ebur128Mode.fromMpv, (v) => v.mpvValue, Ebur128Mode.none, ['none', 'sample', 'true']),
+  _Enum<Ebur128Scaletype>('Ebur128Scaletype', Ebur128Scaletype.values, Ebur128Scaletype.fromMpv, (v) => v.mpvValue, Ebur128Scaletype.absolute, ['absolute', 'LUFS', 'relative', 'LU']),
+];
+// dart format on
