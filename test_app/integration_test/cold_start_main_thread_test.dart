@@ -6,7 +6,7 @@
 @TestOn('mac-os')
 library;
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
@@ -25,7 +25,7 @@ void main() {
         int frameCount = 0;
         WidgetsBinding.instance.addPersistentFrameCallback((_) => frameCount++);
 
-        await tester.pumpWidget(const MaterialApp(home: SizedBox.expand()));
+        await tester.pumpWidget(const SizedBox.expand());
         await tester.pump();
         final before = frameCount;
 
