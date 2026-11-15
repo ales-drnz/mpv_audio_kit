@@ -7,6 +7,7 @@
 - No `env://` protocol and no `env` property: a playlist or a property expansion can no longer read the environment of the app.
 - A live `PcmSource` entry with an A-B loop plays on past B to its end.
 - The HLS demuxer keeps its persistent connections under FFmpeg 9.0, which turned them off when mpv reads the playlist.
+- A stream whose cache fills before its end gets its waveform again, from the re-open or from playback. It could end `failed` when the analysis was behind the download.
 - zlib 1.4, xz 5.8.4, expat 2.10.0, libxml2 2.15.4, libpng 1.6.59 and libiconv 1.19.1.
 
 **Android**
