@@ -22,12 +22,16 @@ const _release = 'libmpv-r0';
 
 String _hex(List<int> bytes) => sha256.convert(bytes).toString();
 
-/// Every file under [dir], by path relative to it.
+/// Every file under [dir], by path relative to it, with `/` between its
+/// parts on every host.
 List<String> _files(Directory dir) => [
   if (dir.existsSync())
     for (final e in dir.listSync(recursive: true))
-      if (e is File) e.path.substring(dir.path.length + 1),
+      if (e is File) _slashed(e.path.substring(dir.path.length + 1)),
 ]..sort();
+
+/// [path] with the separators of the host as `/`.
+String _slashed(String path) => path.replaceAll(Platform.pathSeparator, '/');
 
 void main() {
   late Directory tmp;
@@ -83,7 +87,7 @@ void main() {
         'with no partial file, and is reused', () async {
       answer = ok;
       final file = await fetch();
-      expect(file.path, '${cache().path}/$sha/$_asset');
+      expect(_slashed(file.path), _slashed('${cache().path}/$sha/$_asset'));
       expect(await file.readAsBytes(), body);
       expect(_files(cache()), ['$sha/$_asset']);
       await fetch();
@@ -247,7 +251,7 @@ void main() {
 
     test('unpacks once, follows the links and reuses the copy', () async {
       final path = await unpack();
-      expect(path, endsWith('$slice/Versions/A/libmpv'));
+      expect(_slashed(path), endsWith('$slice/Versions/A/libmpv'));
       expect(await File(path).readAsBytes(), content);
       expect(File('${dir.path}/$unpackedMarker').existsSync(), isTrue);
       await unpack();

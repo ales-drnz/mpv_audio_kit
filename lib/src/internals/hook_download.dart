@@ -321,8 +321,8 @@ Future<String?> _verifiedBinary(
     if (files is! Map) return null;
     final root = await dir.resolveSymbolicLinks();
     final resolved = await File('${dir.path}/$binary').resolveSymbolicLinks();
-    if (!resolved.startsWith('$root/')) return null;
-    final relative = resolved.substring(root.length + 1);
+    final relative = _under(root, resolved);
+    if (relative == null) return null;
     final expected = files[relative];
     if (expected is! String) return null;
     return await _sha256Of(File(resolved)) == expected ? resolved : null;
@@ -341,12 +341,19 @@ Future<Map<String, String>> _hashTree(Directory dir) async {
     root,
   ).list(recursive: true, followLinks: false)) {
     if (entity is File) {
-      hashes[entity.path.substring(root.length + 1)] = (await _sha256Of(
-        entity,
-      ))!;
+      hashes[_under(root, entity.path)!] = (await _sha256Of(entity))!;
     }
   }
   return hashes;
+}
+
+/// The path of [path] inside [root], with `/` between its parts on every
+/// host, or `null` when it is not inside: the marker names the files of a
+/// copy the same way on Windows, where the paths have backslashes.
+String? _under(String root, String path) {
+  final sep = Platform.pathSeparator;
+  if (!path.startsWith('$root$sep')) return null;
+  return path.substring(root.length + 1).replaceAll(sep, '/');
 }
 
 /// The SHA-256 of [file] in hex, `null` when it does not exist.
