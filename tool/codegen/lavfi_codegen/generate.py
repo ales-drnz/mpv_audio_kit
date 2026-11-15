@@ -551,24 +551,21 @@ def _emit_enum(
     lines.append("  ;")
     lines.append("")
     lines.append(f"  /// Wire-side string consumed by {consumer_label}.")
-    lines.append(f"  String get {getter} {{")
-    lines.append("    switch (this) {")
+    # The one place a member meets its FFmpeg name; the parser below
+    # reads it back.
+    lines.append(f"  String get {getter} => switch (this) {{")
     for m in members:
         member_name = _enum_member_dart_name(m["name"])
-        lines.append(f"      case {enum_id}.{member_name}: return '{m['name']}';")
-    lines.append("    }")
-    lines.append("  }")
+        lines.append(f"    {member_name} => '{m['name']}',")
+    lines.append("  };")
     lines.append("")
     lines.append(f"  /// Parses a {consumer_label} wire string back into a [{enum_id}].")
     lines.append("  /// Unknown or empty input falls back to the first member.")
-    lines.append(f"  static {enum_id} {parser}(String? raw) {{")
-    lines.append("    switch (raw) {")
-    for m in members:
-        member_name = _enum_member_dart_name(m["name"])
-        lines.append(f"      case '{m['name']}': return {enum_id}.{member_name};")
-    lines.append(f"      default: return {enum_id}.{_enum_member_dart_name(members[0]['name'])};")
-    lines.append("    }")
-    lines.append("  }")
+    first = _enum_member_dart_name(members[0]["name"])
+    lines.append(
+        f"  static {enum_id} {parser}(String? raw) => "
+        f"values.firstWhere((v) => v.{getter} == raw, orElse: () => {first});"
+    )
     lines.append("}")
     return "\n".join(lines)
 

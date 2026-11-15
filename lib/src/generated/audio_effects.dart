@@ -22,27 +22,15 @@ enum AcompressorDetection {
   rms;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case AcompressorDetection.peak:
-        return 'peak';
-      case AcompressorDetection.rms:
-        return 'rms';
-    }
-  }
+  String get mpvValue => switch (this) {
+    peak => 'peak',
+    rms => 'rms',
+  };
 
   /// Parses a mpv wire string back into a [AcompressorDetection].
   /// Unknown or empty input falls back to the first member.
-  static AcompressorDetection fromMpv(String? raw) {
-    switch (raw) {
-      case 'peak':
-        return AcompressorDetection.peak;
-      case 'rms':
-        return AcompressorDetection.rms;
-      default:
-        return AcompressorDetection.peak;
-    }
-  }
+  static AcompressorDetection fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => peak);
 }
 
 /// Values for the `link` option of the `acompressor` audio filter.
@@ -54,27 +42,15 @@ enum AcompressorLink {
   maximum;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case AcompressorLink.average:
-        return 'average';
-      case AcompressorLink.maximum:
-        return 'maximum';
-    }
-  }
+  String get mpvValue => switch (this) {
+    average => 'average',
+    maximum => 'maximum',
+  };
 
   /// Parses a mpv wire string back into a [AcompressorLink].
   /// Unknown or empty input falls back to the first member.
-  static AcompressorLink fromMpv(String? raw) {
-    switch (raw) {
-      case 'average':
-        return AcompressorLink.average;
-      case 'maximum':
-        return AcompressorLink.maximum;
-      default:
-        return AcompressorLink.average;
-    }
-  }
+  static AcompressorLink fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => average);
 }
 
 /// Values for the `mode` option of the `acompressor` audio filter.
@@ -86,27 +62,15 @@ enum AcompressorMode {
   upward;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case AcompressorMode.downward:
-        return 'downward';
-      case AcompressorMode.upward:
-        return 'upward';
-    }
-  }
+  String get mpvValue => switch (this) {
+    downward => 'downward',
+    upward => 'upward',
+  };
 
   /// Parses a mpv wire string back into a [AcompressorMode].
   /// Unknown or empty input falls back to the first member.
-  static AcompressorMode fromMpv(String? raw) {
-    switch (raw) {
-      case 'downward':
-        return AcompressorMode.downward;
-      case 'upward':
-        return AcompressorMode.upward;
-      default:
-        return AcompressorMode.downward;
-    }
-  }
+  static AcompressorMode fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => downward);
 }
 
 /// Values for the `mode` option of the `acrusher` audio filter.
@@ -118,27 +82,15 @@ enum AcrusherMode {
   log;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case AcrusherMode.lin:
-        return 'lin';
-      case AcrusherMode.log:
-        return 'log';
-    }
-  }
+  String get mpvValue => switch (this) {
+    lin => 'lin',
+    log => 'log',
+  };
 
   /// Parses a mpv wire string back into a [AcrusherMode].
   /// Unknown or empty input falls back to the first member.
-  static AcrusherMode fromMpv(String? raw) {
-    switch (raw) {
-      case 'lin':
-        return AcrusherMode.lin;
-      case 'log':
-        return AcrusherMode.log;
-      default:
-        return AcrusherMode.lin;
-    }
-  }
+  static AcrusherMode fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => lin);
 }
 
 /// Values for the `method` option of the `adeclick` audio filter.
@@ -156,35 +108,17 @@ enum AdeclickM {
   s;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case AdeclickM.add:
-        return 'add';
-      case AdeclickM.a:
-        return 'a';
-      case AdeclickM.save:
-        return 'save';
-      case AdeclickM.s:
-        return 's';
-    }
-  }
+  String get mpvValue => switch (this) {
+    add => 'add',
+    a => 'a',
+    save => 'save',
+    s => 's',
+  };
 
   /// Parses a mpv wire string back into a [AdeclickM].
   /// Unknown or empty input falls back to the first member.
-  static AdeclickM fromMpv(String? raw) {
-    switch (raw) {
-      case 'add':
-        return AdeclickM.add;
-      case 'a':
-        return AdeclickM.a;
-      case 'save':
-        return AdeclickM.save;
-      case 's':
-        return AdeclickM.s;
-      default:
-        return AdeclickM.add;
-    }
-  }
+  static AdeclickM fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => add);
 }
 
 /// Values for the `method` option of the `adeclip` audio filter.
@@ -202,35 +136,17 @@ enum AdeclipM {
   s;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case AdeclipM.add:
-        return 'add';
-      case AdeclipM.a:
-        return 'a';
-      case AdeclipM.save:
-        return 'save';
-      case AdeclipM.s:
-        return 's';
-    }
-  }
+  String get mpvValue => switch (this) {
+    add => 'add',
+    a => 'a',
+    save => 'save',
+    s => 's',
+  };
 
   /// Parses a mpv wire string back into a [AdeclipM].
   /// Unknown or empty input falls back to the first member.
-  static AdeclipM fromMpv(String? raw) {
-    switch (raw) {
-      case 'add':
-        return AdeclipM.add;
-      case 'a':
-        return AdeclipM.a;
-      case 'save':
-        return AdeclipM.save;
-      case 's':
-        return AdeclipM.s;
-      default:
-        return AdeclipM.add;
-    }
-  }
+  static AdeclipM fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => add);
 }
 
 /// Values for the `type` option of the `adenorm` audio filter.
@@ -248,35 +164,17 @@ enum AdenormType {
   pulse;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case AdenormType.dc:
-        return 'dc';
-      case AdenormType.ac:
-        return 'ac';
-      case AdenormType.square:
-        return 'square';
-      case AdenormType.pulse:
-        return 'pulse';
-    }
-  }
+  String get mpvValue => switch (this) {
+    dc => 'dc',
+    ac => 'ac',
+    square => 'square',
+    pulse => 'pulse',
+  };
 
   /// Parses a mpv wire string back into a [AdenormType].
   /// Unknown or empty input falls back to the first member.
-  static AdenormType fromMpv(String? raw) {
-    switch (raw) {
-      case 'dc':
-        return AdenormType.dc;
-      case 'ac':
-        return AdenormType.ac;
-      case 'square':
-        return AdenormType.square;
-      case 'pulse':
-        return AdenormType.pulse;
-      default:
-        return AdenormType.dc;
-    }
-  }
+  static AdenormType fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => dc);
 }
 
 /// Values for the `auto` option of the `adynamicequalizer` audio filter.
@@ -294,35 +192,17 @@ enum AdynamicequalizerAuto {
   adaptive;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case AdynamicequalizerAuto.disabled:
-        return 'disabled';
-      case AdynamicequalizerAuto.off:
-        return 'off';
-      case AdynamicequalizerAuto.on_:
-        return 'on';
-      case AdynamicequalizerAuto.adaptive:
-        return 'adaptive';
-    }
-  }
+  String get mpvValue => switch (this) {
+    disabled => 'disabled',
+    off => 'off',
+    on_ => 'on',
+    adaptive => 'adaptive',
+  };
 
   /// Parses a mpv wire string back into a [AdynamicequalizerAuto].
   /// Unknown or empty input falls back to the first member.
-  static AdynamicequalizerAuto fromMpv(String? raw) {
-    switch (raw) {
-      case 'disabled':
-        return AdynamicequalizerAuto.disabled;
-      case 'off':
-        return AdynamicequalizerAuto.off;
-      case 'on':
-        return AdynamicequalizerAuto.on_;
-      case 'adaptive':
-        return AdynamicequalizerAuto.adaptive;
-      default:
-        return AdynamicequalizerAuto.disabled;
-    }
-  }
+  static AdynamicequalizerAuto fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => disabled);
 }
 
 /// Values for the `dftype` option of the `adynamicequalizer` audio filter.
@@ -340,35 +220,17 @@ enum AdynamicequalizerDftype {
   peak;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case AdynamicequalizerDftype.bandpass:
-        return 'bandpass';
-      case AdynamicequalizerDftype.lowpass:
-        return 'lowpass';
-      case AdynamicequalizerDftype.highpass:
-        return 'highpass';
-      case AdynamicequalizerDftype.peak:
-        return 'peak';
-    }
-  }
+  String get mpvValue => switch (this) {
+    bandpass => 'bandpass',
+    lowpass => 'lowpass',
+    highpass => 'highpass',
+    peak => 'peak',
+  };
 
   /// Parses a mpv wire string back into a [AdynamicequalizerDftype].
   /// Unknown or empty input falls back to the first member.
-  static AdynamicequalizerDftype fromMpv(String? raw) {
-    switch (raw) {
-      case 'bandpass':
-        return AdynamicequalizerDftype.bandpass;
-      case 'lowpass':
-        return AdynamicequalizerDftype.lowpass;
-      case 'highpass':
-        return AdynamicequalizerDftype.highpass;
-      case 'peak':
-        return AdynamicequalizerDftype.peak;
-      default:
-        return AdynamicequalizerDftype.bandpass;
-    }
-  }
+  static AdynamicequalizerDftype fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => bandpass);
 }
 
 /// Values for the `mode` option of the `adynamicequalizer` audio filter.
@@ -389,39 +251,18 @@ enum AdynamicequalizerMode {
   boostabove;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case AdynamicequalizerMode.listen:
-        return 'listen';
-      case AdynamicequalizerMode.cutbelow:
-        return 'cutbelow';
-      case AdynamicequalizerMode.cutabove:
-        return 'cutabove';
-      case AdynamicequalizerMode.boostbelow:
-        return 'boostbelow';
-      case AdynamicequalizerMode.boostabove:
-        return 'boostabove';
-    }
-  }
+  String get mpvValue => switch (this) {
+    listen => 'listen',
+    cutbelow => 'cutbelow',
+    cutabove => 'cutabove',
+    boostbelow => 'boostbelow',
+    boostabove => 'boostabove',
+  };
 
   /// Parses a mpv wire string back into a [AdynamicequalizerMode].
   /// Unknown or empty input falls back to the first member.
-  static AdynamicequalizerMode fromMpv(String? raw) {
-    switch (raw) {
-      case 'listen':
-        return AdynamicequalizerMode.listen;
-      case 'cutbelow':
-        return AdynamicequalizerMode.cutbelow;
-      case 'cutabove':
-        return AdynamicequalizerMode.cutabove;
-      case 'boostbelow':
-        return AdynamicequalizerMode.boostbelow;
-      case 'boostabove':
-        return AdynamicequalizerMode.boostabove;
-      default:
-        return AdynamicequalizerMode.listen;
-    }
-  }
+  static AdynamicequalizerMode fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => listen);
 }
 
 /// Values for the `precision` option of the `adynamicequalizer` audio filter.
@@ -436,31 +277,16 @@ enum AdynamicequalizerPrecision {
   double_;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case AdynamicequalizerPrecision.auto:
-        return 'auto';
-      case AdynamicequalizerPrecision.float:
-        return 'float';
-      case AdynamicequalizerPrecision.double_:
-        return 'double';
-    }
-  }
+  String get mpvValue => switch (this) {
+    auto => 'auto',
+    float => 'float',
+    double_ => 'double',
+  };
 
   /// Parses a mpv wire string back into a [AdynamicequalizerPrecision].
   /// Unknown or empty input falls back to the first member.
-  static AdynamicequalizerPrecision fromMpv(String? raw) {
-    switch (raw) {
-      case 'auto':
-        return AdynamicequalizerPrecision.auto;
-      case 'float':
-        return AdynamicequalizerPrecision.float;
-      case 'double':
-        return AdynamicequalizerPrecision.double_;
-      default:
-        return AdynamicequalizerPrecision.auto;
-    }
-  }
+  static AdynamicequalizerPrecision fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => auto);
 }
 
 /// Values for the `tftype` option of the `adynamicequalizer` audio filter.
@@ -475,31 +301,16 @@ enum AdynamicequalizerTftype {
   highshelf;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case AdynamicequalizerTftype.bell:
-        return 'bell';
-      case AdynamicequalizerTftype.lowshelf:
-        return 'lowshelf';
-      case AdynamicequalizerTftype.highshelf:
-        return 'highshelf';
-    }
-  }
+  String get mpvValue => switch (this) {
+    bell => 'bell',
+    lowshelf => 'lowshelf',
+    highshelf => 'highshelf',
+  };
 
   /// Parses a mpv wire string back into a [AdynamicequalizerTftype].
   /// Unknown or empty input falls back to the first member.
-  static AdynamicequalizerTftype fromMpv(String? raw) {
-    switch (raw) {
-      case 'bell':
-        return AdynamicequalizerTftype.bell;
-      case 'lowshelf':
-        return AdynamicequalizerTftype.lowshelf;
-      case 'highshelf':
-        return AdynamicequalizerTftype.highshelf;
-      default:
-        return AdynamicequalizerTftype.bell;
-    }
-  }
+  static AdynamicequalizerTftype fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => bell);
 }
 
 /// Values for the `mode` option of the `aemphasis` audio filter.
@@ -511,27 +322,15 @@ enum AemphasisMode {
   production;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case AemphasisMode.reproduction:
-        return 'reproduction';
-      case AemphasisMode.production:
-        return 'production';
-    }
-  }
+  String get mpvValue => switch (this) {
+    reproduction => 'reproduction',
+    production => 'production',
+  };
 
   /// Parses a mpv wire string back into a [AemphasisMode].
   /// Unknown or empty input falls back to the first member.
-  static AemphasisMode fromMpv(String? raw) {
-    switch (raw) {
-      case 'reproduction':
-        return AemphasisMode.reproduction;
-      case 'production':
-        return AemphasisMode.production;
-      default:
-        return AemphasisMode.reproduction;
-    }
-  }
+  static AemphasisMode fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => reproduction);
 }
 
 /// Values for the `type` option of the `aemphasis` audio filter.
@@ -564,55 +363,22 @@ enum AemphasisType {
   n75kf;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case AemphasisType.col:
-        return 'col';
-      case AemphasisType.emi:
-        return 'emi';
-      case AemphasisType.bsi:
-        return 'bsi';
-      case AemphasisType.riaa:
-        return 'riaa';
-      case AemphasisType.cd:
-        return 'cd';
-      case AemphasisType.n50fm:
-        return '50fm';
-      case AemphasisType.n75fm:
-        return '75fm';
-      case AemphasisType.n50kf:
-        return '50kf';
-      case AemphasisType.n75kf:
-        return '75kf';
-    }
-  }
+  String get mpvValue => switch (this) {
+    col => 'col',
+    emi => 'emi',
+    bsi => 'bsi',
+    riaa => 'riaa',
+    cd => 'cd',
+    n50fm => '50fm',
+    n75fm => '75fm',
+    n50kf => '50kf',
+    n75kf => '75kf',
+  };
 
   /// Parses a mpv wire string back into a [AemphasisType].
   /// Unknown or empty input falls back to the first member.
-  static AemphasisType fromMpv(String? raw) {
-    switch (raw) {
-      case 'col':
-        return AemphasisType.col;
-      case 'emi':
-        return AemphasisType.emi;
-      case 'bsi':
-        return AemphasisType.bsi;
-      case 'riaa':
-        return AemphasisType.riaa;
-      case 'cd':
-        return AemphasisType.cd;
-      case '50fm':
-        return AemphasisType.n50fm;
-      case '75fm':
-        return AemphasisType.n75fm;
-      case '50kf':
-        return AemphasisType.n50kf;
-      case '75kf':
-        return AemphasisType.n75kf;
-      default:
-        return AemphasisType.col;
-    }
-  }
+  static AemphasisType fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => col);
 }
 
 /// Values for the `curve` option of the `afade` audio filter.
@@ -690,115 +456,37 @@ enum AfadeCurve {
   hsin2;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case AfadeCurve.nofade:
-        return 'nofade';
-      case AfadeCurve.tri:
-        return 'tri';
-      case AfadeCurve.qsin:
-        return 'qsin';
-      case AfadeCurve.esin:
-        return 'esin';
-      case AfadeCurve.hsin:
-        return 'hsin';
-      case AfadeCurve.log:
-        return 'log';
-      case AfadeCurve.ipar:
-        return 'ipar';
-      case AfadeCurve.qua:
-        return 'qua';
-      case AfadeCurve.cub:
-        return 'cub';
-      case AfadeCurve.squ:
-        return 'squ';
-      case AfadeCurve.cbr:
-        return 'cbr';
-      case AfadeCurve.par:
-        return 'par';
-      case AfadeCurve.exp:
-        return 'exp';
-      case AfadeCurve.iqsin:
-        return 'iqsin';
-      case AfadeCurve.ihsin:
-        return 'ihsin';
-      case AfadeCurve.dese:
-        return 'dese';
-      case AfadeCurve.desi:
-        return 'desi';
-      case AfadeCurve.losi:
-        return 'losi';
-      case AfadeCurve.sinc:
-        return 'sinc';
-      case AfadeCurve.isinc:
-        return 'isinc';
-      case AfadeCurve.quat:
-        return 'quat';
-      case AfadeCurve.quatr:
-        return 'quatr';
-      case AfadeCurve.qsin2:
-        return 'qsin2';
-      case AfadeCurve.hsin2:
-        return 'hsin2';
-    }
-  }
+  String get mpvValue => switch (this) {
+    nofade => 'nofade',
+    tri => 'tri',
+    qsin => 'qsin',
+    esin => 'esin',
+    hsin => 'hsin',
+    log => 'log',
+    ipar => 'ipar',
+    qua => 'qua',
+    cub => 'cub',
+    squ => 'squ',
+    cbr => 'cbr',
+    par => 'par',
+    exp => 'exp',
+    iqsin => 'iqsin',
+    ihsin => 'ihsin',
+    dese => 'dese',
+    desi => 'desi',
+    losi => 'losi',
+    sinc => 'sinc',
+    isinc => 'isinc',
+    quat => 'quat',
+    quatr => 'quatr',
+    qsin2 => 'qsin2',
+    hsin2 => 'hsin2',
+  };
 
   /// Parses a mpv wire string back into a [AfadeCurve].
   /// Unknown or empty input falls back to the first member.
-  static AfadeCurve fromMpv(String? raw) {
-    switch (raw) {
-      case 'nofade':
-        return AfadeCurve.nofade;
-      case 'tri':
-        return AfadeCurve.tri;
-      case 'qsin':
-        return AfadeCurve.qsin;
-      case 'esin':
-        return AfadeCurve.esin;
-      case 'hsin':
-        return AfadeCurve.hsin;
-      case 'log':
-        return AfadeCurve.log;
-      case 'ipar':
-        return AfadeCurve.ipar;
-      case 'qua':
-        return AfadeCurve.qua;
-      case 'cub':
-        return AfadeCurve.cub;
-      case 'squ':
-        return AfadeCurve.squ;
-      case 'cbr':
-        return AfadeCurve.cbr;
-      case 'par':
-        return AfadeCurve.par;
-      case 'exp':
-        return AfadeCurve.exp;
-      case 'iqsin':
-        return AfadeCurve.iqsin;
-      case 'ihsin':
-        return AfadeCurve.ihsin;
-      case 'dese':
-        return AfadeCurve.dese;
-      case 'desi':
-        return AfadeCurve.desi;
-      case 'losi':
-        return AfadeCurve.losi;
-      case 'sinc':
-        return AfadeCurve.sinc;
-      case 'isinc':
-        return AfadeCurve.isinc;
-      case 'quat':
-        return AfadeCurve.quat;
-      case 'quatr':
-        return AfadeCurve.quatr;
-      case 'qsin2':
-        return AfadeCurve.qsin2;
-      case 'hsin2':
-        return AfadeCurve.hsin2;
-      default:
-        return AfadeCurve.nofade;
-    }
-  }
+  static AfadeCurve fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => nofade);
 }
 
 /// Values for the `type` option of the `afade` audio filter.
@@ -810,27 +498,15 @@ enum AfadeType {
   out;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case AfadeType.in_:
-        return 'in';
-      case AfadeType.out:
-        return 'out';
-    }
-  }
+  String get mpvValue => switch (this) {
+    in_ => 'in',
+    out => 'out',
+  };
 
   /// Parses a mpv wire string back into a [AfadeType].
   /// Unknown or empty input falls back to the first member.
-  static AfadeType fromMpv(String? raw) {
-    switch (raw) {
-      case 'in':
-        return AfadeType.in_;
-      case 'out':
-        return AfadeType.out;
-      default:
-        return AfadeType.in_;
-    }
-  }
+  static AfadeType fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => in_);
 }
 
 /// Values for the `noise_link` option of the `afftdn` audio filter.
@@ -848,35 +524,17 @@ enum AfftdnLink {
   average;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case AfftdnLink.none:
-        return 'none';
-      case AfftdnLink.min:
-        return 'min';
-      case AfftdnLink.max:
-        return 'max';
-      case AfftdnLink.average:
-        return 'average';
-    }
-  }
+  String get mpvValue => switch (this) {
+    none => 'none',
+    min => 'min',
+    max => 'max',
+    average => 'average',
+  };
 
   /// Parses a mpv wire string back into a [AfftdnLink].
   /// Unknown or empty input falls back to the first member.
-  static AfftdnLink fromMpv(String? raw) {
-    switch (raw) {
-      case 'none':
-        return AfftdnLink.none;
-      case 'min':
-        return AfftdnLink.min;
-      case 'max':
-        return AfftdnLink.max;
-      case 'average':
-        return AfftdnLink.average;
-      default:
-        return AfftdnLink.none;
-    }
-  }
+  static AfftdnLink fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => none);
 }
 
 /// Values for the `output_mode` option of the `afftdn` audio filter.
@@ -900,43 +558,19 @@ enum AfftdnMode {
   n;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case AfftdnMode.input:
-        return 'input';
-      case AfftdnMode.i:
-        return 'i';
-      case AfftdnMode.output:
-        return 'output';
-      case AfftdnMode.o:
-        return 'o';
-      case AfftdnMode.noise:
-        return 'noise';
-      case AfftdnMode.n:
-        return 'n';
-    }
-  }
+  String get mpvValue => switch (this) {
+    input => 'input',
+    i => 'i',
+    output => 'output',
+    o => 'o',
+    noise => 'noise',
+    n => 'n',
+  };
 
   /// Parses a mpv wire string back into a [AfftdnMode].
   /// Unknown or empty input falls back to the first member.
-  static AfftdnMode fromMpv(String? raw) {
-    switch (raw) {
-      case 'input':
-        return AfftdnMode.input;
-      case 'i':
-        return AfftdnMode.i;
-      case 'output':
-        return AfftdnMode.output;
-      case 'o':
-        return AfftdnMode.o;
-      case 'noise':
-        return AfftdnMode.noise;
-      case 'n':
-        return AfftdnMode.n;
-      default:
-        return AfftdnMode.input;
-    }
-  }
+  static AfftdnMode fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => input);
 }
 
 /// Values for the `sample_noise` option of the `afftdn` audio filter.
@@ -957,39 +591,18 @@ enum AfftdnSample {
   end;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case AfftdnSample.none:
-        return 'none';
-      case AfftdnSample.start:
-        return 'start';
-      case AfftdnSample.begin:
-        return 'begin';
-      case AfftdnSample.stop:
-        return 'stop';
-      case AfftdnSample.end:
-        return 'end';
-    }
-  }
+  String get mpvValue => switch (this) {
+    none => 'none',
+    start => 'start',
+    begin => 'begin',
+    stop => 'stop',
+    end => 'end',
+  };
 
   /// Parses a mpv wire string back into a [AfftdnSample].
   /// Unknown or empty input falls back to the first member.
-  static AfftdnSample fromMpv(String? raw) {
-    switch (raw) {
-      case 'none':
-        return AfftdnSample.none;
-      case 'start':
-        return AfftdnSample.start;
-      case 'begin':
-        return AfftdnSample.begin;
-      case 'stop':
-        return AfftdnSample.stop;
-      case 'end':
-        return AfftdnSample.end;
-      default:
-        return AfftdnSample.none;
-    }
-  }
+  static AfftdnSample fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => none);
 }
 
 /// Values for the `noise_type` option of the `afftdn` audio filter.
@@ -1019,51 +632,21 @@ enum AfftdnType {
   c;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case AfftdnType.white:
-        return 'white';
-      case AfftdnType.w:
-        return 'w';
-      case AfftdnType.vinyl:
-        return 'vinyl';
-      case AfftdnType.v:
-        return 'v';
-      case AfftdnType.shellac:
-        return 'shellac';
-      case AfftdnType.s:
-        return 's';
-      case AfftdnType.custom:
-        return 'custom';
-      case AfftdnType.c:
-        return 'c';
-    }
-  }
+  String get mpvValue => switch (this) {
+    white => 'white',
+    w => 'w',
+    vinyl => 'vinyl',
+    v => 'v',
+    shellac => 'shellac',
+    s => 's',
+    custom => 'custom',
+    c => 'c',
+  };
 
   /// Parses a mpv wire string back into a [AfftdnType].
   /// Unknown or empty input falls back to the first member.
-  static AfftdnType fromMpv(String? raw) {
-    switch (raw) {
-      case 'white':
-        return AfftdnType.white;
-      case 'w':
-        return AfftdnType.w;
-      case 'vinyl':
-        return AfftdnType.vinyl;
-      case 'v':
-        return AfftdnType.v;
-      case 'shellac':
-        return AfftdnType.shellac;
-      case 's':
-        return AfftdnType.s;
-      case 'custom':
-        return AfftdnType.custom;
-      case 'c':
-        return AfftdnType.c;
-      default:
-        return AfftdnType.white;
-    }
-  }
+  static AfftdnType fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => white);
 }
 
 /// Values for the `win_func` option of the `afftfilt` audio filter.
@@ -1135,107 +718,35 @@ enum AfftfiltWinFunc {
   kaiser;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case AfftfiltWinFunc.rect:
-        return 'rect';
-      case AfftfiltWinFunc.bartlett:
-        return 'bartlett';
-      case AfftfiltWinFunc.hann:
-        return 'hann';
-      case AfftfiltWinFunc.hanning:
-        return 'hanning';
-      case AfftfiltWinFunc.hamming:
-        return 'hamming';
-      case AfftfiltWinFunc.blackman:
-        return 'blackman';
-      case AfftfiltWinFunc.welch:
-        return 'welch';
-      case AfftfiltWinFunc.flattop:
-        return 'flattop';
-      case AfftfiltWinFunc.bharris:
-        return 'bharris';
-      case AfftfiltWinFunc.bnuttall:
-        return 'bnuttall';
-      case AfftfiltWinFunc.bhann:
-        return 'bhann';
-      case AfftfiltWinFunc.sine:
-        return 'sine';
-      case AfftfiltWinFunc.nuttall:
-        return 'nuttall';
-      case AfftfiltWinFunc.lanczos:
-        return 'lanczos';
-      case AfftfiltWinFunc.gauss:
-        return 'gauss';
-      case AfftfiltWinFunc.tukey:
-        return 'tukey';
-      case AfftfiltWinFunc.dolph:
-        return 'dolph';
-      case AfftfiltWinFunc.cauchy:
-        return 'cauchy';
-      case AfftfiltWinFunc.parzen:
-        return 'parzen';
-      case AfftfiltWinFunc.poisson:
-        return 'poisson';
-      case AfftfiltWinFunc.bohman:
-        return 'bohman';
-      case AfftfiltWinFunc.kaiser:
-        return 'kaiser';
-    }
-  }
+  String get mpvValue => switch (this) {
+    rect => 'rect',
+    bartlett => 'bartlett',
+    hann => 'hann',
+    hanning => 'hanning',
+    hamming => 'hamming',
+    blackman => 'blackman',
+    welch => 'welch',
+    flattop => 'flattop',
+    bharris => 'bharris',
+    bnuttall => 'bnuttall',
+    bhann => 'bhann',
+    sine => 'sine',
+    nuttall => 'nuttall',
+    lanczos => 'lanczos',
+    gauss => 'gauss',
+    tukey => 'tukey',
+    dolph => 'dolph',
+    cauchy => 'cauchy',
+    parzen => 'parzen',
+    poisson => 'poisson',
+    bohman => 'bohman',
+    kaiser => 'kaiser',
+  };
 
   /// Parses a mpv wire string back into a [AfftfiltWinFunc].
   /// Unknown or empty input falls back to the first member.
-  static AfftfiltWinFunc fromMpv(String? raw) {
-    switch (raw) {
-      case 'rect':
-        return AfftfiltWinFunc.rect;
-      case 'bartlett':
-        return AfftfiltWinFunc.bartlett;
-      case 'hann':
-        return AfftfiltWinFunc.hann;
-      case 'hanning':
-        return AfftfiltWinFunc.hanning;
-      case 'hamming':
-        return AfftfiltWinFunc.hamming;
-      case 'blackman':
-        return AfftfiltWinFunc.blackman;
-      case 'welch':
-        return AfftfiltWinFunc.welch;
-      case 'flattop':
-        return AfftfiltWinFunc.flattop;
-      case 'bharris':
-        return AfftfiltWinFunc.bharris;
-      case 'bnuttall':
-        return AfftfiltWinFunc.bnuttall;
-      case 'bhann':
-        return AfftfiltWinFunc.bhann;
-      case 'sine':
-        return AfftfiltWinFunc.sine;
-      case 'nuttall':
-        return AfftfiltWinFunc.nuttall;
-      case 'lanczos':
-        return AfftfiltWinFunc.lanczos;
-      case 'gauss':
-        return AfftfiltWinFunc.gauss;
-      case 'tukey':
-        return AfftfiltWinFunc.tukey;
-      case 'dolph':
-        return AfftfiltWinFunc.dolph;
-      case 'cauchy':
-        return AfftfiltWinFunc.cauchy;
-      case 'parzen':
-        return AfftfiltWinFunc.parzen;
-      case 'poisson':
-        return AfftfiltWinFunc.poisson;
-      case 'bohman':
-        return AfftfiltWinFunc.bohman;
-      case 'kaiser':
-        return AfftfiltWinFunc.kaiser;
-      default:
-        return AfftfiltWinFunc.rect;
-    }
-  }
+  static AfftfiltWinFunc fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => rect);
 }
 
 /// Values for the `wavet` option of the `afwtdn` audio filter.
@@ -1262,47 +773,20 @@ enum AfwtdnWavet {
   bl3;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case AfwtdnWavet.sym2:
-        return 'sym2';
-      case AfwtdnWavet.sym4:
-        return 'sym4';
-      case AfwtdnWavet.rbior68:
-        return 'rbior68';
-      case AfwtdnWavet.deb10:
-        return 'deb10';
-      case AfwtdnWavet.sym10:
-        return 'sym10';
-      case AfwtdnWavet.coif5:
-        return 'coif5';
-      case AfwtdnWavet.bl3:
-        return 'bl3';
-    }
-  }
+  String get mpvValue => switch (this) {
+    sym2 => 'sym2',
+    sym4 => 'sym4',
+    rbior68 => 'rbior68',
+    deb10 => 'deb10',
+    sym10 => 'sym10',
+    coif5 => 'coif5',
+    bl3 => 'bl3',
+  };
 
   /// Parses a mpv wire string back into a [AfwtdnWavet].
   /// Unknown or empty input falls back to the first member.
-  static AfwtdnWavet fromMpv(String? raw) {
-    switch (raw) {
-      case 'sym2':
-        return AfwtdnWavet.sym2;
-      case 'sym4':
-        return AfwtdnWavet.sym4;
-      case 'rbior68':
-        return AfwtdnWavet.rbior68;
-      case 'deb10':
-        return AfwtdnWavet.deb10;
-      case 'sym10':
-        return AfwtdnWavet.sym10;
-      case 'coif5':
-        return AfwtdnWavet.coif5;
-      case 'bl3':
-        return AfwtdnWavet.bl3;
-      default:
-        return AfwtdnWavet.sym2;
-    }
-  }
+  static AfwtdnWavet fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => sym2);
 }
 
 /// Values for the `detection` option of the `agate` audio filter.
@@ -1314,27 +798,15 @@ enum AgateDetection {
   rms;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case AgateDetection.peak:
-        return 'peak';
-      case AgateDetection.rms:
-        return 'rms';
-    }
-  }
+  String get mpvValue => switch (this) {
+    peak => 'peak',
+    rms => 'rms',
+  };
 
   /// Parses a mpv wire string back into a [AgateDetection].
   /// Unknown or empty input falls back to the first member.
-  static AgateDetection fromMpv(String? raw) {
-    switch (raw) {
-      case 'peak':
-        return AgateDetection.peak;
-      case 'rms':
-        return AgateDetection.rms;
-      default:
-        return AgateDetection.peak;
-    }
-  }
+  static AgateDetection fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => peak);
 }
 
 /// Values for the `link` option of the `agate` audio filter.
@@ -1346,27 +818,15 @@ enum AgateLink {
   maximum;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case AgateLink.average:
-        return 'average';
-      case AgateLink.maximum:
-        return 'maximum';
-    }
-  }
+  String get mpvValue => switch (this) {
+    average => 'average',
+    maximum => 'maximum',
+  };
 
   /// Parses a mpv wire string back into a [AgateLink].
   /// Unknown or empty input falls back to the first member.
-  static AgateLink fromMpv(String? raw) {
-    switch (raw) {
-      case 'average':
-        return AgateLink.average;
-      case 'maximum':
-        return AgateLink.maximum;
-      default:
-        return AgateLink.average;
-    }
-  }
+  static AgateLink fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => average);
 }
 
 /// Values for the `mode` option of the `agate` audio filter.
@@ -1378,27 +838,15 @@ enum AgateMode {
   upward;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case AgateMode.downward:
-        return 'downward';
-      case AgateMode.upward:
-        return 'upward';
-    }
-  }
+  String get mpvValue => switch (this) {
+    downward => 'downward',
+    upward => 'upward',
+  };
 
   /// Parses a mpv wire string back into a [AgateMode].
   /// Unknown or empty input falls back to the first member.
-  static AgateMode fromMpv(String? raw) {
-    switch (raw) {
-      case 'downward':
-        return AgateMode.downward;
-      case 'upward':
-        return AgateMode.upward;
-      default:
-        return AgateMode.downward;
-    }
-  }
+  static AgateMode fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => downward);
 }
 
 /// Values for the `format` option of the `aiir` audio filter.
@@ -1425,47 +873,20 @@ enum AiirFormat {
   sp;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case AiirFormat.ll:
-        return 'll';
-      case AiirFormat.sf:
-        return 'sf';
-      case AiirFormat.tf:
-        return 'tf';
-      case AiirFormat.zp:
-        return 'zp';
-      case AiirFormat.pr:
-        return 'pr';
-      case AiirFormat.pd:
-        return 'pd';
-      case AiirFormat.sp:
-        return 'sp';
-    }
-  }
+  String get mpvValue => switch (this) {
+    ll => 'll',
+    sf => 'sf',
+    tf => 'tf',
+    zp => 'zp',
+    pr => 'pr',
+    pd => 'pd',
+    sp => 'sp',
+  };
 
   /// Parses a mpv wire string back into a [AiirFormat].
   /// Unknown or empty input falls back to the first member.
-  static AiirFormat fromMpv(String? raw) {
-    switch (raw) {
-      case 'll':
-        return AiirFormat.ll;
-      case 'sf':
-        return AiirFormat.sf;
-      case 'tf':
-        return AiirFormat.tf;
-      case 'zp':
-        return AiirFormat.zp;
-      case 'pr':
-        return AiirFormat.pr;
-      case 'pd':
-        return AiirFormat.pd;
-      case 'sp':
-        return AiirFormat.sp;
-      default:
-        return AiirFormat.ll;
-    }
-  }
+  static AiirFormat fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => ll);
 }
 
 /// Values for the `precision` option of the `aiir` audio filter.
@@ -1483,35 +904,17 @@ enum AiirPrecision {
   i16;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case AiirPrecision.dbl:
-        return 'dbl';
-      case AiirPrecision.flt:
-        return 'flt';
-      case AiirPrecision.i32:
-        return 'i32';
-      case AiirPrecision.i16:
-        return 'i16';
-    }
-  }
+  String get mpvValue => switch (this) {
+    dbl => 'dbl',
+    flt => 'flt',
+    i32 => 'i32',
+    i16 => 'i16',
+  };
 
   /// Parses a mpv wire string back into a [AiirPrecision].
   /// Unknown or empty input falls back to the first member.
-  static AiirPrecision fromMpv(String? raw) {
-    switch (raw) {
-      case 'dbl':
-        return AiirPrecision.dbl;
-      case 'flt':
-        return AiirPrecision.flt;
-      case 'i32':
-        return AiirPrecision.i32;
-      case 'i16':
-        return AiirPrecision.i16;
-      default:
-        return AiirPrecision.dbl;
-    }
-  }
+  static AiirPrecision fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => dbl);
 }
 
 /// Values for the `process` option of the `aiir` audio filter.
@@ -1526,31 +929,16 @@ enum AiirProcess {
   p;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case AiirProcess.d:
-        return 'd';
-      case AiirProcess.s:
-        return 's';
-      case AiirProcess.p:
-        return 'p';
-    }
-  }
+  String get mpvValue => switch (this) {
+    d => 'd',
+    s => 's',
+    p => 'p',
+  };
 
   /// Parses a mpv wire string back into a [AiirProcess].
   /// Unknown or empty input falls back to the first member.
-  static AiirProcess fromMpv(String? raw) {
-    switch (raw) {
-      case 'd':
-        return AiirProcess.d;
-      case 's':
-        return AiirProcess.s;
-      case 'p':
-        return AiirProcess.p;
-      default:
-        return AiirProcess.d;
-    }
-  }
+  static AiirProcess fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => d);
 }
 
 /// Values for the `precision` option of the `allpass` audio filter.
@@ -1571,39 +959,18 @@ enum AllpassPrecision {
   f64;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case AllpassPrecision.auto:
-        return 'auto';
-      case AllpassPrecision.s16:
-        return 's16';
-      case AllpassPrecision.s32:
-        return 's32';
-      case AllpassPrecision.f32:
-        return 'f32';
-      case AllpassPrecision.f64:
-        return 'f64';
-    }
-  }
+  String get mpvValue => switch (this) {
+    auto => 'auto',
+    s16 => 's16',
+    s32 => 's32',
+    f32 => 'f32',
+    f64 => 'f64',
+  };
 
   /// Parses a mpv wire string back into a [AllpassPrecision].
   /// Unknown or empty input falls back to the first member.
-  static AllpassPrecision fromMpv(String? raw) {
-    switch (raw) {
-      case 'auto':
-        return AllpassPrecision.auto;
-      case 's16':
-        return AllpassPrecision.s16;
-      case 's32':
-        return AllpassPrecision.s32;
-      case 'f32':
-        return AllpassPrecision.f32;
-      case 'f64':
-        return AllpassPrecision.f64;
-      default:
-        return AllpassPrecision.auto;
-    }
-  }
+  static AllpassPrecision fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => auto);
 }
 
 /// Values for the `transform` option of the `allpass` audio filter.
@@ -1630,47 +997,20 @@ enum AllpassTransformType {
   zdf;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case AllpassTransformType.di:
-        return 'di';
-      case AllpassTransformType.dii:
-        return 'dii';
-      case AllpassTransformType.tdi:
-        return 'tdi';
-      case AllpassTransformType.tdii:
-        return 'tdii';
-      case AllpassTransformType.latt:
-        return 'latt';
-      case AllpassTransformType.svf:
-        return 'svf';
-      case AllpassTransformType.zdf:
-        return 'zdf';
-    }
-  }
+  String get mpvValue => switch (this) {
+    di => 'di',
+    dii => 'dii',
+    tdi => 'tdi',
+    tdii => 'tdii',
+    latt => 'latt',
+    svf => 'svf',
+    zdf => 'zdf',
+  };
 
   /// Parses a mpv wire string back into a [AllpassTransformType].
   /// Unknown or empty input falls back to the first member.
-  static AllpassTransformType fromMpv(String? raw) {
-    switch (raw) {
-      case 'di':
-        return AllpassTransformType.di;
-      case 'dii':
-        return AllpassTransformType.dii;
-      case 'tdi':
-        return AllpassTransformType.tdi;
-      case 'tdii':
-        return AllpassTransformType.tdii;
-      case 'latt':
-        return AllpassTransformType.latt;
-      case 'svf':
-        return AllpassTransformType.svf;
-      case 'zdf':
-        return AllpassTransformType.zdf;
-      default:
-        return AllpassTransformType.di;
-    }
-  }
+  static AllpassTransformType fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => di);
 }
 
 /// Values for the `width_type` option of the `allpass` audio filter.
@@ -1691,39 +1031,18 @@ enum AllpassWidthType {
   k;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case AllpassWidthType.h:
-        return 'h';
-      case AllpassWidthType.q:
-        return 'q';
-      case AllpassWidthType.o:
-        return 'o';
-      case AllpassWidthType.s:
-        return 's';
-      case AllpassWidthType.k:
-        return 'k';
-    }
-  }
+  String get mpvValue => switch (this) {
+    h => 'h',
+    q => 'q',
+    o => 'o',
+    s => 's',
+    k => 'k',
+  };
 
   /// Parses a mpv wire string back into a [AllpassWidthType].
   /// Unknown or empty input falls back to the first member.
-  static AllpassWidthType fromMpv(String? raw) {
-    switch (raw) {
-      case 'h':
-        return AllpassWidthType.h;
-      case 'q':
-        return AllpassWidthType.q;
-      case 'o':
-        return AllpassWidthType.o;
-      case 's':
-        return AllpassWidthType.s;
-      case 'k':
-        return AllpassWidthType.k;
-      default:
-        return AllpassWidthType.h;
-    }
-  }
+  static AllpassWidthType fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => h);
 }
 
 /// Values for the `fscale` option of the `anequalizer` audio filter.
@@ -1735,27 +1054,15 @@ enum AnequalizerFscale {
   log;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case AnequalizerFscale.lin:
-        return 'lin';
-      case AnequalizerFscale.log:
-        return 'log';
-    }
-  }
+  String get mpvValue => switch (this) {
+    lin => 'lin',
+    log => 'log',
+  };
 
   /// Parses a mpv wire string back into a [AnequalizerFscale].
   /// Unknown or empty input falls back to the first member.
-  static AnequalizerFscale fromMpv(String? raw) {
-    switch (raw) {
-      case 'lin':
-        return AnequalizerFscale.lin;
-      case 'log':
-        return AnequalizerFscale.log;
-      default:
-        return AnequalizerFscale.lin;
-    }
-  }
+  static AnequalizerFscale fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => lin);
 }
 
 /// Values for the `output` option of the `anlmdn` audio filter.
@@ -1770,31 +1077,16 @@ enum AnlmdnMode {
   n;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case AnlmdnMode.i:
-        return 'i';
-      case AnlmdnMode.o:
-        return 'o';
-      case AnlmdnMode.n:
-        return 'n';
-    }
-  }
+  String get mpvValue => switch (this) {
+    i => 'i',
+    o => 'o',
+    n => 'n',
+  };
 
   /// Parses a mpv wire string back into a [AnlmdnMode].
   /// Unknown or empty input falls back to the first member.
-  static AnlmdnMode fromMpv(String? raw) {
-    switch (raw) {
-      case 'i':
-        return AnlmdnMode.i;
-      case 'o':
-        return AnlmdnMode.o;
-      case 'n':
-        return AnlmdnMode.n;
-      default:
-        return AnlmdnMode.i;
-    }
-  }
+  static AnlmdnMode fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => i);
 }
 
 /// Values for the `type` option of the `aphaser` audio filter.
@@ -1812,35 +1104,17 @@ enum AphaserType {
   s;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case AphaserType.triangular:
-        return 'triangular';
-      case AphaserType.t:
-        return 't';
-      case AphaserType.sinusoidal:
-        return 'sinusoidal';
-      case AphaserType.s:
-        return 's';
-    }
-  }
+  String get mpvValue => switch (this) {
+    triangular => 'triangular',
+    t => 't',
+    sinusoidal => 'sinusoidal',
+    s => 's',
+  };
 
   /// Parses a mpv wire string back into a [AphaserType].
   /// Unknown or empty input falls back to the first member.
-  static AphaserType fromMpv(String? raw) {
-    switch (raw) {
-      case 'triangular':
-        return AphaserType.triangular;
-      case 't':
-        return AphaserType.t;
-      case 'sinusoidal':
-        return AphaserType.sinusoidal;
-      case 's':
-        return AphaserType.s;
-      default:
-        return AphaserType.triangular;
-    }
-  }
+  static AphaserType fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => triangular);
 }
 
 /// Values for the `mode` option of the `apulsator` audio filter.
@@ -1861,39 +1135,18 @@ enum ApulsatorMode {
   sawdown;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case ApulsatorMode.sine:
-        return 'sine';
-      case ApulsatorMode.triangle:
-        return 'triangle';
-      case ApulsatorMode.square:
-        return 'square';
-      case ApulsatorMode.sawup:
-        return 'sawup';
-      case ApulsatorMode.sawdown:
-        return 'sawdown';
-    }
-  }
+  String get mpvValue => switch (this) {
+    sine => 'sine',
+    triangle => 'triangle',
+    square => 'square',
+    sawup => 'sawup',
+    sawdown => 'sawdown',
+  };
 
   /// Parses a mpv wire string back into a [ApulsatorMode].
   /// Unknown or empty input falls back to the first member.
-  static ApulsatorMode fromMpv(String? raw) {
-    switch (raw) {
-      case 'sine':
-        return ApulsatorMode.sine;
-      case 'triangle':
-        return ApulsatorMode.triangle;
-      case 'square':
-        return ApulsatorMode.square;
-      case 'sawup':
-        return ApulsatorMode.sawup;
-      case 'sawdown':
-        return ApulsatorMode.sawdown;
-      default:
-        return ApulsatorMode.sine;
-    }
-  }
+  static ApulsatorMode fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => sine);
 }
 
 /// Values for the `timing` option of the `apulsator` audio filter.
@@ -1908,31 +1161,16 @@ enum ApulsatorTiming {
   hz;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case ApulsatorTiming.bpm:
-        return 'bpm';
-      case ApulsatorTiming.ms:
-        return 'ms';
-      case ApulsatorTiming.hz:
-        return 'hz';
-    }
-  }
+  String get mpvValue => switch (this) {
+    bpm => 'bpm',
+    ms => 'ms',
+    hz => 'hz',
+  };
 
   /// Parses a mpv wire string back into a [ApulsatorTiming].
   /// Unknown or empty input falls back to the first member.
-  static ApulsatorTiming fromMpv(String? raw) {
-    switch (raw) {
-      case 'bpm':
-        return ApulsatorTiming.bpm;
-      case 'ms':
-        return ApulsatorTiming.ms;
-      case 'hz':
-        return ApulsatorTiming.hz;
-      default:
-        return ApulsatorTiming.bpm;
-    }
-  }
+  static ApulsatorTiming fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => bpm);
 }
 
 /// Values for the `type` option of the `asoftclip` audio filter.
@@ -1965,55 +1203,22 @@ enum AsoftclipTypes {
   erf;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case AsoftclipTypes.hard:
-        return 'hard';
-      case AsoftclipTypes.tanh:
-        return 'tanh';
-      case AsoftclipTypes.atan:
-        return 'atan';
-      case AsoftclipTypes.cubic:
-        return 'cubic';
-      case AsoftclipTypes.exp:
-        return 'exp';
-      case AsoftclipTypes.alg:
-        return 'alg';
-      case AsoftclipTypes.quintic:
-        return 'quintic';
-      case AsoftclipTypes.sin:
-        return 'sin';
-      case AsoftclipTypes.erf:
-        return 'erf';
-    }
-  }
+  String get mpvValue => switch (this) {
+    hard => 'hard',
+    tanh => 'tanh',
+    atan => 'atan',
+    cubic => 'cubic',
+    exp => 'exp',
+    alg => 'alg',
+    quintic => 'quintic',
+    sin => 'sin',
+    erf => 'erf',
+  };
 
   /// Parses a mpv wire string back into a [AsoftclipTypes].
   /// Unknown or empty input falls back to the first member.
-  static AsoftclipTypes fromMpv(String? raw) {
-    switch (raw) {
-      case 'hard':
-        return AsoftclipTypes.hard;
-      case 'tanh':
-        return AsoftclipTypes.tanh;
-      case 'atan':
-        return AsoftclipTypes.atan;
-      case 'cubic':
-        return AsoftclipTypes.cubic;
-      case 'exp':
-        return AsoftclipTypes.exp;
-      case 'alg':
-        return AsoftclipTypes.alg;
-      case 'quintic':
-        return AsoftclipTypes.quintic;
-      case 'sin':
-        return AsoftclipTypes.sin;
-      case 'erf':
-        return AsoftclipTypes.erf;
-      default:
-        return AsoftclipTypes.hard;
-    }
-  }
+  static AsoftclipTypes fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => hard);
 }
 
 /// Values for the `precision` option of the `bandpass` audio filter.
@@ -2034,39 +1239,18 @@ enum BandpassPrecision {
   f64;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case BandpassPrecision.auto:
-        return 'auto';
-      case BandpassPrecision.s16:
-        return 's16';
-      case BandpassPrecision.s32:
-        return 's32';
-      case BandpassPrecision.f32:
-        return 'f32';
-      case BandpassPrecision.f64:
-        return 'f64';
-    }
-  }
+  String get mpvValue => switch (this) {
+    auto => 'auto',
+    s16 => 's16',
+    s32 => 's32',
+    f32 => 'f32',
+    f64 => 'f64',
+  };
 
   /// Parses a mpv wire string back into a [BandpassPrecision].
   /// Unknown or empty input falls back to the first member.
-  static BandpassPrecision fromMpv(String? raw) {
-    switch (raw) {
-      case 'auto':
-        return BandpassPrecision.auto;
-      case 's16':
-        return BandpassPrecision.s16;
-      case 's32':
-        return BandpassPrecision.s32;
-      case 'f32':
-        return BandpassPrecision.f32;
-      case 'f64':
-        return BandpassPrecision.f64;
-      default:
-        return BandpassPrecision.auto;
-    }
-  }
+  static BandpassPrecision fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => auto);
 }
 
 /// Values for the `transform` option of the `bandpass` audio filter.
@@ -2093,47 +1277,20 @@ enum BandpassTransformType {
   zdf;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case BandpassTransformType.di:
-        return 'di';
-      case BandpassTransformType.dii:
-        return 'dii';
-      case BandpassTransformType.tdi:
-        return 'tdi';
-      case BandpassTransformType.tdii:
-        return 'tdii';
-      case BandpassTransformType.latt:
-        return 'latt';
-      case BandpassTransformType.svf:
-        return 'svf';
-      case BandpassTransformType.zdf:
-        return 'zdf';
-    }
-  }
+  String get mpvValue => switch (this) {
+    di => 'di',
+    dii => 'dii',
+    tdi => 'tdi',
+    tdii => 'tdii',
+    latt => 'latt',
+    svf => 'svf',
+    zdf => 'zdf',
+  };
 
   /// Parses a mpv wire string back into a [BandpassTransformType].
   /// Unknown or empty input falls back to the first member.
-  static BandpassTransformType fromMpv(String? raw) {
-    switch (raw) {
-      case 'di':
-        return BandpassTransformType.di;
-      case 'dii':
-        return BandpassTransformType.dii;
-      case 'tdi':
-        return BandpassTransformType.tdi;
-      case 'tdii':
-        return BandpassTransformType.tdii;
-      case 'latt':
-        return BandpassTransformType.latt;
-      case 'svf':
-        return BandpassTransformType.svf;
-      case 'zdf':
-        return BandpassTransformType.zdf;
-      default:
-        return BandpassTransformType.di;
-    }
-  }
+  static BandpassTransformType fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => di);
 }
 
 /// Values for the `width_type` option of the `bandpass` audio filter.
@@ -2154,39 +1311,18 @@ enum BandpassWidthType {
   k;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case BandpassWidthType.h:
-        return 'h';
-      case BandpassWidthType.q:
-        return 'q';
-      case BandpassWidthType.o:
-        return 'o';
-      case BandpassWidthType.s:
-        return 's';
-      case BandpassWidthType.k:
-        return 'k';
-    }
-  }
+  String get mpvValue => switch (this) {
+    h => 'h',
+    q => 'q',
+    o => 'o',
+    s => 's',
+    k => 'k',
+  };
 
   /// Parses a mpv wire string back into a [BandpassWidthType].
   /// Unknown or empty input falls back to the first member.
-  static BandpassWidthType fromMpv(String? raw) {
-    switch (raw) {
-      case 'h':
-        return BandpassWidthType.h;
-      case 'q':
-        return BandpassWidthType.q;
-      case 'o':
-        return BandpassWidthType.o;
-      case 's':
-        return BandpassWidthType.s;
-      case 'k':
-        return BandpassWidthType.k;
-      default:
-        return BandpassWidthType.h;
-    }
-  }
+  static BandpassWidthType fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => h);
 }
 
 /// Values for the `precision` option of the `bandreject` audio filter.
@@ -2207,39 +1343,18 @@ enum BandrejectPrecision {
   f64;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case BandrejectPrecision.auto:
-        return 'auto';
-      case BandrejectPrecision.s16:
-        return 's16';
-      case BandrejectPrecision.s32:
-        return 's32';
-      case BandrejectPrecision.f32:
-        return 'f32';
-      case BandrejectPrecision.f64:
-        return 'f64';
-    }
-  }
+  String get mpvValue => switch (this) {
+    auto => 'auto',
+    s16 => 's16',
+    s32 => 's32',
+    f32 => 'f32',
+    f64 => 'f64',
+  };
 
   /// Parses a mpv wire string back into a [BandrejectPrecision].
   /// Unknown or empty input falls back to the first member.
-  static BandrejectPrecision fromMpv(String? raw) {
-    switch (raw) {
-      case 'auto':
-        return BandrejectPrecision.auto;
-      case 's16':
-        return BandrejectPrecision.s16;
-      case 's32':
-        return BandrejectPrecision.s32;
-      case 'f32':
-        return BandrejectPrecision.f32;
-      case 'f64':
-        return BandrejectPrecision.f64;
-      default:
-        return BandrejectPrecision.auto;
-    }
-  }
+  static BandrejectPrecision fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => auto);
 }
 
 /// Values for the `transform` option of the `bandreject` audio filter.
@@ -2266,47 +1381,20 @@ enum BandrejectTransformType {
   zdf;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case BandrejectTransformType.di:
-        return 'di';
-      case BandrejectTransformType.dii:
-        return 'dii';
-      case BandrejectTransformType.tdi:
-        return 'tdi';
-      case BandrejectTransformType.tdii:
-        return 'tdii';
-      case BandrejectTransformType.latt:
-        return 'latt';
-      case BandrejectTransformType.svf:
-        return 'svf';
-      case BandrejectTransformType.zdf:
-        return 'zdf';
-    }
-  }
+  String get mpvValue => switch (this) {
+    di => 'di',
+    dii => 'dii',
+    tdi => 'tdi',
+    tdii => 'tdii',
+    latt => 'latt',
+    svf => 'svf',
+    zdf => 'zdf',
+  };
 
   /// Parses a mpv wire string back into a [BandrejectTransformType].
   /// Unknown or empty input falls back to the first member.
-  static BandrejectTransformType fromMpv(String? raw) {
-    switch (raw) {
-      case 'di':
-        return BandrejectTransformType.di;
-      case 'dii':
-        return BandrejectTransformType.dii;
-      case 'tdi':
-        return BandrejectTransformType.tdi;
-      case 'tdii':
-        return BandrejectTransformType.tdii;
-      case 'latt':
-        return BandrejectTransformType.latt;
-      case 'svf':
-        return BandrejectTransformType.svf;
-      case 'zdf':
-        return BandrejectTransformType.zdf;
-      default:
-        return BandrejectTransformType.di;
-    }
-  }
+  static BandrejectTransformType fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => di);
 }
 
 /// Values for the `width_type` option of the `bandreject` audio filter.
@@ -2327,39 +1415,18 @@ enum BandrejectWidthType {
   k;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case BandrejectWidthType.h:
-        return 'h';
-      case BandrejectWidthType.q:
-        return 'q';
-      case BandrejectWidthType.o:
-        return 'o';
-      case BandrejectWidthType.s:
-        return 's';
-      case BandrejectWidthType.k:
-        return 'k';
-    }
-  }
+  String get mpvValue => switch (this) {
+    h => 'h',
+    q => 'q',
+    o => 'o',
+    s => 's',
+    k => 'k',
+  };
 
   /// Parses a mpv wire string back into a [BandrejectWidthType].
   /// Unknown or empty input falls back to the first member.
-  static BandrejectWidthType fromMpv(String? raw) {
-    switch (raw) {
-      case 'h':
-        return BandrejectWidthType.h;
-      case 'q':
-        return BandrejectWidthType.q;
-      case 'o':
-        return BandrejectWidthType.o;
-      case 's':
-        return BandrejectWidthType.s;
-      case 'k':
-        return BandrejectWidthType.k;
-      default:
-        return BandrejectWidthType.h;
-    }
-  }
+  static BandrejectWidthType fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => h);
 }
 
 /// Values for the `precision` option of the `bass` audio filter.
@@ -2380,39 +1447,18 @@ enum BassPrecision {
   f64;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case BassPrecision.auto:
-        return 'auto';
-      case BassPrecision.s16:
-        return 's16';
-      case BassPrecision.s32:
-        return 's32';
-      case BassPrecision.f32:
-        return 'f32';
-      case BassPrecision.f64:
-        return 'f64';
-    }
-  }
+  String get mpvValue => switch (this) {
+    auto => 'auto',
+    s16 => 's16',
+    s32 => 's32',
+    f32 => 'f32',
+    f64 => 'f64',
+  };
 
   /// Parses a mpv wire string back into a [BassPrecision].
   /// Unknown or empty input falls back to the first member.
-  static BassPrecision fromMpv(String? raw) {
-    switch (raw) {
-      case 'auto':
-        return BassPrecision.auto;
-      case 's16':
-        return BassPrecision.s16;
-      case 's32':
-        return BassPrecision.s32;
-      case 'f32':
-        return BassPrecision.f32;
-      case 'f64':
-        return BassPrecision.f64;
-      default:
-        return BassPrecision.auto;
-    }
-  }
+  static BassPrecision fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => auto);
 }
 
 /// Values for the `transform` option of the `bass` audio filter.
@@ -2439,47 +1485,20 @@ enum BassTransformType {
   zdf;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case BassTransformType.di:
-        return 'di';
-      case BassTransformType.dii:
-        return 'dii';
-      case BassTransformType.tdi:
-        return 'tdi';
-      case BassTransformType.tdii:
-        return 'tdii';
-      case BassTransformType.latt:
-        return 'latt';
-      case BassTransformType.svf:
-        return 'svf';
-      case BassTransformType.zdf:
-        return 'zdf';
-    }
-  }
+  String get mpvValue => switch (this) {
+    di => 'di',
+    dii => 'dii',
+    tdi => 'tdi',
+    tdii => 'tdii',
+    latt => 'latt',
+    svf => 'svf',
+    zdf => 'zdf',
+  };
 
   /// Parses a mpv wire string back into a [BassTransformType].
   /// Unknown or empty input falls back to the first member.
-  static BassTransformType fromMpv(String? raw) {
-    switch (raw) {
-      case 'di':
-        return BassTransformType.di;
-      case 'dii':
-        return BassTransformType.dii;
-      case 'tdi':
-        return BassTransformType.tdi;
-      case 'tdii':
-        return BassTransformType.tdii;
-      case 'latt':
-        return BassTransformType.latt;
-      case 'svf':
-        return BassTransformType.svf;
-      case 'zdf':
-        return BassTransformType.zdf;
-      default:
-        return BassTransformType.di;
-    }
-  }
+  static BassTransformType fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => di);
 }
 
 /// Values for the `width_type` option of the `bass` audio filter.
@@ -2500,39 +1519,18 @@ enum BassWidthType {
   k;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case BassWidthType.h:
-        return 'h';
-      case BassWidthType.q:
-        return 'q';
-      case BassWidthType.o:
-        return 'o';
-      case BassWidthType.s:
-        return 's';
-      case BassWidthType.k:
-        return 'k';
-    }
-  }
+  String get mpvValue => switch (this) {
+    h => 'h',
+    q => 'q',
+    o => 'o',
+    s => 's',
+    k => 'k',
+  };
 
   /// Parses a mpv wire string back into a [BassWidthType].
   /// Unknown or empty input falls back to the first member.
-  static BassWidthType fromMpv(String? raw) {
-    switch (raw) {
-      case 'h':
-        return BassWidthType.h;
-      case 'q':
-        return BassWidthType.q;
-      case 'o':
-        return BassWidthType.o;
-      case 's':
-        return BassWidthType.s;
-      case 'k':
-        return BassWidthType.k;
-      default:
-        return BassWidthType.h;
-    }
-  }
+  static BassWidthType fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => h);
 }
 
 /// Values for the `precision` option of the `biquad` audio filter.
@@ -2553,39 +1551,18 @@ enum BiquadPrecision {
   f64;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case BiquadPrecision.auto:
-        return 'auto';
-      case BiquadPrecision.s16:
-        return 's16';
-      case BiquadPrecision.s32:
-        return 's32';
-      case BiquadPrecision.f32:
-        return 'f32';
-      case BiquadPrecision.f64:
-        return 'f64';
-    }
-  }
+  String get mpvValue => switch (this) {
+    auto => 'auto',
+    s16 => 's16',
+    s32 => 's32',
+    f32 => 'f32',
+    f64 => 'f64',
+  };
 
   /// Parses a mpv wire string back into a [BiquadPrecision].
   /// Unknown or empty input falls back to the first member.
-  static BiquadPrecision fromMpv(String? raw) {
-    switch (raw) {
-      case 'auto':
-        return BiquadPrecision.auto;
-      case 's16':
-        return BiquadPrecision.s16;
-      case 's32':
-        return BiquadPrecision.s32;
-      case 'f32':
-        return BiquadPrecision.f32;
-      case 'f64':
-        return BiquadPrecision.f64;
-      default:
-        return BiquadPrecision.auto;
-    }
-  }
+  static BiquadPrecision fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => auto);
 }
 
 /// Values for the `transform` option of the `biquad` audio filter.
@@ -2612,47 +1589,20 @@ enum BiquadTransformType {
   zdf;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case BiquadTransformType.di:
-        return 'di';
-      case BiquadTransformType.dii:
-        return 'dii';
-      case BiquadTransformType.tdi:
-        return 'tdi';
-      case BiquadTransformType.tdii:
-        return 'tdii';
-      case BiquadTransformType.latt:
-        return 'latt';
-      case BiquadTransformType.svf:
-        return 'svf';
-      case BiquadTransformType.zdf:
-        return 'zdf';
-    }
-  }
+  String get mpvValue => switch (this) {
+    di => 'di',
+    dii => 'dii',
+    tdi => 'tdi',
+    tdii => 'tdii',
+    latt => 'latt',
+    svf => 'svf',
+    zdf => 'zdf',
+  };
 
   /// Parses a mpv wire string back into a [BiquadTransformType].
   /// Unknown or empty input falls back to the first member.
-  static BiquadTransformType fromMpv(String? raw) {
-    switch (raw) {
-      case 'di':
-        return BiquadTransformType.di;
-      case 'dii':
-        return BiquadTransformType.dii;
-      case 'tdi':
-        return BiquadTransformType.tdi;
-      case 'tdii':
-        return BiquadTransformType.tdii;
-      case 'latt':
-        return BiquadTransformType.latt;
-      case 'svf':
-        return BiquadTransformType.svf;
-      case 'zdf':
-        return BiquadTransformType.zdf;
-      default:
-        return BiquadTransformType.di;
-    }
-  }
+  static BiquadTransformType fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => di);
 }
 
 /// Values for the `s` option of the `deesser` audio filter.
@@ -2667,31 +1617,16 @@ enum DeesserMode {
   e;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case DeesserMode.i:
-        return 'i';
-      case DeesserMode.o:
-        return 'o';
-      case DeesserMode.e:
-        return 'e';
-    }
-  }
+  String get mpvValue => switch (this) {
+    i => 'i',
+    o => 'o',
+    e => 'e',
+  };
 
   /// Parses a mpv wire string back into a [DeesserMode].
   /// Unknown or empty input falls back to the first member.
-  static DeesserMode fromMpv(String? raw) {
-    switch (raw) {
-      case 'i':
-        return DeesserMode.i;
-      case 'o':
-        return DeesserMode.o;
-      case 'e':
-        return DeesserMode.e;
-      default:
-        return DeesserMode.i;
-    }
-  }
+  static DeesserMode fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => i);
 }
 
 /// Values for the `gauge` option of the `ebur128` audio filter.
@@ -2709,35 +1644,17 @@ enum Ebur128Gaugetype {
   s;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case Ebur128Gaugetype.momentary:
-        return 'momentary';
-      case Ebur128Gaugetype.m:
-        return 'm';
-      case Ebur128Gaugetype.shortterm:
-        return 'shortterm';
-      case Ebur128Gaugetype.s:
-        return 's';
-    }
-  }
+  String get mpvValue => switch (this) {
+    momentary => 'momentary',
+    m => 'm',
+    shortterm => 'shortterm',
+    s => 's',
+  };
 
   /// Parses a mpv wire string back into a [Ebur128Gaugetype].
   /// Unknown or empty input falls back to the first member.
-  static Ebur128Gaugetype fromMpv(String? raw) {
-    switch (raw) {
-      case 'momentary':
-        return Ebur128Gaugetype.momentary;
-      case 'm':
-        return Ebur128Gaugetype.m;
-      case 'shortterm':
-        return Ebur128Gaugetype.shortterm;
-      case 's':
-        return Ebur128Gaugetype.s;
-      default:
-        return Ebur128Gaugetype.momentary;
-    }
-  }
+  static Ebur128Gaugetype fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => momentary);
 }
 
 /// Values for the `framelog` option of the `ebur128` audio filter.
@@ -2752,31 +1669,16 @@ enum Ebur128Level {
   verbose;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case Ebur128Level.quiet:
-        return 'quiet';
-      case Ebur128Level.info:
-        return 'info';
-      case Ebur128Level.verbose:
-        return 'verbose';
-    }
-  }
+  String get mpvValue => switch (this) {
+    quiet => 'quiet',
+    info => 'info',
+    verbose => 'verbose',
+  };
 
   /// Parses a mpv wire string back into a [Ebur128Level].
   /// Unknown or empty input falls back to the first member.
-  static Ebur128Level fromMpv(String? raw) {
-    switch (raw) {
-      case 'quiet':
-        return Ebur128Level.quiet;
-      case 'info':
-        return Ebur128Level.info;
-      case 'verbose':
-        return Ebur128Level.verbose;
-      default:
-        return Ebur128Level.quiet;
-    }
-  }
+  static Ebur128Level fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => quiet);
 }
 
 /// Values for the `peak` option of the `ebur128` audio filter.
@@ -2791,31 +1693,16 @@ enum Ebur128Mode {
   true_;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case Ebur128Mode.none:
-        return 'none';
-      case Ebur128Mode.sample:
-        return 'sample';
-      case Ebur128Mode.true_:
-        return 'true';
-    }
-  }
+  String get mpvValue => switch (this) {
+    none => 'none',
+    sample => 'sample',
+    true_ => 'true',
+  };
 
   /// Parses a mpv wire string back into a [Ebur128Mode].
   /// Unknown or empty input falls back to the first member.
-  static Ebur128Mode fromMpv(String? raw) {
-    switch (raw) {
-      case 'none':
-        return Ebur128Mode.none;
-      case 'sample':
-        return Ebur128Mode.sample;
-      case 'true':
-        return Ebur128Mode.true_;
-      default:
-        return Ebur128Mode.none;
-    }
-  }
+  static Ebur128Mode fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => none);
 }
 
 /// Values for the `scale` option of the `ebur128` audio filter.
@@ -2833,35 +1720,17 @@ enum Ebur128Scaletype {
   lu;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case Ebur128Scaletype.absolute:
-        return 'absolute';
-      case Ebur128Scaletype.lufs:
-        return 'LUFS';
-      case Ebur128Scaletype.relative:
-        return 'relative';
-      case Ebur128Scaletype.lu:
-        return 'LU';
-    }
-  }
+  String get mpvValue => switch (this) {
+    absolute => 'absolute',
+    lufs => 'LUFS',
+    relative => 'relative',
+    lu => 'LU',
+  };
 
   /// Parses a mpv wire string back into a [Ebur128Scaletype].
   /// Unknown or empty input falls back to the first member.
-  static Ebur128Scaletype fromMpv(String? raw) {
-    switch (raw) {
-      case 'absolute':
-        return Ebur128Scaletype.absolute;
-      case 'LUFS':
-        return Ebur128Scaletype.lufs;
-      case 'relative':
-        return Ebur128Scaletype.relative;
-      case 'LU':
-        return Ebur128Scaletype.lu;
-      default:
-        return Ebur128Scaletype.absolute;
-    }
-  }
+  static Ebur128Scaletype fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => absolute);
 }
 
 /// Values for the `precision` option of the `equalizer` audio filter.
@@ -2882,39 +1751,18 @@ enum EqualizerPrecision {
   f64;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case EqualizerPrecision.auto:
-        return 'auto';
-      case EqualizerPrecision.s16:
-        return 's16';
-      case EqualizerPrecision.s32:
-        return 's32';
-      case EqualizerPrecision.f32:
-        return 'f32';
-      case EqualizerPrecision.f64:
-        return 'f64';
-    }
-  }
+  String get mpvValue => switch (this) {
+    auto => 'auto',
+    s16 => 's16',
+    s32 => 's32',
+    f32 => 'f32',
+    f64 => 'f64',
+  };
 
   /// Parses a mpv wire string back into a [EqualizerPrecision].
   /// Unknown or empty input falls back to the first member.
-  static EqualizerPrecision fromMpv(String? raw) {
-    switch (raw) {
-      case 'auto':
-        return EqualizerPrecision.auto;
-      case 's16':
-        return EqualizerPrecision.s16;
-      case 's32':
-        return EqualizerPrecision.s32;
-      case 'f32':
-        return EqualizerPrecision.f32;
-      case 'f64':
-        return EqualizerPrecision.f64;
-      default:
-        return EqualizerPrecision.auto;
-    }
-  }
+  static EqualizerPrecision fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => auto);
 }
 
 /// Values for the `transform` option of the `equalizer` audio filter.
@@ -2941,47 +1789,20 @@ enum EqualizerTransformType {
   zdf;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case EqualizerTransformType.di:
-        return 'di';
-      case EqualizerTransformType.dii:
-        return 'dii';
-      case EqualizerTransformType.tdi:
-        return 'tdi';
-      case EqualizerTransformType.tdii:
-        return 'tdii';
-      case EqualizerTransformType.latt:
-        return 'latt';
-      case EqualizerTransformType.svf:
-        return 'svf';
-      case EqualizerTransformType.zdf:
-        return 'zdf';
-    }
-  }
+  String get mpvValue => switch (this) {
+    di => 'di',
+    dii => 'dii',
+    tdi => 'tdi',
+    tdii => 'tdii',
+    latt => 'latt',
+    svf => 'svf',
+    zdf => 'zdf',
+  };
 
   /// Parses a mpv wire string back into a [EqualizerTransformType].
   /// Unknown or empty input falls back to the first member.
-  static EqualizerTransformType fromMpv(String? raw) {
-    switch (raw) {
-      case 'di':
-        return EqualizerTransformType.di;
-      case 'dii':
-        return EqualizerTransformType.dii;
-      case 'tdi':
-        return EqualizerTransformType.tdi;
-      case 'tdii':
-        return EqualizerTransformType.tdii;
-      case 'latt':
-        return EqualizerTransformType.latt;
-      case 'svf':
-        return EqualizerTransformType.svf;
-      case 'zdf':
-        return EqualizerTransformType.zdf;
-      default:
-        return EqualizerTransformType.di;
-    }
-  }
+  static EqualizerTransformType fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => di);
 }
 
 /// Values for the `width_type` option of the `equalizer` audio filter.
@@ -3002,39 +1823,18 @@ enum EqualizerWidthType {
   k;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case EqualizerWidthType.h:
-        return 'h';
-      case EqualizerWidthType.q:
-        return 'q';
-      case EqualizerWidthType.o:
-        return 'o';
-      case EqualizerWidthType.s:
-        return 's';
-      case EqualizerWidthType.k:
-        return 'k';
-    }
-  }
+  String get mpvValue => switch (this) {
+    h => 'h',
+    q => 'q',
+    o => 'o',
+    s => 's',
+    k => 'k',
+  };
 
   /// Parses a mpv wire string back into a [EqualizerWidthType].
   /// Unknown or empty input falls back to the first member.
-  static EqualizerWidthType fromMpv(String? raw) {
-    switch (raw) {
-      case 'h':
-        return EqualizerWidthType.h;
-      case 'q':
-        return EqualizerWidthType.q;
-      case 'o':
-        return EqualizerWidthType.o;
-      case 's':
-        return EqualizerWidthType.s;
-      case 'k':
-        return EqualizerWidthType.k;
-      default:
-        return EqualizerWidthType.h;
-    }
-  }
+  static EqualizerWidthType fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => h);
 }
 
 /// Values for the `dumpscale` option of the `firequalizer` audio filter.
@@ -3052,35 +1852,17 @@ enum FirequalizerScale {
   loglog;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case FirequalizerScale.linlin:
-        return 'linlin';
-      case FirequalizerScale.linlog:
-        return 'linlog';
-      case FirequalizerScale.loglin:
-        return 'loglin';
-      case FirequalizerScale.loglog:
-        return 'loglog';
-    }
-  }
+  String get mpvValue => switch (this) {
+    linlin => 'linlin',
+    linlog => 'linlog',
+    loglin => 'loglin',
+    loglog => 'loglog',
+  };
 
   /// Parses a mpv wire string back into a [FirequalizerScale].
   /// Unknown or empty input falls back to the first member.
-  static FirequalizerScale fromMpv(String? raw) {
-    switch (raw) {
-      case 'linlin':
-        return FirequalizerScale.linlin;
-      case 'linlog':
-        return FirequalizerScale.linlog;
-      case 'loglin':
-        return FirequalizerScale.loglin;
-      case 'loglog':
-        return FirequalizerScale.loglog;
-      default:
-        return FirequalizerScale.linlin;
-    }
-  }
+  static FirequalizerScale fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => linlin);
 }
 
 /// Values for the `wfunc` option of the `firequalizer` audio filter.
@@ -3116,59 +1898,23 @@ enum FirequalizerWfunc {
   tukey;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case FirequalizerWfunc.rectangular:
-        return 'rectangular';
-      case FirequalizerWfunc.hann:
-        return 'hann';
-      case FirequalizerWfunc.hamming:
-        return 'hamming';
-      case FirequalizerWfunc.blackman:
-        return 'blackman';
-      case FirequalizerWfunc.nuttall3:
-        return 'nuttall3';
-      case FirequalizerWfunc.mnuttall3:
-        return 'mnuttall3';
-      case FirequalizerWfunc.nuttall:
-        return 'nuttall';
-      case FirequalizerWfunc.bnuttall:
-        return 'bnuttall';
-      case FirequalizerWfunc.bharris:
-        return 'bharris';
-      case FirequalizerWfunc.tukey:
-        return 'tukey';
-    }
-  }
+  String get mpvValue => switch (this) {
+    rectangular => 'rectangular',
+    hann => 'hann',
+    hamming => 'hamming',
+    blackman => 'blackman',
+    nuttall3 => 'nuttall3',
+    mnuttall3 => 'mnuttall3',
+    nuttall => 'nuttall',
+    bnuttall => 'bnuttall',
+    bharris => 'bharris',
+    tukey => 'tukey',
+  };
 
   /// Parses a mpv wire string back into a [FirequalizerWfunc].
   /// Unknown or empty input falls back to the first member.
-  static FirequalizerWfunc fromMpv(String? raw) {
-    switch (raw) {
-      case 'rectangular':
-        return FirequalizerWfunc.rectangular;
-      case 'hann':
-        return FirequalizerWfunc.hann;
-      case 'hamming':
-        return FirequalizerWfunc.hamming;
-      case 'blackman':
-        return FirequalizerWfunc.blackman;
-      case 'nuttall3':
-        return FirequalizerWfunc.nuttall3;
-      case 'mnuttall3':
-        return FirequalizerWfunc.mnuttall3;
-      case 'nuttall':
-        return FirequalizerWfunc.nuttall;
-      case 'bnuttall':
-        return FirequalizerWfunc.bnuttall;
-      case 'bharris':
-        return FirequalizerWfunc.bharris;
-      case 'tukey':
-        return FirequalizerWfunc.tukey;
-      default:
-        return FirequalizerWfunc.rectangular;
-    }
-  }
+  static FirequalizerWfunc fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => rectangular);
 }
 
 /// Values for the `interp` option of the `flanger` audio filter.
@@ -3180,27 +1926,15 @@ enum FlangerItype {
   quadratic;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case FlangerItype.linear:
-        return 'linear';
-      case FlangerItype.quadratic:
-        return 'quadratic';
-    }
-  }
+  String get mpvValue => switch (this) {
+    linear => 'linear',
+    quadratic => 'quadratic',
+  };
 
   /// Parses a mpv wire string back into a [FlangerItype].
   /// Unknown or empty input falls back to the first member.
-  static FlangerItype fromMpv(String? raw) {
-    switch (raw) {
-      case 'linear':
-        return FlangerItype.linear;
-      case 'quadratic':
-        return FlangerItype.quadratic;
-      default:
-        return FlangerItype.linear;
-    }
-  }
+  static FlangerItype fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => linear);
 }
 
 /// Values for the `shape` option of the `flanger` audio filter.
@@ -3218,35 +1952,17 @@ enum FlangerType {
   s;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case FlangerType.triangular:
-        return 'triangular';
-      case FlangerType.t:
-        return 't';
-      case FlangerType.sinusoidal:
-        return 'sinusoidal';
-      case FlangerType.s:
-        return 's';
-    }
-  }
+  String get mpvValue => switch (this) {
+    triangular => 'triangular',
+    t => 't',
+    sinusoidal => 'sinusoidal',
+    s => 's',
+  };
 
   /// Parses a mpv wire string back into a [FlangerType].
   /// Unknown or empty input falls back to the first member.
-  static FlangerType fromMpv(String? raw) {
-    switch (raw) {
-      case 'triangular':
-        return FlangerType.triangular;
-      case 't':
-        return FlangerType.t;
-      case 'sinusoidal':
-        return FlangerType.sinusoidal;
-      case 's':
-        return FlangerType.s;
-      default:
-        return FlangerType.triangular;
-    }
-  }
+  static FlangerType fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => triangular);
 }
 
 /// Values for the `middle_source` option of the `haas` audio filter.
@@ -3264,35 +1980,17 @@ enum HaasSource {
   side;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case HaasSource.left:
-        return 'left';
-      case HaasSource.right:
-        return 'right';
-      case HaasSource.mid:
-        return 'mid';
-      case HaasSource.side:
-        return 'side';
-    }
-  }
+  String get mpvValue => switch (this) {
+    left => 'left',
+    right => 'right',
+    mid => 'mid',
+    side => 'side',
+  };
 
   /// Parses a mpv wire string back into a [HaasSource].
   /// Unknown or empty input falls back to the first member.
-  static HaasSource fromMpv(String? raw) {
-    switch (raw) {
-      case 'left':
-        return HaasSource.left;
-      case 'right':
-        return HaasSource.right;
-      case 'mid':
-        return HaasSource.mid;
-      case 'side':
-        return HaasSource.side;
-      default:
-        return HaasSource.left;
-    }
-  }
+  static HaasSource fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => left);
 }
 
 /// Values for the `analyze_mode` option of the `hdcd` audio filter.
@@ -3313,39 +2011,18 @@ enum HdcdAnalyzeMode {
   tgm;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case HdcdAnalyzeMode.off:
-        return 'off';
-      case HdcdAnalyzeMode.lle:
-        return 'lle';
-      case HdcdAnalyzeMode.pe:
-        return 'pe';
-      case HdcdAnalyzeMode.cdt:
-        return 'cdt';
-      case HdcdAnalyzeMode.tgm:
-        return 'tgm';
-    }
-  }
+  String get mpvValue => switch (this) {
+    off => 'off',
+    lle => 'lle',
+    pe => 'pe',
+    cdt => 'cdt',
+    tgm => 'tgm',
+  };
 
   /// Parses a mpv wire string back into a [HdcdAnalyzeMode].
   /// Unknown or empty input falls back to the first member.
-  static HdcdAnalyzeMode fromMpv(String? raw) {
-    switch (raw) {
-      case 'off':
-        return HdcdAnalyzeMode.off;
-      case 'lle':
-        return HdcdAnalyzeMode.lle;
-      case 'pe':
-        return HdcdAnalyzeMode.pe;
-      case 'cdt':
-        return HdcdAnalyzeMode.cdt;
-      case 'tgm':
-        return HdcdAnalyzeMode.tgm;
-      default:
-        return HdcdAnalyzeMode.off;
-    }
-  }
+  static HdcdAnalyzeMode fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => off);
 }
 
 /// Values for the `bits_per_sample` option of the `hdcd` audio filter.
@@ -3360,31 +2037,16 @@ enum HdcdBitsPerSample {
   n24;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case HdcdBitsPerSample.n16:
-        return '16';
-      case HdcdBitsPerSample.n20:
-        return '20';
-      case HdcdBitsPerSample.n24:
-        return '24';
-    }
-  }
+  String get mpvValue => switch (this) {
+    n16 => '16',
+    n20 => '20',
+    n24 => '24',
+  };
 
   /// Parses a mpv wire string back into a [HdcdBitsPerSample].
   /// Unknown or empty input falls back to the first member.
-  static HdcdBitsPerSample fromMpv(String? raw) {
-    switch (raw) {
-      case '16':
-        return HdcdBitsPerSample.n16;
-      case '20':
-        return HdcdBitsPerSample.n20;
-      case '24':
-        return HdcdBitsPerSample.n24;
-      default:
-        return HdcdBitsPerSample.n16;
-    }
-  }
+  static HdcdBitsPerSample fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => n16);
 }
 
 /// Values for the `precision` option of the `highpass` audio filter.
@@ -3405,39 +2067,18 @@ enum HighpassPrecision {
   f64;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case HighpassPrecision.auto:
-        return 'auto';
-      case HighpassPrecision.s16:
-        return 's16';
-      case HighpassPrecision.s32:
-        return 's32';
-      case HighpassPrecision.f32:
-        return 'f32';
-      case HighpassPrecision.f64:
-        return 'f64';
-    }
-  }
+  String get mpvValue => switch (this) {
+    auto => 'auto',
+    s16 => 's16',
+    s32 => 's32',
+    f32 => 'f32',
+    f64 => 'f64',
+  };
 
   /// Parses a mpv wire string back into a [HighpassPrecision].
   /// Unknown or empty input falls back to the first member.
-  static HighpassPrecision fromMpv(String? raw) {
-    switch (raw) {
-      case 'auto':
-        return HighpassPrecision.auto;
-      case 's16':
-        return HighpassPrecision.s16;
-      case 's32':
-        return HighpassPrecision.s32;
-      case 'f32':
-        return HighpassPrecision.f32;
-      case 'f64':
-        return HighpassPrecision.f64;
-      default:
-        return HighpassPrecision.auto;
-    }
-  }
+  static HighpassPrecision fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => auto);
 }
 
 /// Values for the `transform` option of the `highpass` audio filter.
@@ -3464,47 +2105,20 @@ enum HighpassTransformType {
   zdf;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case HighpassTransformType.di:
-        return 'di';
-      case HighpassTransformType.dii:
-        return 'dii';
-      case HighpassTransformType.tdi:
-        return 'tdi';
-      case HighpassTransformType.tdii:
-        return 'tdii';
-      case HighpassTransformType.latt:
-        return 'latt';
-      case HighpassTransformType.svf:
-        return 'svf';
-      case HighpassTransformType.zdf:
-        return 'zdf';
-    }
-  }
+  String get mpvValue => switch (this) {
+    di => 'di',
+    dii => 'dii',
+    tdi => 'tdi',
+    tdii => 'tdii',
+    latt => 'latt',
+    svf => 'svf',
+    zdf => 'zdf',
+  };
 
   /// Parses a mpv wire string back into a [HighpassTransformType].
   /// Unknown or empty input falls back to the first member.
-  static HighpassTransformType fromMpv(String? raw) {
-    switch (raw) {
-      case 'di':
-        return HighpassTransformType.di;
-      case 'dii':
-        return HighpassTransformType.dii;
-      case 'tdi':
-        return HighpassTransformType.tdi;
-      case 'tdii':
-        return HighpassTransformType.tdii;
-      case 'latt':
-        return HighpassTransformType.latt;
-      case 'svf':
-        return HighpassTransformType.svf;
-      case 'zdf':
-        return HighpassTransformType.zdf;
-      default:
-        return HighpassTransformType.di;
-    }
-  }
+  static HighpassTransformType fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => di);
 }
 
 /// Values for the `width_type` option of the `highpass` audio filter.
@@ -3525,39 +2139,18 @@ enum HighpassWidthType {
   k;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case HighpassWidthType.h:
-        return 'h';
-      case HighpassWidthType.q:
-        return 'q';
-      case HighpassWidthType.o:
-        return 'o';
-      case HighpassWidthType.s:
-        return 's';
-      case HighpassWidthType.k:
-        return 'k';
-    }
-  }
+  String get mpvValue => switch (this) {
+    h => 'h',
+    q => 'q',
+    o => 'o',
+    s => 's',
+    k => 'k',
+  };
 
   /// Parses a mpv wire string back into a [HighpassWidthType].
   /// Unknown or empty input falls back to the first member.
-  static HighpassWidthType fromMpv(String? raw) {
-    switch (raw) {
-      case 'h':
-        return HighpassWidthType.h;
-      case 'q':
-        return HighpassWidthType.q;
-      case 'o':
-        return HighpassWidthType.o;
-      case 's':
-        return HighpassWidthType.s;
-      case 'k':
-        return HighpassWidthType.k;
-      default:
-        return HighpassWidthType.h;
-    }
-  }
+  static HighpassWidthType fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => h);
 }
 
 /// Values for the `precision` option of the `highshelf` audio filter.
@@ -3578,39 +2171,18 @@ enum HighshelfPrecision {
   f64;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case HighshelfPrecision.auto:
-        return 'auto';
-      case HighshelfPrecision.s16:
-        return 's16';
-      case HighshelfPrecision.s32:
-        return 's32';
-      case HighshelfPrecision.f32:
-        return 'f32';
-      case HighshelfPrecision.f64:
-        return 'f64';
-    }
-  }
+  String get mpvValue => switch (this) {
+    auto => 'auto',
+    s16 => 's16',
+    s32 => 's32',
+    f32 => 'f32',
+    f64 => 'f64',
+  };
 
   /// Parses a mpv wire string back into a [HighshelfPrecision].
   /// Unknown or empty input falls back to the first member.
-  static HighshelfPrecision fromMpv(String? raw) {
-    switch (raw) {
-      case 'auto':
-        return HighshelfPrecision.auto;
-      case 's16':
-        return HighshelfPrecision.s16;
-      case 's32':
-        return HighshelfPrecision.s32;
-      case 'f32':
-        return HighshelfPrecision.f32;
-      case 'f64':
-        return HighshelfPrecision.f64;
-      default:
-        return HighshelfPrecision.auto;
-    }
-  }
+  static HighshelfPrecision fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => auto);
 }
 
 /// Values for the `transform` option of the `highshelf` audio filter.
@@ -3637,47 +2209,20 @@ enum HighshelfTransformType {
   zdf;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case HighshelfTransformType.di:
-        return 'di';
-      case HighshelfTransformType.dii:
-        return 'dii';
-      case HighshelfTransformType.tdi:
-        return 'tdi';
-      case HighshelfTransformType.tdii:
-        return 'tdii';
-      case HighshelfTransformType.latt:
-        return 'latt';
-      case HighshelfTransformType.svf:
-        return 'svf';
-      case HighshelfTransformType.zdf:
-        return 'zdf';
-    }
-  }
+  String get mpvValue => switch (this) {
+    di => 'di',
+    dii => 'dii',
+    tdi => 'tdi',
+    tdii => 'tdii',
+    latt => 'latt',
+    svf => 'svf',
+    zdf => 'zdf',
+  };
 
   /// Parses a mpv wire string back into a [HighshelfTransformType].
   /// Unknown or empty input falls back to the first member.
-  static HighshelfTransformType fromMpv(String? raw) {
-    switch (raw) {
-      case 'di':
-        return HighshelfTransformType.di;
-      case 'dii':
-        return HighshelfTransformType.dii;
-      case 'tdi':
-        return HighshelfTransformType.tdi;
-      case 'tdii':
-        return HighshelfTransformType.tdii;
-      case 'latt':
-        return HighshelfTransformType.latt;
-      case 'svf':
-        return HighshelfTransformType.svf;
-      case 'zdf':
-        return HighshelfTransformType.zdf;
-      default:
-        return HighshelfTransformType.di;
-    }
-  }
+  static HighshelfTransformType fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => di);
 }
 
 /// Values for the `width_type` option of the `highshelf` audio filter.
@@ -3698,39 +2243,18 @@ enum HighshelfWidthType {
   k;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case HighshelfWidthType.h:
-        return 'h';
-      case HighshelfWidthType.q:
-        return 'q';
-      case HighshelfWidthType.o:
-        return 'o';
-      case HighshelfWidthType.s:
-        return 's';
-      case HighshelfWidthType.k:
-        return 'k';
-    }
-  }
+  String get mpvValue => switch (this) {
+    h => 'h',
+    q => 'q',
+    o => 'o',
+    s => 's',
+    k => 'k',
+  };
 
   /// Parses a mpv wire string back into a [HighshelfWidthType].
   /// Unknown or empty input falls back to the first member.
-  static HighshelfWidthType fromMpv(String? raw) {
-    switch (raw) {
-      case 'h':
-        return HighshelfWidthType.h;
-      case 'q':
-        return HighshelfWidthType.q;
-      case 'o':
-        return HighshelfWidthType.o;
-      case 's':
-        return HighshelfWidthType.s;
-      case 'k':
-        return HighshelfWidthType.k;
-      default:
-        return HighshelfWidthType.h;
-    }
-  }
+  static HighshelfWidthType fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => h);
 }
 
 /// Values for the `print_format` option of the `loudnorm` audio filter.
@@ -3745,31 +2269,16 @@ enum LoudnormPrintFormat {
   summary;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case LoudnormPrintFormat.none:
-        return 'none';
-      case LoudnormPrintFormat.json:
-        return 'json';
-      case LoudnormPrintFormat.summary:
-        return 'summary';
-    }
-  }
+  String get mpvValue => switch (this) {
+    none => 'none',
+    json => 'json',
+    summary => 'summary',
+  };
 
   /// Parses a mpv wire string back into a [LoudnormPrintFormat].
   /// Unknown or empty input falls back to the first member.
-  static LoudnormPrintFormat fromMpv(String? raw) {
-    switch (raw) {
-      case 'none':
-        return LoudnormPrintFormat.none;
-      case 'json':
-        return LoudnormPrintFormat.json;
-      case 'summary':
-        return LoudnormPrintFormat.summary;
-      default:
-        return LoudnormPrintFormat.none;
-    }
-  }
+  static LoudnormPrintFormat fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => none);
 }
 
 /// Values for the `precision` option of the `lowpass` audio filter.
@@ -3790,39 +2299,18 @@ enum LowpassPrecision {
   f64;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case LowpassPrecision.auto:
-        return 'auto';
-      case LowpassPrecision.s16:
-        return 's16';
-      case LowpassPrecision.s32:
-        return 's32';
-      case LowpassPrecision.f32:
-        return 'f32';
-      case LowpassPrecision.f64:
-        return 'f64';
-    }
-  }
+  String get mpvValue => switch (this) {
+    auto => 'auto',
+    s16 => 's16',
+    s32 => 's32',
+    f32 => 'f32',
+    f64 => 'f64',
+  };
 
   /// Parses a mpv wire string back into a [LowpassPrecision].
   /// Unknown or empty input falls back to the first member.
-  static LowpassPrecision fromMpv(String? raw) {
-    switch (raw) {
-      case 'auto':
-        return LowpassPrecision.auto;
-      case 's16':
-        return LowpassPrecision.s16;
-      case 's32':
-        return LowpassPrecision.s32;
-      case 'f32':
-        return LowpassPrecision.f32;
-      case 'f64':
-        return LowpassPrecision.f64;
-      default:
-        return LowpassPrecision.auto;
-    }
-  }
+  static LowpassPrecision fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => auto);
 }
 
 /// Values for the `transform` option of the `lowpass` audio filter.
@@ -3849,47 +2337,20 @@ enum LowpassTransformType {
   zdf;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case LowpassTransformType.di:
-        return 'di';
-      case LowpassTransformType.dii:
-        return 'dii';
-      case LowpassTransformType.tdi:
-        return 'tdi';
-      case LowpassTransformType.tdii:
-        return 'tdii';
-      case LowpassTransformType.latt:
-        return 'latt';
-      case LowpassTransformType.svf:
-        return 'svf';
-      case LowpassTransformType.zdf:
-        return 'zdf';
-    }
-  }
+  String get mpvValue => switch (this) {
+    di => 'di',
+    dii => 'dii',
+    tdi => 'tdi',
+    tdii => 'tdii',
+    latt => 'latt',
+    svf => 'svf',
+    zdf => 'zdf',
+  };
 
   /// Parses a mpv wire string back into a [LowpassTransformType].
   /// Unknown or empty input falls back to the first member.
-  static LowpassTransformType fromMpv(String? raw) {
-    switch (raw) {
-      case 'di':
-        return LowpassTransformType.di;
-      case 'dii':
-        return LowpassTransformType.dii;
-      case 'tdi':
-        return LowpassTransformType.tdi;
-      case 'tdii':
-        return LowpassTransformType.tdii;
-      case 'latt':
-        return LowpassTransformType.latt;
-      case 'svf':
-        return LowpassTransformType.svf;
-      case 'zdf':
-        return LowpassTransformType.zdf;
-      default:
-        return LowpassTransformType.di;
-    }
-  }
+  static LowpassTransformType fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => di);
 }
 
 /// Values for the `width_type` option of the `lowpass` audio filter.
@@ -3910,39 +2371,18 @@ enum LowpassWidthType {
   k;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case LowpassWidthType.h:
-        return 'h';
-      case LowpassWidthType.q:
-        return 'q';
-      case LowpassWidthType.o:
-        return 'o';
-      case LowpassWidthType.s:
-        return 's';
-      case LowpassWidthType.k:
-        return 'k';
-    }
-  }
+  String get mpvValue => switch (this) {
+    h => 'h',
+    q => 'q',
+    o => 'o',
+    s => 's',
+    k => 'k',
+  };
 
   /// Parses a mpv wire string back into a [LowpassWidthType].
   /// Unknown or empty input falls back to the first member.
-  static LowpassWidthType fromMpv(String? raw) {
-    switch (raw) {
-      case 'h':
-        return LowpassWidthType.h;
-      case 'q':
-        return LowpassWidthType.q;
-      case 'o':
-        return LowpassWidthType.o;
-      case 's':
-        return LowpassWidthType.s;
-      case 'k':
-        return LowpassWidthType.k;
-      default:
-        return LowpassWidthType.h;
-    }
-  }
+  static LowpassWidthType fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => h);
 }
 
 /// Values for the `precision` option of the `lowshelf` audio filter.
@@ -3963,39 +2403,18 @@ enum LowshelfPrecision {
   f64;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case LowshelfPrecision.auto:
-        return 'auto';
-      case LowshelfPrecision.s16:
-        return 's16';
-      case LowshelfPrecision.s32:
-        return 's32';
-      case LowshelfPrecision.f32:
-        return 'f32';
-      case LowshelfPrecision.f64:
-        return 'f64';
-    }
-  }
+  String get mpvValue => switch (this) {
+    auto => 'auto',
+    s16 => 's16',
+    s32 => 's32',
+    f32 => 'f32',
+    f64 => 'f64',
+  };
 
   /// Parses a mpv wire string back into a [LowshelfPrecision].
   /// Unknown or empty input falls back to the first member.
-  static LowshelfPrecision fromMpv(String? raw) {
-    switch (raw) {
-      case 'auto':
-        return LowshelfPrecision.auto;
-      case 's16':
-        return LowshelfPrecision.s16;
-      case 's32':
-        return LowshelfPrecision.s32;
-      case 'f32':
-        return LowshelfPrecision.f32;
-      case 'f64':
-        return LowshelfPrecision.f64;
-      default:
-        return LowshelfPrecision.auto;
-    }
-  }
+  static LowshelfPrecision fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => auto);
 }
 
 /// Values for the `transform` option of the `lowshelf` audio filter.
@@ -4022,47 +2441,20 @@ enum LowshelfTransformType {
   zdf;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case LowshelfTransformType.di:
-        return 'di';
-      case LowshelfTransformType.dii:
-        return 'dii';
-      case LowshelfTransformType.tdi:
-        return 'tdi';
-      case LowshelfTransformType.tdii:
-        return 'tdii';
-      case LowshelfTransformType.latt:
-        return 'latt';
-      case LowshelfTransformType.svf:
-        return 'svf';
-      case LowshelfTransformType.zdf:
-        return 'zdf';
-    }
-  }
+  String get mpvValue => switch (this) {
+    di => 'di',
+    dii => 'dii',
+    tdi => 'tdi',
+    tdii => 'tdii',
+    latt => 'latt',
+    svf => 'svf',
+    zdf => 'zdf',
+  };
 
   /// Parses a mpv wire string back into a [LowshelfTransformType].
   /// Unknown or empty input falls back to the first member.
-  static LowshelfTransformType fromMpv(String? raw) {
-    switch (raw) {
-      case 'di':
-        return LowshelfTransformType.di;
-      case 'dii':
-        return LowshelfTransformType.dii;
-      case 'tdi':
-        return LowshelfTransformType.tdi;
-      case 'tdii':
-        return LowshelfTransformType.tdii;
-      case 'latt':
-        return LowshelfTransformType.latt;
-      case 'svf':
-        return LowshelfTransformType.svf;
-      case 'zdf':
-        return LowshelfTransformType.zdf;
-      default:
-        return LowshelfTransformType.di;
-    }
-  }
+  static LowshelfTransformType fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => di);
 }
 
 /// Values for the `width_type` option of the `lowshelf` audio filter.
@@ -4083,39 +2475,18 @@ enum LowshelfWidthType {
   k;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case LowshelfWidthType.h:
-        return 'h';
-      case LowshelfWidthType.q:
-        return 'q';
-      case LowshelfWidthType.o:
-        return 'o';
-      case LowshelfWidthType.s:
-        return 's';
-      case LowshelfWidthType.k:
-        return 'k';
-    }
-  }
+  String get mpvValue => switch (this) {
+    h => 'h',
+    q => 'q',
+    o => 'o',
+    s => 's',
+    k => 'k',
+  };
 
   /// Parses a mpv wire string back into a [LowshelfWidthType].
   /// Unknown or empty input falls back to the first member.
-  static LowshelfWidthType fromMpv(String? raw) {
-    switch (raw) {
-      case 'h':
-        return LowshelfWidthType.h;
-      case 'q':
-        return LowshelfWidthType.q;
-      case 'o':
-        return LowshelfWidthType.o;
-      case 's':
-        return LowshelfWidthType.s;
-      case 'k':
-        return LowshelfWidthType.k;
-      default:
-        return LowshelfWidthType.h;
-    }
-  }
+  static LowshelfWidthType fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => h);
 }
 
 /// Values for the `detection` option of the `silenceremove` audio filter.
@@ -4139,43 +2510,19 @@ enum SilenceremoveDetection {
   dev;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case SilenceremoveDetection.avg:
-        return 'avg';
-      case SilenceremoveDetection.rms:
-        return 'rms';
-      case SilenceremoveDetection.peak:
-        return 'peak';
-      case SilenceremoveDetection.median:
-        return 'median';
-      case SilenceremoveDetection.ptp:
-        return 'ptp';
-      case SilenceremoveDetection.dev:
-        return 'dev';
-    }
-  }
+  String get mpvValue => switch (this) {
+    avg => 'avg',
+    rms => 'rms',
+    peak => 'peak',
+    median => 'median',
+    ptp => 'ptp',
+    dev => 'dev',
+  };
 
   /// Parses a mpv wire string back into a [SilenceremoveDetection].
   /// Unknown or empty input falls back to the first member.
-  static SilenceremoveDetection fromMpv(String? raw) {
-    switch (raw) {
-      case 'avg':
-        return SilenceremoveDetection.avg;
-      case 'rms':
-        return SilenceremoveDetection.rms;
-      case 'peak':
-        return SilenceremoveDetection.peak;
-      case 'median':
-        return SilenceremoveDetection.median;
-      case 'ptp':
-        return SilenceremoveDetection.ptp;
-      case 'dev':
-        return SilenceremoveDetection.dev;
-      default:
-        return SilenceremoveDetection.avg;
-    }
-  }
+  static SilenceremoveDetection fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => avg);
 }
 
 /// Values for the `start_mode` option of the `silenceremove` audio filter.
@@ -4187,27 +2534,15 @@ enum SilenceremoveMode {
   all;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case SilenceremoveMode.any:
-        return 'any';
-      case SilenceremoveMode.all:
-        return 'all';
-    }
-  }
+  String get mpvValue => switch (this) {
+    any => 'any',
+    all => 'all',
+  };
 
   /// Parses a mpv wire string back into a [SilenceremoveMode].
   /// Unknown or empty input falls back to the first member.
-  static SilenceremoveMode fromMpv(String? raw) {
-    switch (raw) {
-      case 'any':
-        return SilenceremoveMode.any;
-      case 'all':
-        return SilenceremoveMode.all;
-      default:
-        return SilenceremoveMode.any;
-    }
-  }
+  static SilenceremoveMode fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => any);
 }
 
 /// Values for the `timestamp` option of the `silenceremove` audio filter.
@@ -4219,27 +2554,15 @@ enum SilenceremoveTimestamp {
   copy;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case SilenceremoveTimestamp.write:
-        return 'write';
-      case SilenceremoveTimestamp.copy:
-        return 'copy';
-    }
-  }
+  String get mpvValue => switch (this) {
+    write => 'write',
+    copy => 'copy',
+  };
 
   /// Parses a mpv wire string back into a [SilenceremoveTimestamp].
   /// Unknown or empty input falls back to the first member.
-  static SilenceremoveTimestamp fromMpv(String? raw) {
-    switch (raw) {
-      case 'write':
-        return SilenceremoveTimestamp.write;
-      case 'copy':
-        return SilenceremoveTimestamp.copy;
-      default:
-        return SilenceremoveTimestamp.write;
-    }
-  }
+  static SilenceremoveTimestamp fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => write);
 }
 
 /// Values for the `bmode_in` option of the `stereotools` audio filter.
@@ -4254,31 +2577,16 @@ enum StereotoolsBmode {
   power;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case StereotoolsBmode.balance:
-        return 'balance';
-      case StereotoolsBmode.amplitude:
-        return 'amplitude';
-      case StereotoolsBmode.power:
-        return 'power';
-    }
-  }
+  String get mpvValue => switch (this) {
+    balance => 'balance',
+    amplitude => 'amplitude',
+    power => 'power',
+  };
 
   /// Parses a mpv wire string back into a [StereotoolsBmode].
   /// Unknown or empty input falls back to the first member.
-  static StereotoolsBmode fromMpv(String? raw) {
-    switch (raw) {
-      case 'balance':
-        return StereotoolsBmode.balance;
-      case 'amplitude':
-        return StereotoolsBmode.amplitude;
-      case 'power':
-        return StereotoolsBmode.power;
-      default:
-        return StereotoolsBmode.balance;
-    }
-  }
+  static StereotoolsBmode fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => balance);
 }
 
 /// Values for the `mode` option of the `stereotools` audio filter.
@@ -4317,63 +2625,24 @@ enum StereotoolsMode {
   lrToLMinusR;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case StereotoolsMode.lrToLr:
-        return 'lr>lr';
-      case StereotoolsMode.lrToMs:
-        return 'lr>ms';
-      case StereotoolsMode.msToLr:
-        return 'ms>lr';
-      case StereotoolsMode.lrToLl:
-        return 'lr>ll';
-      case StereotoolsMode.lrToRr:
-        return 'lr>rr';
-      case StereotoolsMode.lrToLPlusR:
-        return 'lr>l+r';
-      case StereotoolsMode.lrToRl:
-        return 'lr>rl';
-      case StereotoolsMode.msToLl:
-        return 'ms>ll';
-      case StereotoolsMode.msToRr:
-        return 'ms>rr';
-      case StereotoolsMode.msToRl:
-        return 'ms>rl';
-      case StereotoolsMode.lrToLMinusR:
-        return 'lr>l-r';
-    }
-  }
+  String get mpvValue => switch (this) {
+    lrToLr => 'lr>lr',
+    lrToMs => 'lr>ms',
+    msToLr => 'ms>lr',
+    lrToLl => 'lr>ll',
+    lrToRr => 'lr>rr',
+    lrToLPlusR => 'lr>l+r',
+    lrToRl => 'lr>rl',
+    msToLl => 'ms>ll',
+    msToRr => 'ms>rr',
+    msToRl => 'ms>rl',
+    lrToLMinusR => 'lr>l-r',
+  };
 
   /// Parses a mpv wire string back into a [StereotoolsMode].
   /// Unknown or empty input falls back to the first member.
-  static StereotoolsMode fromMpv(String? raw) {
-    switch (raw) {
-      case 'lr>lr':
-        return StereotoolsMode.lrToLr;
-      case 'lr>ms':
-        return StereotoolsMode.lrToMs;
-      case 'ms>lr':
-        return StereotoolsMode.msToLr;
-      case 'lr>ll':
-        return StereotoolsMode.lrToLl;
-      case 'lr>rr':
-        return StereotoolsMode.lrToRr;
-      case 'lr>l+r':
-        return StereotoolsMode.lrToLPlusR;
-      case 'lr>rl':
-        return StereotoolsMode.lrToRl;
-      case 'ms>ll':
-        return StereotoolsMode.msToLl;
-      case 'ms>rr':
-        return StereotoolsMode.msToRr;
-      case 'ms>rl':
-        return StereotoolsMode.msToRl;
-      case 'lr>l-r':
-        return StereotoolsMode.lrToLMinusR;
-      default:
-        return StereotoolsMode.lrToLr;
-    }
-  }
+  static StereotoolsMode fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => lrToLr);
 }
 
 /// Values for the `lfe_mode` option of the `surround` audio filter.
@@ -4385,27 +2654,15 @@ enum SurroundLfeMode {
   sub;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case SurroundLfeMode.add:
-        return 'add';
-      case SurroundLfeMode.sub:
-        return 'sub';
-    }
-  }
+  String get mpvValue => switch (this) {
+    add => 'add',
+    sub => 'sub',
+  };
 
   /// Parses a mpv wire string back into a [SurroundLfeMode].
   /// Unknown or empty input falls back to the first member.
-  static SurroundLfeMode fromMpv(String? raw) {
-    switch (raw) {
-      case 'add':
-        return SurroundLfeMode.add;
-      case 'sub':
-        return SurroundLfeMode.sub;
-      default:
-        return SurroundLfeMode.add;
-    }
-  }
+  static SurroundLfeMode fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => add);
 }
 
 /// Values for the `win_func` option of the `surround` audio filter.
@@ -4477,107 +2734,35 @@ enum SurroundWinFunc {
   kaiser;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case SurroundWinFunc.rect:
-        return 'rect';
-      case SurroundWinFunc.bartlett:
-        return 'bartlett';
-      case SurroundWinFunc.hann:
-        return 'hann';
-      case SurroundWinFunc.hanning:
-        return 'hanning';
-      case SurroundWinFunc.hamming:
-        return 'hamming';
-      case SurroundWinFunc.blackman:
-        return 'blackman';
-      case SurroundWinFunc.welch:
-        return 'welch';
-      case SurroundWinFunc.flattop:
-        return 'flattop';
-      case SurroundWinFunc.bharris:
-        return 'bharris';
-      case SurroundWinFunc.bnuttall:
-        return 'bnuttall';
-      case SurroundWinFunc.bhann:
-        return 'bhann';
-      case SurroundWinFunc.sine:
-        return 'sine';
-      case SurroundWinFunc.nuttall:
-        return 'nuttall';
-      case SurroundWinFunc.lanczos:
-        return 'lanczos';
-      case SurroundWinFunc.gauss:
-        return 'gauss';
-      case SurroundWinFunc.tukey:
-        return 'tukey';
-      case SurroundWinFunc.dolph:
-        return 'dolph';
-      case SurroundWinFunc.cauchy:
-        return 'cauchy';
-      case SurroundWinFunc.parzen:
-        return 'parzen';
-      case SurroundWinFunc.poisson:
-        return 'poisson';
-      case SurroundWinFunc.bohman:
-        return 'bohman';
-      case SurroundWinFunc.kaiser:
-        return 'kaiser';
-    }
-  }
+  String get mpvValue => switch (this) {
+    rect => 'rect',
+    bartlett => 'bartlett',
+    hann => 'hann',
+    hanning => 'hanning',
+    hamming => 'hamming',
+    blackman => 'blackman',
+    welch => 'welch',
+    flattop => 'flattop',
+    bharris => 'bharris',
+    bnuttall => 'bnuttall',
+    bhann => 'bhann',
+    sine => 'sine',
+    nuttall => 'nuttall',
+    lanczos => 'lanczos',
+    gauss => 'gauss',
+    tukey => 'tukey',
+    dolph => 'dolph',
+    cauchy => 'cauchy',
+    parzen => 'parzen',
+    poisson => 'poisson',
+    bohman => 'bohman',
+    kaiser => 'kaiser',
+  };
 
   /// Parses a mpv wire string back into a [SurroundWinFunc].
   /// Unknown or empty input falls back to the first member.
-  static SurroundWinFunc fromMpv(String? raw) {
-    switch (raw) {
-      case 'rect':
-        return SurroundWinFunc.rect;
-      case 'bartlett':
-        return SurroundWinFunc.bartlett;
-      case 'hann':
-        return SurroundWinFunc.hann;
-      case 'hanning':
-        return SurroundWinFunc.hanning;
-      case 'hamming':
-        return SurroundWinFunc.hamming;
-      case 'blackman':
-        return SurroundWinFunc.blackman;
-      case 'welch':
-        return SurroundWinFunc.welch;
-      case 'flattop':
-        return SurroundWinFunc.flattop;
-      case 'bharris':
-        return SurroundWinFunc.bharris;
-      case 'bnuttall':
-        return SurroundWinFunc.bnuttall;
-      case 'bhann':
-        return SurroundWinFunc.bhann;
-      case 'sine':
-        return SurroundWinFunc.sine;
-      case 'nuttall':
-        return SurroundWinFunc.nuttall;
-      case 'lanczos':
-        return SurroundWinFunc.lanczos;
-      case 'gauss':
-        return SurroundWinFunc.gauss;
-      case 'tukey':
-        return SurroundWinFunc.tukey;
-      case 'dolph':
-        return SurroundWinFunc.dolph;
-      case 'cauchy':
-        return SurroundWinFunc.cauchy;
-      case 'parzen':
-        return SurroundWinFunc.parzen;
-      case 'poisson':
-        return SurroundWinFunc.poisson;
-      case 'bohman':
-        return SurroundWinFunc.bohman;
-      case 'kaiser':
-        return SurroundWinFunc.kaiser;
-      default:
-        return SurroundWinFunc.rect;
-    }
-  }
+  static SurroundWinFunc fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => rect);
 }
 
 /// Values for the `precision` option of the `tiltshelf` audio filter.
@@ -4598,39 +2783,18 @@ enum TiltshelfPrecision {
   f64;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case TiltshelfPrecision.auto:
-        return 'auto';
-      case TiltshelfPrecision.s16:
-        return 's16';
-      case TiltshelfPrecision.s32:
-        return 's32';
-      case TiltshelfPrecision.f32:
-        return 'f32';
-      case TiltshelfPrecision.f64:
-        return 'f64';
-    }
-  }
+  String get mpvValue => switch (this) {
+    auto => 'auto',
+    s16 => 's16',
+    s32 => 's32',
+    f32 => 'f32',
+    f64 => 'f64',
+  };
 
   /// Parses a mpv wire string back into a [TiltshelfPrecision].
   /// Unknown or empty input falls back to the first member.
-  static TiltshelfPrecision fromMpv(String? raw) {
-    switch (raw) {
-      case 'auto':
-        return TiltshelfPrecision.auto;
-      case 's16':
-        return TiltshelfPrecision.s16;
-      case 's32':
-        return TiltshelfPrecision.s32;
-      case 'f32':
-        return TiltshelfPrecision.f32;
-      case 'f64':
-        return TiltshelfPrecision.f64;
-      default:
-        return TiltshelfPrecision.auto;
-    }
-  }
+  static TiltshelfPrecision fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => auto);
 }
 
 /// Values for the `transform` option of the `tiltshelf` audio filter.
@@ -4657,47 +2821,20 @@ enum TiltshelfTransformType {
   zdf;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case TiltshelfTransformType.di:
-        return 'di';
-      case TiltshelfTransformType.dii:
-        return 'dii';
-      case TiltshelfTransformType.tdi:
-        return 'tdi';
-      case TiltshelfTransformType.tdii:
-        return 'tdii';
-      case TiltshelfTransformType.latt:
-        return 'latt';
-      case TiltshelfTransformType.svf:
-        return 'svf';
-      case TiltshelfTransformType.zdf:
-        return 'zdf';
-    }
-  }
+  String get mpvValue => switch (this) {
+    di => 'di',
+    dii => 'dii',
+    tdi => 'tdi',
+    tdii => 'tdii',
+    latt => 'latt',
+    svf => 'svf',
+    zdf => 'zdf',
+  };
 
   /// Parses a mpv wire string back into a [TiltshelfTransformType].
   /// Unknown or empty input falls back to the first member.
-  static TiltshelfTransformType fromMpv(String? raw) {
-    switch (raw) {
-      case 'di':
-        return TiltshelfTransformType.di;
-      case 'dii':
-        return TiltshelfTransformType.dii;
-      case 'tdi':
-        return TiltshelfTransformType.tdi;
-      case 'tdii':
-        return TiltshelfTransformType.tdii;
-      case 'latt':
-        return TiltshelfTransformType.latt;
-      case 'svf':
-        return TiltshelfTransformType.svf;
-      case 'zdf':
-        return TiltshelfTransformType.zdf;
-      default:
-        return TiltshelfTransformType.di;
-    }
-  }
+  static TiltshelfTransformType fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => di);
 }
 
 /// Values for the `width_type` option of the `tiltshelf` audio filter.
@@ -4718,39 +2855,18 @@ enum TiltshelfWidthType {
   k;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case TiltshelfWidthType.h:
-        return 'h';
-      case TiltshelfWidthType.q:
-        return 'q';
-      case TiltshelfWidthType.o:
-        return 'o';
-      case TiltshelfWidthType.s:
-        return 's';
-      case TiltshelfWidthType.k:
-        return 'k';
-    }
-  }
+  String get mpvValue => switch (this) {
+    h => 'h',
+    q => 'q',
+    o => 'o',
+    s => 's',
+    k => 'k',
+  };
 
   /// Parses a mpv wire string back into a [TiltshelfWidthType].
   /// Unknown or empty input falls back to the first member.
-  static TiltshelfWidthType fromMpv(String? raw) {
-    switch (raw) {
-      case 'h':
-        return TiltshelfWidthType.h;
-      case 'q':
-        return TiltshelfWidthType.q;
-      case 'o':
-        return TiltshelfWidthType.o;
-      case 's':
-        return TiltshelfWidthType.s;
-      case 'k':
-        return TiltshelfWidthType.k;
-      default:
-        return TiltshelfWidthType.h;
-    }
-  }
+  static TiltshelfWidthType fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => h);
 }
 
 /// Values for the `precision` option of the `treble` audio filter.
@@ -4771,39 +2887,18 @@ enum TreblePrecision {
   f64;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case TreblePrecision.auto:
-        return 'auto';
-      case TreblePrecision.s16:
-        return 's16';
-      case TreblePrecision.s32:
-        return 's32';
-      case TreblePrecision.f32:
-        return 'f32';
-      case TreblePrecision.f64:
-        return 'f64';
-    }
-  }
+  String get mpvValue => switch (this) {
+    auto => 'auto',
+    s16 => 's16',
+    s32 => 's32',
+    f32 => 'f32',
+    f64 => 'f64',
+  };
 
   /// Parses a mpv wire string back into a [TreblePrecision].
   /// Unknown or empty input falls back to the first member.
-  static TreblePrecision fromMpv(String? raw) {
-    switch (raw) {
-      case 'auto':
-        return TreblePrecision.auto;
-      case 's16':
-        return TreblePrecision.s16;
-      case 's32':
-        return TreblePrecision.s32;
-      case 'f32':
-        return TreblePrecision.f32;
-      case 'f64':
-        return TreblePrecision.f64;
-      default:
-        return TreblePrecision.auto;
-    }
-  }
+  static TreblePrecision fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => auto);
 }
 
 /// Values for the `transform` option of the `treble` audio filter.
@@ -4830,47 +2925,20 @@ enum TrebleTransformType {
   zdf;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case TrebleTransformType.di:
-        return 'di';
-      case TrebleTransformType.dii:
-        return 'dii';
-      case TrebleTransformType.tdi:
-        return 'tdi';
-      case TrebleTransformType.tdii:
-        return 'tdii';
-      case TrebleTransformType.latt:
-        return 'latt';
-      case TrebleTransformType.svf:
-        return 'svf';
-      case TrebleTransformType.zdf:
-        return 'zdf';
-    }
-  }
+  String get mpvValue => switch (this) {
+    di => 'di',
+    dii => 'dii',
+    tdi => 'tdi',
+    tdii => 'tdii',
+    latt => 'latt',
+    svf => 'svf',
+    zdf => 'zdf',
+  };
 
   /// Parses a mpv wire string back into a [TrebleTransformType].
   /// Unknown or empty input falls back to the first member.
-  static TrebleTransformType fromMpv(String? raw) {
-    switch (raw) {
-      case 'di':
-        return TrebleTransformType.di;
-      case 'dii':
-        return TrebleTransformType.dii;
-      case 'tdi':
-        return TrebleTransformType.tdi;
-      case 'tdii':
-        return TrebleTransformType.tdii;
-      case 'latt':
-        return TrebleTransformType.latt;
-      case 'svf':
-        return TrebleTransformType.svf;
-      case 'zdf':
-        return TrebleTransformType.zdf;
-      default:
-        return TrebleTransformType.di;
-    }
-  }
+  static TrebleTransformType fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => di);
 }
 
 /// Values for the `width_type` option of the `treble` audio filter.
@@ -4891,39 +2959,18 @@ enum TrebleWidthType {
   k;
 
   /// Wire-side string consumed by mpv.
-  String get mpvValue {
-    switch (this) {
-      case TrebleWidthType.h:
-        return 'h';
-      case TrebleWidthType.q:
-        return 'q';
-      case TrebleWidthType.o:
-        return 'o';
-      case TrebleWidthType.s:
-        return 's';
-      case TrebleWidthType.k:
-        return 'k';
-    }
-  }
+  String get mpvValue => switch (this) {
+    h => 'h',
+    q => 'q',
+    o => 'o',
+    s => 's',
+    k => 'k',
+  };
 
   /// Parses a mpv wire string back into a [TrebleWidthType].
   /// Unknown or empty input falls back to the first member.
-  static TrebleWidthType fromMpv(String? raw) {
-    switch (raw) {
-      case 'h':
-        return TrebleWidthType.h;
-      case 'q':
-        return TrebleWidthType.q;
-      case 'o':
-        return TrebleWidthType.o;
-      case 's':
-        return TrebleWidthType.s;
-      case 'k':
-        return TrebleWidthType.k;
-      default:
-        return TrebleWidthType.h;
-    }
-  }
+  static TrebleWidthType fromMpv(String? raw) =>
+      values.firstWhere((v) => v.mpvValue == raw, orElse: () => h);
 }
 
 /// Identifies one of the typed audio filters: one value per
