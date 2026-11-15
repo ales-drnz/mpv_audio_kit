@@ -187,6 +187,18 @@ void main() {
         );
       }, timeout: const Timeout(Duration(seconds: 5)));
 
+      test('setVolumeGain above volume-gain-max plays it (the max bounds the '
+          'relative steps only)', () async {
+        await player.setVolumeGain(20.0);
+        expect(player.state.settings.volumeGain, 20.0);
+        expect(
+          double.parse((await player.getRawProperty('volume-gain'))!),
+          20.0,
+          reason: 'mpv 0.42 refuses the property above volume-gain-max (12)',
+        );
+        await player.setVolumeGain(0.0);
+      }, timeout: const Timeout(Duration(seconds: 5)));
+
       test('setRate at the M_RANGE boundaries passes through', () async {
         // mpv's M_RANGE for speed is (0.01, 100.0). Values inside the
         // range pass through unchanged.

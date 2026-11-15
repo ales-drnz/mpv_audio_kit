@@ -18,7 +18,9 @@ mixin _AudioModule on _PlayerBase {
     _checkRange(volume, 0, double.maxFinite, 'volume');
     await _gate();
     final value = canonicalFloat(volume);
-    await _calls.prop('volume', value.toString());
+    // The option, not the property: from mpv 0.42 the property refuses a
+    // value above volume-max, the option takes its own 0 to 1000.
+    await _calls.prop('options/volume', value.toString());
     _updateField((s) => s.copyWith(volume: value), _reactives.volume, value);
   }
 
@@ -152,7 +154,9 @@ mixin _AudioModule on _PlayerBase {
     _checkFinite(gainDb, 'gainDb');
     await _gate();
     final value = canonicalFloat(gainDb);
-    await _calls.prop('volume-gain', value.toString());
+    // The option, as for setVolume: the property refuses a value outside
+    // volume-gain-min and volume-gain-max from mpv 0.42.
+    await _calls.prop('options/volume-gain', value.toString());
     _updateField(
       (s) => s.copyWith(volumeGain: value),
       _reactives.volumeGain,
