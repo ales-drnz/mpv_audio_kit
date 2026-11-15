@@ -1068,26 +1068,15 @@ def _af_command_probe_literal(p: dict) -> Optional[str]:
     return lit
 
 
-def _emit_af_command_coverage(
+_AfCommandCase = tuple[str, str, bool, list[tuple[str, str]]]
+
+
+def _af_command_cases(
     filters: dict, sorted_names: list[str]
-) -> tuple[str, int, int]:
-    """Runtime af-command coverage test: for every filter whose schema
-    carries `supports_commands` (the gate for live updates in `audioEffectsDiff`),
-    enable it on a live playing mpv, then change each runtime-tunable
-    option through `Player.updateAudioEffects` and assert that the diff
-    sends it as `af-command` and that mpv accepts it (the player logs
-    `afCommandRefusedLog` on internalLog when it does not).
-
-    A failure means the parse-derived `supports_commands` flag (or an
-    option's runtime flag) is wrong for the SHIPPED binary — fix the
-    codegen and regenerate; never edit the test.
-
-    Returns (file text, n filter cases, n option probes)."""
-    pkg = _CONSUMER_PACKAGE
-    has_arnndn = "arnndn" in sorted_names and bool(
-        filters.get("arnndn", {}).get("supports_commands")
-    )
-
+) -> tuple[list[_AfCommandCase], list[str]]:
+    """The af-command probes: per command-capable filter, its baseline
+    bundle and one update per runtime-tunable option, and the filters
+    left without any."""
     # (filter, baseline bundle expr, const?, [(dart param, literal)])
     cases: list[tuple[str, str, bool, list[tuple[str, str]]]] = []
     uncovered: list[str] = []
@@ -1125,6 +1114,30 @@ def _emit_af_command_coverage(
             args = f"{req_frag}{baseline_extra}".lstrip(", ")
             bundle = f"[{cls}({args})]"
             cases.append((fname, bundle, True, updates))
+    return cases, uncovered
+
+
+def _emit_af_command_coverage(
+    filters: dict, sorted_names: list[str]
+) -> tuple[str, int, int]:
+    """Runtime af-command coverage test: for every filter whose schema
+    carries `supports_commands` (the gate for live updates in `audioEffectsDiff`),
+    enable it on a live playing mpv, then change each runtime-tunable
+    option through `Player.updateAudioEffects` and assert that the diff
+    sends it as `af-command` and that mpv accepts it (the player logs
+    `afCommandRefusedLog` on internalLog when it does not).
+
+    A failure means the parse-derived `supports_commands` flag (or an
+    option's runtime flag) is wrong for the SHIPPED binary — fix the
+    codegen and regenerate; never edit the test.
+
+    Returns (file text, n filter cases, n option probes)."""
+    pkg = _CONSUMER_PACKAGE
+    has_arnndn = "arnndn" in sorted_names and bool(
+        filters.get("arnndn", {}).get("supports_commands")
+    )
+
+    cases, uncovered = _af_command_cases(filters, sorted_names)
 
     lines: list[str] = []
     lines.append(

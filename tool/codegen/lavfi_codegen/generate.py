@@ -709,54 +709,33 @@ def _emit_param_constants(params: dict) -> list[str]:
     return out
 
 
-def _emit_settings_class(filter_name: str, fdata: dict) -> str:
-    """One `final class` per filter. Hand-rolled fields, const constructor,
-    copyWith with sentinel-based null semantics for nullable params,
-    operator==, hashCode, toString, and toFilterString. No `@freezed`,
-    no generated mixin — the Python codegen IS the generator. Drops
-    ~50000 lines of `*.freezed.dart` for the 144 filters while keeping
-    the public API identical (same constructor shape, same copyWith,
-    same value-equality semantics)."""
-    cls = _settings_class_name(filter_name)
-    # AVOption flag AV_OPT_FLAG_READONLY (and typically EXPORT) marks
-    # an option as a filter OUTPUT, not an input — ebur128 publishes
-    # its integrated-loudness / range / peak measurements that way.
-    # FFmpeg rejects attempts to set them at chain build, so we
-    # exclude them from the Settings surface entirely. Consumers
-    # read these via `af-metadata/<label>` at runtime, not as
-    # constructor args.
-    params: dict = effect_params(fdata)
-    # Flag the mandatory params (ffmpeg init/config fails if unset) so the
-    # field loop below emits them as `required` ctor args and toFilterString
-    # always writes them. Must run before `_ctor_field_spec` is consulted.
-    req = required_for(filter_name)
-    for pname, p in params.items():
-        p["required"] = pname in req
-    invalid: dict = {
-        n: p
-        for n, p in fdata.get("params_invalid", {}).items()
-        if not p.get("readonly")
-    }
-    description = fdata.get("description") or ""
+# A field of a settings class: (Dart name, Dart type, default literal or
+# _REQUIRED, nullable).
+_Field = tuple[str, str, object, bool]
 
-    # Pick the Map value type for the digit-prefix routes. If every
-    # invalid param is the same Dart type we can keep the map typed;
-    # otherwise fall back to Object.
+
+def _map_value_type(invalid: dict) -> str:
+    """The Map value type for the digit-prefix routes. If every invalid
+    param is the same Dart type we can keep the map typed; otherwise fall
+    back to Object."""
     invalid_types = {p["type"] for p in invalid.values()}
     if invalid_types == {"double"}:
-        map_value_type = "double"
-    elif invalid_types == {"int"}:
-        map_value_type = "int"
-    elif invalid_types and len(invalid_types) == 1:
+        return "double"
+    if invalid_types == {"int"}:
+        return "int"
+    if invalid_types and len(invalid_types) == 1:
         only = next(iter(invalid_types))
-        map_value_type = _dart_field_type(only, None)
-    else:
-        map_value_type = "Object"
+        return _dart_field_type(only, None)
+    return "Object"
 
-    # Pre-compute every (name, dart_type, default, nullable) tuple. The
-    # rest of the emission is a fold over this list — keeps the bookkeeping
-    # for ctor / copyWith / == / hashCode / toString in lockstep.
-    fields: list[tuple[str, str, str, bool]] = []
+
+def _settings_fields(
+    filter_name: str, params: dict, invalid: dict, map_value_type: str
+) -> list[_Field]:
+    """Every (name, dart_type, default, nullable) tuple of the class. The
+    rest of the emission is a fold over this list — keeps the bookkeeping
+    for ctor / copyWith / == / hashCode / toString in lockstep."""
+    fields: list[_Field] = []
     fields.append(("enabled", "bool", "true", False))
     for pname, p in params.items():
         dart_name = _param_dart_name(pname)
@@ -765,13 +744,19 @@ def _emit_settings_class(filter_name: str, fdata: dict) -> str:
     _names = [f[0] for f in fields]
     if len(_names) != len(set(_names)):
         sys.exit(f"{filter_name}: Dart field names collide: {sorted(_names)}")
-    has_params_map = bool(invalid)
-    if has_params_map:
+    if invalid:
         map_type = f"Map<String, {map_value_type}>"
         fields.append(
             ("params", map_type, f"<String, {map_value_type}>{{}}", False)
         )
+    return fields
 
+
+def _emit_class_doc(
+    filter_name: str, description: str, params: dict, invalid: dict
+) -> list[str]:
+    """The doc comment of the class: the filter's description, then one
+    line per parameter."""
     lines: list[str] = []
     lines.append("")
     lines.append(f"/// Configuration for the `{filter_name}` {_NAMING.noun} effect.")
@@ -815,7 +800,7 @@ def _emit_settings_class(filter_name: str, fdata: dict) -> str:
         lines.append("/// Parameters whose names start with a digit, addressed by")
         lines.append("/// their original key in the [params] map:")
         for pname, p in invalid.items():
-            extras: list[str] = []
+            extras = []
             if p.get("min") is not None and p.get("max") is not None:
                 extras.append(f"range {p['min']}..{p['max']}")
             if p.get("default") is not None:
@@ -825,21 +810,16 @@ def _emit_settings_class(filter_name: str, fdata: dict) -> str:
                 (p.get("desc_long") or p.get("desc") or "").replace("\n", " ").strip()
             )
             lines.append(f"/// - `{pname}`: {desc}{extra_str}")
+    return lines
 
-    lines.append(f"final class {cls} extends {_NAMING.bundle_name[:-1]} {{")
-    # Public bound + default constants — let UI builders read engine
-    # constraints (`Settings.fooMin`, `Settings.fooMax`,
-    # `Settings.fooDefault`) without parsing source. See
-    # [_emit_param_constants] for what's emitted.
-    const_lines = _emit_param_constants(params)
-    if const_lines:
-        lines.extend(const_lines)
-        lines.append("")
-    # Final fields. @Deprecated lands on the field itself so a
-    # consumer's reference (constructor, copyWith, direct read) is
-    # called out by `dart analyze`. The bundle's `enabled` field
-    # never carries an annotation; only AVOptions tagged with
-    # AV_OPT_FLAG_DEPRECATED do.
+
+def _emit_fields(fields: list[_Field], params: dict) -> list[str]:
+    """The final fields, each with its doc comment. @Deprecated lands on
+    the field itself so a consumer's reference (constructor, copyWith,
+    direct read) is called out by `dart analyze`. The bundle's `enabled`
+    field never carries an annotation; only AVOptions tagged with
+    AV_OPT_FLAG_DEPRECATED do."""
+    lines: list[str] = []
     _dep_params = {
         pname for pname, p in params.items() if p.get("deprecated")
     }
@@ -880,9 +860,13 @@ def _emit_settings_class(filter_name: str, fdata: dict) -> str:
                 "  @Deprecated('marked AV_OPT_FLAG_DEPRECATED in libavfilter')"
             )
         lines.append(f"  final {ftype} {name};")
-    lines.append("")
-    # Const constructor. Collection defaults (Set<>{} / Map<,>{}) must
-    # be const-prefixed to be valid in a parameter default position.
+    return lines
+
+
+def _emit_ctor(cls: str, fields: list[_Field]) -> list[str]:
+    """The const constructor. Collection defaults (Set<>{} / Map<,>{})
+    must be const-prefixed to be valid in a parameter default position."""
+    lines: list[str] = []
     lines.append(f"  /// Creates an [{cls}] with the given parameter values.")
     lines.append("  ///")
     lines.append("  /// Each parameter defaults to its ffmpeg default.")
@@ -903,17 +887,12 @@ def _emit_settings_class(filter_name: str, fdata: dict) -> str:
                 lit = "const " + lit
             lines.append(f"    this.{name} = {lit},")
     lines.append("  });")
-    lines.append("")
-    lines.append("  @override")
-    lines.append(f"  String get filterName => '{filter_name}';")
-    lines.append("")
-    lines.append("  @override")
-    lines.append(
-        f"  {_NAMING.enum_name} get filter => "
-        f"{_NAMING.enum_name}.{_bundle_field_name(filter_name)};"
-    )
-    lines.append("")
-    # copyWith — sentinel for nullable fields, `??` for non-nullable.
+    return lines
+
+
+def _emit_copy_with(cls: str, fields: list[_Field]) -> list[str]:
+    """copyWith — sentinel for nullable fields, `??` for non-nullable."""
+    lines: list[str] = []
     lines.append(
         f"  /// Returns a copy of this [{cls}] with the given fields replaced."
     )
@@ -933,8 +912,12 @@ def _emit_settings_class(filter_name: str, fdata: dict) -> str:
         else:
             lines.append(f"    {name}: {name} ?? this.{name},")
     lines.append("  );")
-    lines.append("")
-    # operator==
+    return lines
+
+
+def _emit_equality(cls: str, fields: list[_Field]) -> list[str]:
+    """operator== and hashCode."""
+    lines: list[str] = []
     lines.append("  @override")
     lines.append("  bool operator ==(Object other) =>")
     cmp_parts = [
@@ -978,35 +961,23 @@ def _emit_settings_class(filter_name: str, fdata: dict) -> str:
         lines.append(
             f"  int get hashCode => Object.hashAll([{', '.join(hash_args)}]);"
         )
-    lines.append("")
-    # toString
-    field_names = [name for name, _, _, _ in fields]
-    lines.append("  @override")
-    body_parts = ", ".join([f"{n}: ${n}" for n in field_names])
-    lines.append(f"  String toString() => '{cls}({body_parts})';")
-    lines.append("")
-    # toFilterString
-    lines.append(f"  /// Returns the {_NAMING.noun} chain entry for this effect.")
-    lines.append("  /// Only non-default parameters are emitted.")
-    lines.append("  @override")
-    lines.append("  String toFilterString() {")
-    if not params and not invalid:
-        lines.append(f"    return '{_WIRE.label_prefix}{filter_name}';")
-        lines.append("  }")
-        lines.append("}")
-        return "\n".join(lines)
-    # Range asserts (debug-only). Always emitted on numeric params
-    # with a parsable default — enums and flags are already type-safe.
-    #
-    # ffmpeg's own AVOption table is occasionally internally
-    # inconsistent (the canonical case: `acrusher.dc` declares
-    # default=1 with min=4). For those known cases, the bound is
-    # explicitly elided via [_INTERNALLY_INCONSISTENT_DEFAULTS]. ANY
-    # other default-outside-[min,max] pairing prints a WARNING during
-    # codegen — that's almost always a parser bug masquerading as an
-    # ffmpeg quirk (drmeter.length got past for months because the
-    # parser misread `.01` as a designated initialiser, leaving
-    # min=10 and the assert silently elided).
+    return lines
+
+
+def _emit_bound_asserts(filter_name: str, params: dict) -> list[str]:
+    """Range asserts (debug-only). Always emitted on numeric params
+    with a parsable default — enums and flags are already type-safe.
+
+    ffmpeg's own AVOption table is occasionally internally
+    inconsistent (the canonical case: `acrusher.dc` declares
+    default=1 with min=4). For those known cases, the bound is
+    explicitly elided via [_INTERNALLY_INCONSISTENT_DEFAULTS]. ANY
+    other default-outside-[min,max] pairing prints a WARNING during
+    codegen — that's almost always a parser bug masquerading as an
+    ffmpeg quirk (drmeter.length got past for months because the
+    parser misread `.01` as a designated initialiser, leaving
+    min=10 and the assert silently elided)."""
+    lines: list[str] = []
     for pname, p in params.items():
         if p["type"] not in ("double", "int") or p.get("default") is None:
             continue
@@ -1053,6 +1024,13 @@ def _emit_settings_class(filter_name: str, fdata: dict) -> str:
                     f"    assert({dart_name} <= {dart_name}Max,"
                     f" '{filter_name}.{pname} must be <= {p['max']}');"
                 )
+    return lines
+
+
+def _emit_wire_parts(params: dict, invalid: dict, map_value_type: str) -> list[str]:
+    """The body of toFilterString after the asserts: one `parts.add` per
+    option, written only when it differs from its default."""
+    lines: list[str] = []
     lines.append("    final parts = <String>[];")
     for pname, p in params.items():
         ptype = p["type"]
@@ -1113,6 +1091,87 @@ def _emit_settings_class(filter_name: str, fdata: dict) -> str:
                 "    params.forEach("
                 "(k, v) => parts.add(_wireKey(k) + '=' + v.toString()));"
             )
+    return lines
+
+
+def _emit_settings_class(filter_name: str, fdata: dict) -> str:
+    """One `final class` per filter. Hand-rolled fields, const constructor,
+    copyWith with sentinel-based null semantics for nullable params,
+    operator==, hashCode, toString, and toFilterString. No `@freezed`,
+    no generated mixin — the Python codegen IS the generator. Drops
+    ~50000 lines of `*.freezed.dart` for the 144 filters while keeping
+    the public API identical (same constructor shape, same copyWith,
+    same value-equality semantics)."""
+    cls = _settings_class_name(filter_name)
+    # AVOption flag AV_OPT_FLAG_READONLY (and typically EXPORT) marks
+    # an option as a filter OUTPUT, not an input — ebur128 publishes
+    # its integrated-loudness / range / peak measurements that way.
+    # FFmpeg rejects attempts to set them at chain build, so we
+    # exclude them from the Settings surface entirely. Consumers
+    # read these via `af-metadata/<label>` at runtime, not as
+    # constructor args.
+    params: dict = effect_params(fdata)
+    # Flag the mandatory params (ffmpeg init/config fails if unset) so the
+    # field loop below emits them as `required` ctor args and toFilterString
+    # always writes them. Must run before `_ctor_field_spec` is consulted.
+    req = required_for(filter_name)
+    for pname, p in params.items():
+        p["required"] = pname in req
+    invalid: dict = {
+        n: p
+        for n, p in fdata.get("params_invalid", {}).items()
+        if not p.get("readonly")
+    }
+    map_value_type = _map_value_type(invalid)
+    fields = _settings_fields(filter_name, params, invalid, map_value_type)
+
+    lines = _emit_class_doc(
+        filter_name, fdata.get("description") or "", params, invalid
+    )
+    lines.append(f"final class {cls} extends {_NAMING.bundle_name[:-1]} {{")
+    # Public bound + default constants — let UI builders read engine
+    # constraints (`Settings.fooMin`, `Settings.fooMax`,
+    # `Settings.fooDefault`) without parsing source. See
+    # [_emit_param_constants] for what's emitted.
+    const_lines = _emit_param_constants(params)
+    if const_lines:
+        lines.extend(const_lines)
+        lines.append("")
+    lines.extend(_emit_fields(fields, params))
+    lines.append("")
+    lines.extend(_emit_ctor(cls, fields))
+    lines.append("")
+    lines.append("  @override")
+    lines.append(f"  String get filterName => '{filter_name}';")
+    lines.append("")
+    lines.append("  @override")
+    lines.append(
+        f"  {_NAMING.enum_name} get filter => "
+        f"{_NAMING.enum_name}.{_bundle_field_name(filter_name)};"
+    )
+    lines.append("")
+    lines.extend(_emit_copy_with(cls, fields))
+    lines.append("")
+    lines.extend(_emit_equality(cls, fields))
+    lines.append("")
+    # toString
+    field_names = [name for name, _, _, _ in fields]
+    lines.append("  @override")
+    body_parts = ", ".join([f"{n}: ${n}" for n in field_names])
+    lines.append(f"  String toString() => '{cls}({body_parts})';")
+    lines.append("")
+    # toFilterString
+    lines.append(f"  /// Returns the {_NAMING.noun} chain entry for this effect.")
+    lines.append("  /// Only non-default parameters are emitted.")
+    lines.append("  @override")
+    lines.append("  String toFilterString() {")
+    if not params and not invalid:
+        lines.append(f"    return '{_WIRE.label_prefix}{filter_name}';")
+        lines.append("  }")
+        lines.append("}")
+        return "\n".join(lines)
+    lines.extend(_emit_bound_asserts(filter_name, params))
+    lines.extend(_emit_wire_parts(params, invalid, map_value_type))
     lines.append(
         f"    return parts.isEmpty ? '{_WIRE.label_prefix}{filter_name}' : "
         f"'{_WIRE.label_prefix}{filter_name}=' + parts.join(':');"
