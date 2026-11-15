@@ -39,8 +39,8 @@ mixin _TracksModule on _PlayerBase {
     String? lang,
   }) async {
     _checkNotDisposed();
-    _rejectPcm(file, 'file');
-    _validateLoadOptions(file);
+    rejectPcm(file, 'file');
+    validateLoadOptions(file);
     // Snapshot the load epoch: a content-replacing call landing while the
     // URI resolves makes this add stale: the track belongs to the file
     // that is no longer playing (see [Player.open]).

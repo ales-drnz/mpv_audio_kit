@@ -3,7 +3,6 @@
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/foundation.dart' show kIsWeb, listEquals;
 import 'package:flutter/services.dart' show RootIsolateToken;
@@ -75,6 +74,7 @@ import '../types/settings/spectrum_settings.dart';
 import '../types/state/audio_output_state.dart';
 import 'audio_output_error.dart';
 import 'lifecycle_transitions.dart';
+import 'load_options.dart';
 import 'media_cache.dart';
 import 'player_api.dart';
 import 'player_configuration.dart';
@@ -89,7 +89,6 @@ part 'mixins/player_effects.part.dart';
 part 'mixins/player_file_events.part.dart';
 part 'mixins/player_hooks.part.dart';
 part 'mixins/player_init.part.dart';
-part 'mixins/player_load_validation.part.dart';
 part 'mixins/player_loadfile.part.dart';
 part 'mixins/player_media_session.part.dart';
 part 'mixins/player_navigation.part.dart';
@@ -118,7 +117,6 @@ class Player extends _PlayerBase
         _PcmModule,
         _LoadfileModule,
         _RawModule,
-        _LoadValidationModule,
         _OpenModule,
         _InitModule,
         _PropertiesModule,

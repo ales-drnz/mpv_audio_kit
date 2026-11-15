@@ -229,11 +229,6 @@ abstract class _PlayerBase {
   /// bundles ([CoreCalls.writeBundle]) update it before the write.
   late final CoreCalls _calls;
 
-  /// See `_LoadValidationModule` (player_load_validation.part.dart).
-  String _buildLoadfileOptions(Media media);
-  void _validateLoadOptions(Media media);
-  void _rejectPcm(Media media, String name);
-
   /// See `_RawModule`: the raw property escape hatches of the public API.
   /// The player's own reads and writes go through [_readString] and
   /// [_calls] instead.

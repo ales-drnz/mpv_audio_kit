@@ -23,7 +23,8 @@ Future<void> Function()? debugBeforeRetainedRemove;
 mixin _OpenModule on _PlayerBase, _LoadfileModule {
   Future<void> _open(Media media, bool? play) async {
     _checkNotDisposed();
-    _validateLoadOptions(media);
+    // Validated and built before the first await, once.
+    final opts = loadfileOptions(media);
     final load = _transport.claimLoad();
     await _gate();
     if (load.superseded) return;
@@ -67,7 +68,6 @@ mixin _OpenModule on _PlayerBase, _LoadfileModule {
       if (load.superseded) return;
       final playNow = _transport.intendedPlay(intent, shouldPlay);
       await _calls.prop('pause', playNow ? 'no' : 'yes');
-      final opts = _buildLoadfileOptions(media);
       try {
         if (opts.isEmpty) {
           await _loadfile(['loadfile', source.uri, 'replace'], media, source);
@@ -128,10 +128,9 @@ mixin _OpenModule on _PlayerBase, _LoadfileModule {
       return;
     }
     // Validate the full batch before any side-effect, so a bad header
-    // on entry N can't leave entries 0..N-1 half-loaded.
-    for (final m in medias) {
-      _validateLoadOptions(m);
-    }
+    // on entry N can't leave entries 0..N-1 half-loaded: the options of
+    // each entry, validated and built once.
+    final options = [for (final m in medias) loadfileOptions(m)];
     // Claim the load epoch synchronously; see [Player.open].
     final load = _transport.claimLoad();
     await _gate();
@@ -168,7 +167,7 @@ mixin _OpenModule on _PlayerBase, _LoadfileModule {
       retainedId = await _holdRetained(retainedOld);
 
       // ── Phase 2: append every entry; playback never starts here ──────
-      final failure = await _openAllAppend(medias, sources, load);
+      final failure = await _openAllAppend(medias, sources, options, load);
       // mpv never had the refused entries, nor the ones not sent after a
       // refusal or a later load: their sources are released on the way out.
       if (failure != null) {
@@ -373,12 +372,13 @@ mixin _OpenModule on _PlayerBase, _LoadfileModule {
     return true;
   }
 
-  /// Phase 2 of [Player.openAll]: appends [medias] from their [sources].
-  /// Returns the first refusal, `null` when mpv took every entry sent;
+  /// Phase 2 of [Player.openAll]: appends [medias] from their [sources],
+  /// with their [options]. Returns the first refusal, `null` when mpv took every entry sent;
   /// sending stops at a refusal or once a later load took over.
   Future<(Object, StackTrace)?> _openAllAppend(
     List<Media> medias,
     List<OwnedSource> sources,
+    List<String> options,
     _LoadTicket load,
   ) async {
     // mpv's `loadfile append` is play=false unconditionally (unlike
@@ -405,7 +405,7 @@ mixin _OpenModule on _PlayerBase, _LoadfileModule {
       final window = <Future<int?>>[
         for (var i = sent; i < end; i++)
           _loadfileEntry(
-            switch (_buildLoadfileOptions(medias[i])) {
+            switch (options[i]) {
               '' => ['loadfile', sources[i].uri, 'append'],
               final opts => ['loadfile', sources[i].uri, 'append', '-1', opts],
             },
@@ -429,8 +429,8 @@ mixin _OpenModule on _PlayerBase, _LoadfileModule {
 
   Future<void> _openPlaylistFile(Media playlist, bool? play) async {
     _checkNotDisposed();
-    _rejectPcm(playlist, 'playlist');
-    _validateLoadOptions(playlist);
+    rejectPcm(playlist, 'playlist');
+    validateLoadOptions(playlist);
     // Claim the load epoch synchronously; see [Player.open].
     final load = _transport.claimLoad();
     await _gate();

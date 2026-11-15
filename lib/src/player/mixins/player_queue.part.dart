@@ -14,14 +14,14 @@ mixin _QueueModule on _PlayerBase {
   /// only loads minutes later when playback advances.
   Future<void> add(Media media) async {
     _checkNotDisposed();
-    _validateLoadOptions(media);
+    final opts = loadfileOptions(media);
     // Snapshot (not bump: appends don't supersede each other) the load
     // epoch: if a content-replacing call (open, stop, clearPlaylist)
     // lands while this append is still resolving its URI, the append is
     // stale and must not graft the old queue's entry onto the new one.
     final load = _transport.snapshotLoad();
     await _gate();
-    await _addEntry(media, load);
+    await _addEntry(media, opts, load);
   }
 
   /// Inserts [media] at [index] in the playlist: the entry there and the
@@ -35,7 +35,7 @@ mixin _QueueModule on _PlayerBase {
   Future<void> insert(int index, Media media) async {
     _checkNotDisposed();
     RangeError.checkNotNegative(index, 'index');
-    _validateLoadOptions(media);
+    final opts = loadfileOptions(media);
     // The same staleness rule as [add].
     final load = _transport.snapshotLoad();
     await _gate();
@@ -51,13 +51,18 @@ mixin _QueueModule on _PlayerBase {
       _entries.fromCoreCount(rc < 0 ? 0 : count as int),
       'index',
     );
-    await _addEntry(media, load, at: _entries.toCore(index));
+    await _addEntry(media, opts, load, at: _entries.toCore(index));
   }
 
-  /// The load of [add] and [insert]: resolves [media] and appends it, or
-  /// inserts it at [at]. An index past the end, after a concurrent remove,
-  /// appends in mpv.
-  Future<void> _addEntry(Media media, _LoadTicket load, {int? at}) async {
+  /// The load of [add] and [insert]: resolves [media] and appends it with
+  /// its [opts], or inserts it at [at]. An index past the end, after a
+  /// concurrent remove, appends in mpv.
+  Future<void> _addEntry(
+    Media media,
+    String opts,
+    _LoadTicket load, {
+    int? at,
+  }) async {
     // Kept from the cache prune until mpv has the entry.
     _mediaCache.entryLoads++;
     try {
@@ -69,7 +74,6 @@ mixin _QueueModule on _PlayerBase {
         if (load.superseded) return;
         _mediaCache[source.uri] = media;
         await _forgetFdResume(source.uri);
-        final opts = _buildLoadfileOptions(media);
         await _loadfile(
           [
             'loadfile',
@@ -152,7 +156,7 @@ mixin _QueueModule on _PlayerBase {
   Future<void> replace(int index, Media media) async {
     _checkNotDisposed();
     RangeError.checkNotNegative(index, 'index');
-    _validateLoadOptions(media);
+    final opts = loadfileOptions(media);
     // Snapshot the load epoch: same staleness rule as [add].
     final load = _transport.snapshotLoad();
     await _gate();
@@ -183,7 +187,6 @@ mixin _QueueModule on _PlayerBase {
             : (int.tryParse(posValue as String? ?? '') ?? -1);
         // mpv's index, against mpv's position: see [EntryTable.toCore].
         final at = _entries.toCore(index);
-        final opts = _buildLoadfileOptions(media);
         Future<void> insertAt(int at) {
           if (opts.isEmpty) {
             return _loadfile(
