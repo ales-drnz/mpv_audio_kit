@@ -82,9 +82,9 @@ dependencies {
 
     testImplementation("org.jetbrains.kotlin:kotlin-test")
     testImplementation("org.mockito:mockito-core:5.24.0")
-    // JUnit 5 engine for the `useJUnitPlatform()` runner above.
-    testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
+    // JUnit Jupiter engine for the `useJUnitPlatform()` runner above.
+    testImplementation("org.junit.jupiter:junit-jupiter:6.1.3")
     // Gradle 9 no longer brings its own JUnit Platform launcher: the test
     // run needs it on its classpath, at the platform version of Jupiter.
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.10.2")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher:6.1.3")
 }
