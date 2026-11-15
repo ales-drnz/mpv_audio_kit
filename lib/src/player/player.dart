@@ -82,6 +82,7 @@ import 'player_state.dart';
 import 'player_stream.dart';
 import 'playlist_nav_gate.dart';
 
+part 'effects_chain.part.dart';
 part 'lifecycle.part.dart';
 part 'mixins/player_audio.part.dart';
 part 'mixins/player_dispatch.part.dart';

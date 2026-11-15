@@ -30,6 +30,9 @@ abstract class _PlayerBase {
   /// play-pause intent and the file starts.
   late final _Transport _transport = _Transport(this);
 
+  /// The effects chain mpv holds, against the list in the state.
+  late final _EffectsChain _effects = _EffectsChain(this);
+
   // The registered hooks and the pending hook events, with the ids the
   // library hands out and the deadlines.
   late final _hooks = HookTable(
