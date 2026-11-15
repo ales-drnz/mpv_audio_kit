@@ -1,2 +1,8 @@
 # Repo-wide reformat with the tall-style formatter (no logic change).
 493277dedbbf6ce3014138ecded59282ee71c3f4
+# _PlayerBase in its own part, transport and lifecycle parts out of mixins (move only).
+b222a71cbd066fa458943dd6dc92efdcd5669277
+# The four largest player parts split by what they hold (move only).
+3cab0812dce3399731b705b0accf6f278cf9ccf8
+# The cut of an aborted live source in its own part (move only).
+53a0063118de8dddcd2082be6b7419d39341f352
