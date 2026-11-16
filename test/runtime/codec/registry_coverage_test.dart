@@ -345,16 +345,14 @@ void main() {
               RawAudioEffect('lavfi-this-filter-does-not-exist'),
             ]);
           } catch (_) {}
-          await Future<void>.delayed(_logWait);
-          await logSub.cancel();
-          expect(
-            cannotFind,
-            isNotEmpty,
+          await waitUntil(
+            () => cannotFind.isNotEmpty,
             reason:
                 'A bogus lavfi-* filter must produce a recognizable log '
                 'entry. If this fires, libmpv changed its phrasing — update '
                 'the substrings above.',
           );
+          await logSub.cancel();
           try {
             await player.setAudioEffects(const []);
           } catch (_) {}

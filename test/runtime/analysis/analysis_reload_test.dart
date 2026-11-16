@@ -50,8 +50,10 @@ void main() {
         player
           ..debugDispatchProperty('path', b)
           ..debugDispatchEvent(MpvEventFileLoaded(path: b));
-        await Future<void>.delayed(const Duration(milliseconds: 500));
-        expect(got, isNotEmpty, reason: 'nothing emitted: a.flac stays');
+        await waitUntil(
+          () => got.isNotEmpty,
+          reason: 'nothing emitted: a.flac stays',
+        );
         expect(got.first, isNull);
       },
     );
