@@ -168,22 +168,19 @@ void main() {
 
       // ── Numeric boundary contracts ─────────────────────────────────────
       //
-      // mpv applies its own M_RANGE clamp on the way in; the wrapper
-      // optimistically writes the *requested* value to PlayerState before
-      // the observer event arrives. The observer then emits the clamped
-      // value, and state catches up. These tests document that contract:
-      // the optimistic value is what the consumer last set, and the
-      // observed value is what mpv accepted. Both surfaces are valid; UI
-      // widgets bound to the stream always converge on the clamped value.
-      test('setVolume above 100 retains the optimistic value (mpv clamps to '
-          'volume-max in its own time)', () async {
+      // The player writes the *requested* value to PlayerState before the
+      // observer event arrives, and mpv refuses a value outside the range
+      // of its option. These tests document that contract.
+      test('setVolume above 100 retains the value it was given (mpv plays '
+          'it, past volume-max too)', () async {
         await player.setVolume(150.0);
         expect(
           player.state.settings.volume,
           150.0,
           reason:
-              'wrapper writes the requested value optimistically; mpv '
-              'clamps to volume-max (130 by default) on its side',
+              'the player writes the value as given; mpv 0.42 takes it '
+              'through the volume option, past volume-max (130 by '
+              'default), as setVolume documents',
         );
       }, timeout: const Timeout(Duration(seconds: 5)));
 

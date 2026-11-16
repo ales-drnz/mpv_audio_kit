@@ -113,6 +113,7 @@ await player.setCookies(true);                          // off by default
 
 - `Duration.zero` uses FFmpeg's default timeout for each protocol. For `smb2://` it gives the connection 30 s and no limit on the reads.
 - The longest timeout is about 36 minutes, and a longer one is capped there.
+- TLS verification is off by default, so a server with a self-signed certificate plays. A later release turns it on by default.
 - TLS verification uses the CA roots built into libmpv. A CA file replaces them.
 - The proxy and cookies take effect from the next load. `https://` sources go through the proxy with `CONNECT`.
 

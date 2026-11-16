@@ -201,7 +201,7 @@ mixin _InitModule on _PlayerBase, _DispatchModule, _TeardownModule {
 
 /// mpv's global `stream-lavf-o`, the options of every stream FFmpeg opens,
 /// so a dropped connection does not end a track early (verified against
-/// FFmpeg 8.1.1 and mpv 0.41). A protocol takes the ones it knows and
+/// FFmpeg 9.0.2 and mpv 0.42.0). A protocol takes the ones it knows and
 /// leaves the others, as `smb2` already does with mpv's own `reconnect`:
 /// mpv lists the leftovers at verbose level only (stream_lavf.c). An entry
 /// with `Media.streamLavfOptions` or `Media.httpChunkSize` adds to them

@@ -129,13 +129,14 @@ Map<String, String> _streamOptions(Media media) {
     // unbounded whole-file request to a crawl; `reconnect_*` recover genuine
     // drops (mpv already sets `reconnect=1`).
     //
-    // Why BOTH options (verified against FFmpeg 8.1.1 `libavformat/http.c`):
+    // Why BOTH options (verified against FFmpeg 9.0.2 `libavformat/http.c`):
     //   • `request_size` bounds EVERY request, the first one included: the
-    //     gate is `if (s->initial_requests || s->request_size)` (http.c:1594)
+    //     gate is `if ((s->initial_requests || s->request_size) &&
+    //     s->seekable != 0)` (http.c:1602)
     //     and mpv leaves `seekable` unset (→ -1, ≠ 0), so the bounded-range
     //     branch is taken even for the opening probe.
     //   • `initial_request_size` only overrides the size used for that probe;
-    //     after the first chunk ffmpeg clears `initial_requests` (http.c:1857),
+    //     after the first chunk ffmpeg clears `initial_requests` (http.c:1868),
     //     so on its own the steady-state reads would revert to an unbounded
     //     `Range: bytes=off-`.
     // Setting both keeps the probe AND every steady-state read bounded.
