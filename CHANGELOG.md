@@ -1,4 +1,4 @@
-## [0.7.2]
+## [0.7.2] - 16-11-2026
 
 A new engine under the same API: mpv 0.42.0, FFmpeg 9.0.2 and OpenSSL 4.1.0. Decoding, network and what mpv reports can differ in places from 0.7.1, so try an app's own files and servers before updating.
 
