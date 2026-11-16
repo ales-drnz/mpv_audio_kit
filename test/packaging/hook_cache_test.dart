@@ -214,7 +214,11 @@ void main() {
     await pruneCache(Uri.directory('${tmp.path}/none'), [pinnedA]);
   });
 
-  group('unpackedBinary', () {
+  // The hook unpacks an xcframework only for an iOS or macOS target, which
+  // only a macOS host builds (Xcode, and lipo right after): never on
+  // Windows, whose links and short paths this group does not model. Linux
+  // keeps the coverage of the cache logic.
+  group('unpackedBinary', testOn: 'mac-os || linux', () {
     const slice = 'libmpv.xcframework/macos-arm64_x86_64/libmpv.framework';
     const binary = '$slice/libmpv';
     final content = utf8.encode('the libmpv binary');
