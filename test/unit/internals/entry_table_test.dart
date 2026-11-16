@@ -101,6 +101,26 @@ void main() {
       table.onPlaylist(node);
       expect(table.lastNode, same(node));
     });
+
+    test('the playlist of a FILE_LOADED is kept for a late reply too', () {
+      // The order of a run that left the third entry without its Media:
+      // the reports list two entries, the FILE_LOADED of the first reads a
+      // playlist that lists the third, then its loadfile replies.
+      table.onPlaylist(report([1, 2]));
+      final loaded = report([1, 2, 3]);
+      table.onLoadedNode(loaded);
+      add(3, held: false);
+      expect(table.lastNode, same(loaded));
+      table.onLoadedNode(null);
+      expect(table.lastNode, same(loaded), reason: 'no read, nothing parsed');
+    });
+
+    test('a playlist of a FILE_LOADED is not a report', () {
+      add(1);
+      table.onPlaylist(report([1]));
+      table.onLoadedNode(report([]));
+      expect(table.media.keys, [1]);
+    });
   });
 
   group('the entry being loaded', () {

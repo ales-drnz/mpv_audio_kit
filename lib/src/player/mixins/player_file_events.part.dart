@@ -211,6 +211,8 @@ mixin _FileEventsModule on _PlayerBase, _PropertiesModule {
           skip: hidden,
         );
         _entries.hiddenAt = hidden;
+        // A loadfile reply that comes after this read parses it again.
+        _entries.onLoadedNode(playlistNode);
       } catch (e) {
         _internalLog('Failed to parse playlist: $e', level: LogLevel.warn);
       }

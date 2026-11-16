@@ -56,9 +56,10 @@ mixin _LoadfileModule on _PlayerBase, _PcmCutModule, _PropertiesModule {
     return entryId;
   }
 
-  /// mpv may report the playlist before the `loadfile` replies: when the
-  /// last playlist node already lists one of [ids], parse it again so the
-  /// entries map to their [Media].
+  /// mpv may report the playlist before the `loadfile` replies, and a
+  /// FILE_LOADED may read it: when the last playlist node the state was
+  /// parsed from already lists one of [ids], parse it again so the entries
+  /// map to their [Media].
   void _remapReported(Set<int> ids) {
     final node = _entries.lastNode;
     if (node is List &&

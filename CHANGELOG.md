@@ -28,6 +28,7 @@
 - The build hook drops the libmpv binaries of earlier releases from its shared cache, about 8 MB per release and per target.
 - A libmpv download that fails on the network names the release and the asset, and the `libmpv` user define that builds without network.
 - `setVolume` above `volumeMax` and `setVolumeGain` outside `volumeGainMin` and `volumeGainMax` play the value again, as their docs say. On mpv 0.42.0 they threw `MpvCommandException`.
+- An entry added while a file loads keeps its `Media` and `extras` once `add` returns. It could show a bare `Media` of its path until the next playlist report.
 
 **Docs**
 - A Platforms topic says what each platform has: output drivers, devices, passthrough, media session, SMB, analysis, live PCM and cover.
