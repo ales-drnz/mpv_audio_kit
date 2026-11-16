@@ -23,3 +23,5 @@ b222a71cbd066fa458943dd6dc92efdcd5669277
 3cab0812dce3399731b705b0accf6f278cf9ccf8
 # The cut of an aborted live source in its own part (move only).
 53a0063118de8dddcd2082be6b7419d39341f352
+# The tests in test/unit by area of lib/src and in test/runtime by theme (move only).
+d65c665b1a63bad622cf2e7fb121e386993321be
