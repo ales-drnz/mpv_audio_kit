@@ -1,7 +1,7 @@
 // Copyright © 2026 & onwards, Alessandro Di Ronza <ales.drnz@gmail.com>.
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
-part of '../player.dart';
+part of 'player.dart';
 
 /// The lifecycle flags (playing, buffering, completed) and the end of
 /// content: where the core stands against the end of the file, the
@@ -70,7 +70,7 @@ extension _Lifecycle on _PlayerBase {
       currentChapter: null,
       chapters: const <Chapter>[],
     );
-    _coverArtCtrl.add(null);
+    _streams.coverArt.add(null);
   }
 
   /// Clears what [_clearPerFileState] clears plus the file's waveform and
@@ -108,8 +108,8 @@ extension _Lifecycle on _PlayerBase {
     );
     _state = result.newState;
     if (result.playingDidChange) _reactives.playing.update(playing!);
-    if (result.bufferingDidChange) _buffering.update(buffering!);
-    if (result.completedDidChange) _completed.update(completed!);
+    if (result.bufferingDidChange) _streams.buffering.update(buffering!);
+    if (result.completedDidChange) _streams.completed.update(completed!);
   }
 
   /// Settles `completed` from where the core stands against the end of

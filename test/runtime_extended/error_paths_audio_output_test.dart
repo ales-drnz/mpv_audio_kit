@@ -20,7 +20,7 @@ void main() {
   //     → registry dispatches via spec.parseAndDispatch
   //     → onAudioOutputState callback (default_specs.dart)
   //     → buildAudioOutputError returns LogError
-  //     → _errorCtrl.add lands on Player.stream.error
+  //     → _streams.errors.add lands on Player.stream.error
   //
   // This test bypasses the libmpv AO layer (which is genuinely hard to
   // make fail deterministically across host platforms — `coreaudio` /

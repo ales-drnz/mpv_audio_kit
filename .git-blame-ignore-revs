@@ -17,3 +17,9 @@ d9521a935435ffdd03d2f8433651f7cd1f0573ca
 b7ff433f6fa360a5bc98f217d3d0ada1aa9e4e25
 # The URI functions of the media session in media_session_uris.dart.
 64c2833523949746ae1f509eb07cc878ff98b61c
+# _PlayerBase in its own part, transport and lifecycle parts out of mixins (move only).
+b222a71cbd066fa458943dd6dc92efdcd5669277
+# The four largest player parts split by what they hold (move only).
+3cab0812dce3399731b705b0accf6f278cf9ccf8
+# The cut of an aborted live source in its own part (move only).
+53a0063118de8dddcd2082be6b7419d39341f352

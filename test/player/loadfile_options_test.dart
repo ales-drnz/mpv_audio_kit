@@ -7,7 +7,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import 'package:mpv_audio_kit/src/pcm/pcm_native.dart';
-import 'package:mpv_audio_kit/src/player/player.dart';
+import 'package:mpv_audio_kit/src/player/load_options.dart';
 
 import '../pcm/fake_pcm_native.dart';
 

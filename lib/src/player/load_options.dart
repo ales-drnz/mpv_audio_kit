@@ -2,34 +2,47 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-part of '../player.dart';
+/// The load-time options of a [Media]: their validation, which every load
+/// runs before its first await, and the file-local `<options>` argument of
+/// `loadfile` built from them. Pure functions of the [Media].
+library;
 
-/// Builds the file-local `loadfile` `<options>` argument from a [Media]
-/// and validates its load-time options (HTTP headers, chunk size, demuxer
-/// lavf options) up-front. The `open`, `openAll` and `openPlaylistFile`
-/// entry points and the audio and playlist mixins all reach these via the
-/// abstract signatures on `_PlayerBase`.
-mixin _LoadValidationModule on _PlayerBase {
-  @override
-  String _buildLoadfileOptions(Media media) => loadfileOptions(media);
+import 'dart:convert';
 
-  @override
-  void _validateLoadOptions(Media media) => validateLoadOptions(media);
+import '../internals/duration_seconds.dart';
+import '../models/media.dart';
+import '../pcm/pcm_source.dart';
 
-  /// Throws [ArgumentError] for a live PCM [media] on a path that cannot
-  /// give it its load options (`audio-add`, `loadlist`): mpv would open it
-  /// without them and use up its single reader.
-  @override
-  void _rejectPcm(Media media, String name) {
-    if (!isPcmUri(media.uri)) return;
-    throw ArgumentError.value(
-      media.uri,
-      name,
-      'a live PcmSource plays only as a playlist entry '
-      '(open, openAll, add, replace)',
-    );
-  }
+/// Throws [ArgumentError] for a live PCM [media] on a path that cannot
+/// give it its load options (`audio-add`, `loadlist`): mpv would open it
+/// without them and use up its single reader. [name] is the parameter
+/// that took it.
+void rejectPcm(Media media, String name) {
+  if (!isPcmUri(media.uri)) return;
+  throw ArgumentError.value(
+    media.uri,
+    name,
+    'a live PcmSource plays only as a playlist entry '
+    '(open, openAll, add, replace)',
+  );
 }
+
+/// The `loadfile` command of [uri] with [flags] (`replace`, `append`,
+/// `insert-at`), at the index [at] for `insert-at`, and the per-entry
+/// [options] of [loadfileOptions]. The options need the index argument
+/// (mpv 0.38+), `-1` when the flags take none.
+List<String> loadfileArgs(
+  String uri,
+  String flags,
+  String options, {
+  int? at,
+}) => [
+  'loadfile',
+  uri,
+  flags,
+  if (at != null) '$at' else if (options.isNotEmpty) '-1',
+  if (options.isNotEmpty) options,
+];
 
 /// Builds the `loadfile` `<options>` argument from a [Media]'s
 /// `httpHeaders`, `httpChunkSize`, `streamLavfOptions`, `demuxerLavfOptions`,
@@ -42,7 +55,10 @@ mixin _LoadValidationModule on _PlayerBase {
 /// `http-header-fields` is itself a comma-separated list; CR, LF and NUL,
 /// which would inject into the HTTP request; and `:` in keys.
 /// Returns `''` when the media carries none.
-@visibleForTesting
+///
+/// Validates [media] as [validateLoadOptions] does: a load builds the
+/// options of its media before its first await, once, and so fails
+/// before any side effect.
 String loadfileOptions(Media media) {
   _checkPlayRange(media);
   _checkDurationHint(media);
@@ -195,10 +211,10 @@ void _checkDurationHint(Media media) {
 final RegExp _kForbiddenInHeaderKey = RegExp(r'[\r\n,:\x00]');
 final RegExp _kForbiddenInHeaderValue = RegExp(r'[\r\n,\x00]');
 
-/// Up-front validator for a [Media]'s load-time options, called by every
-/// load entry point before `resolveUri` runs so a bad value fails fast,
-/// before any optimistic state write.
-@visibleForTesting
+/// Up-front validator for a [Media]'s load-time options: the checks of
+/// [loadfileOptions] without the build, for a load that gives its media no
+/// options (`loadlist`, `audio-add`). Called before `resolveUri` runs so a
+/// bad value fails fast, before any optimistic state write.
 void validateLoadOptions(Media media) {
   _checkPlayRange(media);
   _checkDurationHint(media);

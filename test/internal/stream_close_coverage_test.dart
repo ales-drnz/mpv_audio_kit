@@ -79,16 +79,27 @@ void main() {
 
   group('_PlayerBase closes what backs its streams', () {
     final base = _body(
-      _code(_read('lib/src/player/player.dart')),
+      _code(_read('lib/src/player/player_base.part.dart')),
       'abstract class _PlayerBase {',
     );
-    // The closes live in _disposeImpl and in whatever it calls inside the
-    // class, so the check reads the whole class body.
-    final closed = _closed(base);
+    // The controllers and reactives no spec owns live in _StreamHub, which
+    // closes them in closeAll; the base closes the reactives it writes
+    // itself. The check reads both class bodies.
+    final hub = _body(
+      _code(_read('lib/src/player/stream_hub.part.dart')),
+      'final class _StreamHub {',
+    );
+    final closed = {..._closed(base), ..._closed(hub)};
 
-    test('every StreamController and ReactiveProperty of the class', () {
-      final controllers = _fields(base, 'StreamController');
-      final reactives = _fields(base, 'ReactiveProperty');
+    test('every StreamController and ReactiveProperty of the classes', () {
+      final controllers = {
+        ..._fields(base, 'StreamController'),
+        ..._fields(hub, 'StreamController'),
+      };
+      final reactives = {
+        ..._fields(base, 'ReactiveProperty'),
+        ..._fields(hub, 'ReactiveProperty'),
+      };
       // 13 controllers and 9 reactives at 0.5.3: a parse that finds
       // none would pass without checking anything.
       expect(controllers, hasLength(greaterThanOrEqualTo(13)));
