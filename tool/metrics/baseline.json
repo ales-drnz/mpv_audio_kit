@@ -1,7 +1,7 @@
 {
   "loc": 17399,
   "test_per_lib_permille": 2531,
-  "test_per_lib_drop": "from 2541 to 2531: from 2541 to 2531: the K9 restructuring of lib/src/player added part headers and class declarations; no test was removed",
+  "test_per_lib_drop": "from 2541 to 2531: the K9 restructuring of lib/src/player added part headers and class declarations; no test was removed",
   "complexity_over_15": 3,
   "complexity_over_10": 38,
   "player_base_fields": 28,
