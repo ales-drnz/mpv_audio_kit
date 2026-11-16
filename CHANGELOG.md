@@ -3,7 +3,7 @@
 ### libmpv-r26
 **All platforms**
 - mpv 0.42.0, from 0.41.0, and FFmpeg 9.0.2, from 8.1.1, with OpenSSL 4.1.0 and libplacebo 7.387.0. The libraries say `mpv v0.42.0+r26`.
-- mpv 0.42.0 names a local playlist entry by its absolute, normalized path: a relative path, `./`, `//` and `..` come back rewritten in `playlist`. The state keeps the `Media` the app gave.
+- mpv 0.42.0 names a local file by its absolute, normalized path, with backslashes on Windows: a relative path, `./`, `//` and `..` come back rewritten in `playlist` and in `state.file.path`. The playlist of the state keeps the `Media` the app gave.
 - No `env://` protocol and no `env` property: a playlist or a property expansion can no longer read the environment of the app.
 - The HLS demuxer keeps its persistent connections under FFmpeg 9.0, which turned them off when mpv reads the playlist.
 - A stream whose cache fills before its end gets its waveform again, from the re-open or from playback. It could end `failed` when the analysis was behind the download.

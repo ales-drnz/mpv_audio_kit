@@ -6,7 +6,8 @@
 // path (common/playlist.c, mp_normalize_path): a relative path, a `./`, a
 // `//` and a `..` come back rewritten. The state still shows the Media the
 // caller gave, with its extras, because the player follows the entries by
-// mpv's entry id, not by name.
+// mpv's entry id, not by name. The path of the file (`state.file.path`,
+// mpv's `path`) is mpv's name for it, rewritten the same way.
 
 @TestOn('linux || mac-os')
 library;
@@ -53,6 +54,12 @@ void main() {
         expect(items.single.uri, uri);
         expect(items.single.extras, const {'tag': 'mine'});
         expect(player.state.playback.playlist.current, same(items.single));
+        await waitUntil(() => player.state.file.path.isNotEmpty);
+        expect(
+          player.state.file.path,
+          name,
+          reason: 'the path of the file is the name mpv gives the entry',
+        );
       }, timeout: const Timeout(Duration(seconds: 20)));
     }
   });
