@@ -1,0 +1,221 @@
+// Copyright © 2026 & onwards, Alessandro Di Ronza <ales.drnz@gmail.com>.
+// All rights reserved.
+// Use of this source code is governed by BSD 3-Clause license that can be
+// found in the LICENSE file.
+
+@TestOn('mac-os || linux')
+@Timeout(Duration(minutes: 3))
+library;
+
+import 'dart:async';
+import 'dart:io';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:mpv_audio_kit/mpv_audio_kit.dart';
+
+import '../../_helpers/libmpv_resolver.dart';
+import '../../_helpers/setter_test_helpers.dart';
+import '../../_helpers/slow_core_shim.dart';
+
+/// Stall injected in front of every synchronous `mpv_get_property*` call.
+/// Models the real-world window where the mpv playloop is busy (CoreAudio
+/// waking a Bluetooth/AirPlay/HDMI device during AO init takes seconds)
+/// and every synchronous client call queues behind it.
+const int _getDelayUs = 500 * 1000;
+
+/// Main-isolate heartbeat gaps above this fail the test. One leftover
+/// synchronous read in the file-load window costs ≥ [_getDelayUs] (500ms),
+/// comfortably above this bound; scheduler noise stays well below it.
+const int _maxGapMs = 350;
+
+void main() {
+  slowCoreShimSuite(getDelayUs: _getDelayUs, (shim) {
+    // Each test starts on a busy core, with the counters at zero.
+    setUp(() {
+      shim()
+        ..reset()
+        ..configure(realLibmpvPath: resolveLibmpv()!, getDelayUs: _getDelayUs);
+    });
+
+    // Lifts the stall and disposes [player]: these tests measure the main
+    // isolate, and a dispose under the stall is the last test's. The core
+    // must still be destroyed, not left alive in the process.
+    Future<void> disposeOffStall(Player player) async {
+      shim().configure(realLibmpvPath: resolveLibmpv()!);
+      await player.dispose();
+    }
+
+    test('a busy mpv core cannot stall the main isolate through the '
+        'file-load window', () async {
+      final coverPath =
+          '${Directory.current.path}/test/fixtures/sine_with_cover.flac';
+      if (!File(coverPath).existsSync()) {
+        skipMissing('Cover fixture missing: $coverPath');
+        return;
+      }
+
+      final player = Player(
+        configuration: const PlayerConfiguration(logLevel: LogLevel.off),
+      );
+      try {
+        await player.setRawProperty('ao', 'null');
+
+        // Pre-subscribe BEFORE open (optimistic emits land synchronously).
+        // Cover arrival + PLAYBACK_RESTART together bracket every read the
+        // file-load window performs (position, chapters, cover, path).
+        final coverFuture = player.stream.coverArt
+            .firstWhere((c) => c != null && c.bytes.isNotEmpty)
+            .timeout(const Duration(seconds: 30));
+        final restartFuture = player.stream.seekCompleted.first.timeout(
+          const Duration(seconds: 30),
+        );
+
+        // 1ms heartbeat: any synchronous FFI wait on the main isolate shows
+        // up as an inter-tick gap roughly the length of the wait. Missed
+        // ticks coalesce, so the first tick after a stall carries the full
+        // gap.
+        final sw = Stopwatch()..start();
+        var lastMs = 0;
+        var maxGapMs = 0;
+        final timer = Timer.periodic(const Duration(milliseconds: 1), (_) {
+          final now = sw.elapsedMilliseconds;
+          final gap = now - lastMs;
+          lastMs = now;
+          if (gap > maxGapMs) maxGapMs = gap;
+        });
+
+        CoverArt? cover;
+        try {
+          await player.open(Media(coverPath), play: false);
+          cover = await coverFuture;
+          await restartFuture;
+          // One extra breath so the tail of the last event-handler turn is
+          // still inside the measured window.
+          await Future<void>.delayed(const Duration(milliseconds: 100));
+        } finally {
+          timer.cancel();
+        }
+
+        // ignore: avoid_print
+        print(
+          '[stall] max main-isolate heartbeat gap: ${maxGapMs}ms '
+          '(injected core stall per read: ${_getDelayUs ~/ 1000}ms)',
+        );
+
+        expect(
+          maxGapMs,
+          lessThan(_maxGapMs),
+          reason:
+              'The main isolate froze for ${maxGapMs}ms while the core '
+              'was busy — a synchronous mpv read is still running on the '
+              'main isolate inside the file-load window. With a real '
+              'CoreAudio device waking up, this is the beachball.',
+        );
+
+        // The slow path must still deliver correct data, just off-main.
+        expect(cover!.bytes.isNotEmpty, isTrue);
+        expect(cover.mimeType, 'image/png');
+      } finally {
+        await disposeOffStall(player);
+      }
+      expect(
+        shim().counter('destroys'),
+        1,
+        reason: 'dispose destroyed the core',
+      );
+    });
+
+    test('a busy mpv core cannot stall the main isolate while a DSP visualizer '
+        'is polling', () async {
+      final fixture =
+          '${Directory.current.path}/test/fixtures/sine_440hz_1s.wav';
+      if (!File(fixture).existsSync()) {
+        skipMissing('Fixture missing: $fixture');
+        return;
+      }
+
+      final player = Player(
+        configuration: const PlayerConfiguration(logLevel: LogLevel.off),
+      );
+      try {
+        await player.setRawProperty('ao', 'null');
+
+        // Arm the spectrum pipeline: subscribing to `fft` starts its
+        // `pcm-tap-frame` poll loop. Each poll is an mpv property read; on the
+        // main isolate, under a busy core, every one of those reads would
+        // freeze the UI — exactly the visualizer beachball.
+        final fftSub = player.stream.fft.listen((_) {});
+        // Loop playback so frames keep flowing for the whole measurement.
+        await player.setLoop(Loop.file);
+        await player.open(Media(fixture), play: true);
+
+        // Let the poll loop run against the busy core for a steady window.
+        final sw = Stopwatch()..start();
+        var lastMs = 0;
+        var maxGapMs = 0;
+        final timer = Timer.periodic(const Duration(milliseconds: 1), (_) {
+          final now = sw.elapsedMilliseconds;
+          final gap = now - lastMs;
+          lastMs = now;
+          if (gap > maxGapMs) maxGapMs = gap;
+        });
+        await Future<void>.delayed(const Duration(seconds: 2));
+        timer.cancel();
+        await fftSub.cancel();
+
+        // ignore: avoid_print
+        print(
+          '[stall-dsp] max main-isolate heartbeat gap: ${maxGapMs}ms '
+          '(injected core stall per read: ${_getDelayUs ~/ 1000}ms)',
+        );
+
+        expect(
+          maxGapMs,
+          lessThan(_maxGapMs),
+          reason:
+              'The main isolate froze for ${maxGapMs}ms while a DSP '
+              'visualizer was polling and the core was busy — a synchronous '
+              'mpv read still runs on the main isolate in the poll loop.',
+        );
+      } finally {
+        await disposeOffStall(player);
+      }
+      expect(
+        shim().counter('destroys'),
+        1,
+        reason: 'dispose destroyed the core',
+      );
+    });
+
+    // dispose() gives the event isolate 2 s to exit and skips the destroy
+    // when it does not, leaving the core alive in the process. One event
+    // takes up to a dozen synchronous reads, 500 ms each here: read after
+    // read past the stop flag, the isolate outlived the bound.
+    test('a dispose in the middle of the file-load reads still destroys '
+        'the core', () async {
+      final player = await buildPlayer();
+      shim().watchGet('path');
+      unawaited(
+        player
+            .open(Media(defaultFixturePath()), play: false)
+            .catchError((_) {}),
+      );
+      // FILE_LOADED reads the path after the cover: the rest of its reads,
+      // and those of the end-of-content check, are still to come.
+      await waitUntil(
+        () => shim().counter('watched_gets') > 0,
+        timeout: const Duration(seconds: 30),
+        reason: 'the file-load reads never started',
+      );
+      final destroys = shim().counter('destroys');
+      await player.dispose().timeout(const Duration(seconds: 20));
+      expect(
+        shim().counter('destroys'),
+        destroys + 1,
+        reason:
+            'dispose skipped mpv_terminate_destroy: the event isolate kept '
+            'reading past the stop flag',
+      );
+    });
+  });
+}
