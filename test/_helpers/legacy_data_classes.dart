@@ -5,7 +5,7 @@
 
 // The copyWith, == and hashCode of PlayerState and MpvTrack as written by
 // hand up to 0.6.1, before tool/data_classes generated them. The property
-// test of the generated ones (test/models/data_classes_test.dart) compares
+// test of the generated ones (test/unit/models/data_classes_test.dart) compares
 // with these. Frozen: never regenerate or edit them.
 //
 // The oracle reads the flat fields of PlayerState, deprecated since

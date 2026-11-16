@@ -1,10 +1,10 @@
 // AUTO-GENERATED: do not edit by hand.
 //
 // Per-filter param corner-case manifest. See
-// test/runtime_extended/audio_effects_param_ranges_test.dart
+// test/runtime/effects/audio_effects_param_ranges_test.dart
 // for the test that iterates this list. kFilterSamples holds every
 // filter at its defaults and the curated presets, which
-// test/internal/audio_effects_validation_test.dart passes through
+// test/unit/internals/audio_effects_validation_test.dart passes through
 // the effects validator with the corners.
 
 // ignore_for_file: lines_longer_than_80_chars, unnecessary_const, prefer_const_constructors, prefer_const_literals_to_create_immutables

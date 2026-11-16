@@ -19,9 +19,9 @@ which has its own guide for the native patches (`doc/developing.md` there).
   share.
 - `web/`: the web module of libmpv, published with the package and out of
   git. `scripts/update_libmpv.sh` installs it.
-- `test/`: unit tests in the folders named after `lib/src/`, and the runtime
-  tests, which load libmpv, in `test/runtime/` and `test/runtime_extended/`.
-  Shared helpers are in `test/_helpers/`.
+- `test/`: unit tests in `test/unit/`, one folder per area of `lib/src/`,
+  and the runtime tests, which load libmpv, in `test/runtime/`, one folder
+  per theme. Shared helpers are in `test/_helpers/`.
 - `test_app/`: the app of the integration tests on Android, iOS and the
   desktops, run by CI and by libmpv-scripts' check of the kit.
 - `tool/`: code generation, the metrics ratchet, the generator of the data

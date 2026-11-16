@@ -4,7 +4,7 @@
 // found in the LICENSE file.
 //
 // Codec coverage helper — framework-agnostic, used by both the host suite
-// (`test/runtime_extended/codec_coverage_test.dart`) and the device app
+// (`test/runtime/codec/codec_coverage_test.dart`) and the device app
 // (`test_app/integration_test/codec_coverage_test.dart`). The two callers
 // import this file from different framework worlds (`package:test` vs
 // `package:flutter_test`); to stay compatible with both, this helper does
