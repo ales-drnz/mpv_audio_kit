@@ -222,7 +222,7 @@ Android TV, Fire TV and Google TV run the Android build. The app needs a leanbac
 
 ### tvOS
 
-Build with [flutter-tvos](https://fluttertv.dev). It installs no code asset, so on tvOS the plugin's `tvos/Package.swift` links libmpv instead of the build hook: Swift Package Manager downloads `libmpv_tvos.xcframework.zip` of the release and checks its checksum. A libmpv of your own goes to `tvos/libmpv.xcframework` in a checkout of the package: the hook's `libmpv` user define does not reach tvOS.
+Build with [flutter-tvos](https://fluttertv.dev). It installs no code asset, so on tvOS the plugin's `tvos/Package.swift` links libmpv instead of the build hook: Swift Package Manager downloads `libmpv_tvos.xcframework.zip` of the release and checks its checksum.
 
 ### Tizen
 

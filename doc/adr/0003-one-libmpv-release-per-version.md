@@ -48,3 +48,9 @@ another release. A test fails when lib names a release other than the pin.
 * Bad, because a custom libmpv must be rebuilt from libmpv-scripts at the
   new pin with each version of the package.
 * Neutral, because the change was Breaking in 0.6.2: MIGRATION.md has it.
+
+## Note, 0.7.2
+
+The documentation does not advertise a libmpv of an app's own. The `libmpv`
+user define and the path of `ensureInitialized` stay, and the docs name the
+user define only to build without network, with the assets of the release.

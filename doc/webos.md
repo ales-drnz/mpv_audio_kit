@@ -10,9 +10,9 @@ flutter-webos build webos --release
 
 The first build downloads the library, so it needs network access. The library is 32-bit ARM, the TVs' arch: a build with `--target-arch arm64` fails, as there is no libmpv for it.
 
-## A libmpv of your own
+## Building without network
 
-The `libmpv` user define of the build hook does not reach webOS. Set `MPV_AUDIO_KIT_LIBMPV` in the environment of the build instead: a file, or a directory with `libmpv_webos-armv7l.so`. It must be a build of libmpv-scripts at the release the package pins.
+The `libmpv` user define of the build hook does not reach webOS. To build without network, save the `libmpv_webos-armv7l.so` of the release the package pins and set `MPV_AUDIO_KIT_LIBMPV` in the environment of the build to it, the file or its directory:
 
 ```sh
 MPV_AUDIO_KIT_LIBMPV=/path/to/libmpv_webos-armv7l.so flutter-webos build webos --release
