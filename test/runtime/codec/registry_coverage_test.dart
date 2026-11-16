@@ -134,9 +134,47 @@ const List<String> _kCoreAudioDecoders = [
 /// these when explicitly selected via `audio-codec` / `ad`.
 const List<String> _kAppleOnlyAudioDecoders = ['aac_at', 'alac_at', 'mp3_at'];
 
-/// How long both the filter check and its meta-test wait for the log of a
-/// missing filter: the meta-test proves the wait the real check uses.
-const _logWait = Duration(milliseconds: 25);
+/// The filter set after each one the check tries. It never exists, and
+/// mpv keeps its log in order, so its line comes after any line of the
+/// filter tried before it: the check waits for it, with a ceiling, instead
+/// of a fixed window that a slow log could outlast.
+const _sentinel = 'lavfi-mak-sentinel-filter-does-not-exist';
+
+/// Whether a log line says that a filter is not in libavfilter.
+bool _saysMissing(String text) {
+  final m = text.toLowerCase();
+  return m.contains('no such filter') ||
+      m.contains('cannot find filter') ||
+      m.contains('unknown filter') ||
+      m.contains("isn't supported");
+}
+
+/// Sets [filter], then [_sentinel], and returns the lines of [lines] (what
+/// the caller's listener keeps of [_saysMissing]) that came before the
+/// sentinel's: those of [filter]. The meta-tests run it as the check does.
+Future<List<String>> _missingLines(
+  Player player,
+  List<String> lines,
+  String filter,
+) async {
+  lines.clear();
+  for (final f in [filter, _sentinel]) {
+    try {
+      await player.setAudioEffects([RawAudioEffect(f)]);
+    } catch (_) {
+      // Rejection at the typed-setter boundary is fine: what counts is
+      // whether a "filter not found" log entry fires.
+    }
+  }
+  await waitUntil(
+    () => lines.any((l) => l.contains(_sentinel)),
+    timeout: const Duration(seconds: 10),
+    reason:
+        'A bogus lavfi-* filter must produce a recognizable log entry. If '
+        'this fires, libmpv changed its phrasing: update _saysMissing.',
+  );
+  return lines.takeWhile((l) => !l.contains(_sentinel)).toList();
+}
 
 void main() {
   runtimeSuite(() {
@@ -260,13 +298,7 @@ void main() {
         // Capture log entries that signal a filter wasn't registered.
         final cannotFind = <String>[];
         final logSub = player.stream.log.listen((entry) {
-          final m = entry.text.toLowerCase();
-          if (m.contains('no such filter') ||
-              m.contains('cannot find filter') ||
-              m.contains('unknown filter') ||
-              m.contains("isn't supported")) {
-            cannotFind.add(entry.text.trim());
-          }
+          if (_saysMissing(entry.text)) cannotFind.add(entry.text.trim());
         });
 
         // Filters of kFiltersNeedingParams that don't accept a no-arg
@@ -292,25 +324,16 @@ void main() {
         for (final name in kAudioFilterNames) {
           if (!kFiltersNeedingParams.contains(name)) continue;
           if (registrationOnly.contains(name)) continue;
-          cannotFind.clear();
           final arg = argDefaults[name];
           final filterStr = arg == null || arg.isEmpty
               ? 'lavfi-$name'
               : 'lavfi-$name=$arg';
-          try {
-            await player.setAudioEffects([RawAudioEffect(filterStr)]);
-          } catch (_) {
-            // Rejection at the typed-setter boundary is fine — what we
-            // care about is whether a "filter not found" log entry fires.
-          }
-          await Future<void>.delayed(_logWait);
-          if (cannotFind.isNotEmpty) {
-            missing.add('$name → ${cannotFind.first}');
-          }
-          try {
-            await player.setAudioEffects(const []);
-          } catch (_) {}
+          final lines = await _missingLines(player, cannotFind, filterStr);
+          if (lines.isNotEmpty) missing.add('$name → ${lines.first}');
         }
+        try {
+          await player.setAudioEffects(const []);
+        } catch (_) {}
 
         await logSub.cancel();
 
@@ -322,42 +345,65 @@ void main() {
               'but are NOT registered in the bundled libmpv '
               'binary:\n  ${missing.join("\n  ")}',
         );
-      }, timeout: const Timeout(Duration(seconds: 60)));
+      }, timeout: const Timeout(Duration(seconds: 120)));
 
-      // Meta-test: verifies the detection mechanism. If this stops failing,
-      // the filter coverage test above could silently pass when a real
-      // filter goes missing.
-      test(
-        'detection mechanism actually catches a known-missing filter',
-        () async {
-          final cannotFind = <String>[];
-          final logSub = player.stream.log.listen((entry) {
-            final m = entry.text.toLowerCase();
-            if (m.contains('no such filter') ||
-                m.contains('cannot find filter') ||
-                m.contains('unknown filter') ||
-                m.contains("isn't supported")) {
-              cannotFind.add(entry.text.trim());
+      // Meta-tests: the detection the check above runs. If these stop
+      // failing, the check could pass silently when a filter goes missing.
+      group('detection', () {
+        late List<String> lines;
+        late StreamSubscription<MpvLogEntry> logSub;
+        // A log that reaches the listener this much later than mpv wrote
+        // it, line by line in order: what a slow host gives.
+        var lag = Duration.zero;
+
+        setUp(() {
+          lines = <String>[];
+          lag = Duration.zero;
+          logSub = player.stream.log.listen((entry) {
+            if (!_saysMissing(entry.text)) return;
+            final text = entry.text.trim();
+            if (lag == Duration.zero) {
+              lines.add(text);
+            } else {
+              Future<void>.delayed(lag, () => lines.add(text));
             }
           });
-          try {
-            await player.setAudioEffects(const [
-              RawAudioEffect('lavfi-this-filter-does-not-exist'),
-            ]);
-          } catch (_) {}
-          await waitUntil(
-            () => cannotFind.isNotEmpty,
-            reason:
-                'A bogus lavfi-* filter must produce a recognizable log '
-                'entry. If this fires, libmpv changed its phrasing — update '
-                'the substrings above.',
-          );
+        });
+
+        tearDown(() async {
           await logSub.cancel();
           try {
             await player.setAudioEffects(const []);
           } catch (_) {}
-        },
-      );
+        });
+
+        test('catches a known-missing filter', () async {
+          final found = await _missingLines(
+            player,
+            lines,
+            'lavfi-this-filter-does-not-exist',
+          );
+          expect(found, hasLength(1));
+          expect(found.single, contains('this-filter-does-not-exist'));
+        });
+
+        test('catches it when its log comes 300 ms late', () async {
+          lag = const Duration(milliseconds: 300);
+          final found = await _missingLines(
+            player,
+            lines,
+            'lavfi-this-filter-does-not-exist',
+          );
+          expect(found, hasLength(1));
+        });
+
+        test('reports nothing for a filter that is there', () async {
+          expect(
+            await _missingLines(player, lines, 'lavfi-acompressor'),
+            isEmpty,
+          );
+        });
+      });
     });
   });
 }
