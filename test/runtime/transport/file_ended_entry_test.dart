@@ -17,19 +17,15 @@ import '../../_helpers/setter_test_helpers.dart';
 /// them: with gapless audio an entry ends while its buffered audio still
 /// plays, the next event already describes the next entry, and a stop
 /// resets the position.
-/// Skips the test, and returns true, when the END_FILE of the libmpv does
-/// not carry the duration and position of the entry (`mak-end-file-fields`
-/// below 4, before libmpv-r21). On CI a run of r21 or later must have them.
-Future<bool> _skipWithoutEntryFields(Player player) async {
+/// The END_FILE of the libmpv carries the duration and position of the
+/// entry (`mak-end-file-fields` 4, from libmpv-r21). The player runs on
+/// the libmpv of its pin only, past r21, so a libmpv without them is a
+/// failure, not a skip.
+Future<void> _expectEntryFields(Player player) async {
   final fields = int.tryParse(
     await player.getRawProperty('mak-end-file-fields') ?? '',
   );
-  if (fields != null && fields >= 4) return false;
-  if (strictLibmpvRelease && expectedLibmpvRelease() >= 21) {
-    fail('mak-end-file-fields is $fields on a run of r21');
-  }
-  markTestSkipped('the libmpv has no mak_duration and mak_position');
-  return true;
+  expect(fields, greaterThanOrEqualTo(4), reason: 'mak-end-file-fields');
 }
 
 void main() {
@@ -167,7 +163,7 @@ void main() {
       test('an entry of 50 ms carries its duration and position', () async {
         final player = await buildPlayer();
         addTearDown(player.dispose);
-        if (await _skipWithoutEntryFields(player)) return;
+        await _expectEntryFields(player);
         final ended = player.stream.endFile
             .firstWhere((e) => e.reason == MpvEndFileReason.eof)
             .timeout(const Duration(seconds: 10));
@@ -216,7 +212,7 @@ void main() {
           'position', () async {
         final player = await buildPlayer();
         addTearDown(player.dispose);
-        if (await _skipWithoutEntryFields(player)) return;
+        await _expectEntryFields(player);
         await player.setAudioNullUntimed(true);
         final files = [
           oneSecondWav,
