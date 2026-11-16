@@ -8,6 +8,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mpv_audio_kit/src/internals/entry_table.dart';
 import 'package:mpv_audio_kit/src/models/media.dart';
 
+import '../../_helpers/wait_until.dart';
+
 /// The playlist entries the player loaded, by entry id: their Media, and
 /// what they hold until mpv can no longer read it. One rule tells that an
 /// entry left: a playlist taken after mpv added it does not list it.
@@ -339,7 +341,7 @@ void main() {
       );
       final source = Object();
       add(3, held: false, live: live(source));
-      await Future<void>.delayed(const Duration(milliseconds: 10));
+      await waitUntil(() => reads.isNotEmpty && ended.isNotEmpty);
       expect(reads, hasLength(1));
       expect(ended, [source]);
     });

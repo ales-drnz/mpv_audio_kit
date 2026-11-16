@@ -11,6 +11,7 @@ import 'package:mpv_audio_kit/src/pcm/pcm_native.dart';
 import 'package:mpv_audio_kit/src/pcm/pcm_source.dart' show pcmLoadOptions;
 
 import '../../_helpers/fake_pcm_native.dart';
+import '../../_helpers/wait_until.dart';
 
 // 1 kHz mono s16le: 2 bytes a frame, 2000 bytes a second. The native
 // buffer holds at least one second (2000 bytes).
@@ -381,8 +382,10 @@ void main() {
       final s = PcmSource.create(_mono);
       expect(PcmSource.debugPolling, isTrue);
       s.abort();
-      await Future<void>.delayed(const Duration(milliseconds: 60));
-      expect(PcmSource.debugPolling, isFalse);
+      await waitUntil(
+        () => !PcmSource.debugPolling,
+        reason: 'the poll timer outlived the source',
+      );
     });
   });
 
@@ -414,8 +417,7 @@ void main() {
       s.add(_ramp(0, 5000));
       native.open(_id(s));
       // The reader is seen at the next slow poll.
-      await Future<void>.delayed(const Duration(milliseconds: 300));
-      expect(s.state, PcmSourceState.reading);
+      await waitUntil(() => s.state == PcmSourceState.reading);
       expect(await pollsIn(const Duration(milliseconds: 400)), greaterThan(8));
       // The queue follows the reader within a poll or two.
       native.readBytes(_id(s), 2000);
@@ -428,16 +430,17 @@ void main() {
       final idle = PcmSource.create(_mono);
       final read = PcmSource.create(_mono);
       native.open(_id(read));
-      await Future<void>.delayed(const Duration(milliseconds: 300));
-      expect(read.state, PcmSourceState.reading);
+      await waitUntil(() => read.state == PcmSourceState.reading);
       // The reader of the first comes while the timer is fast.
       native.open(_id(idle));
       await Future<void>.delayed(const Duration(milliseconds: 100));
       expect(idle.state, PcmSourceState.reading);
       read.abort();
       idle.abort();
-      await Future<void>.delayed(const Duration(milliseconds: 60));
-      expect(PcmSource.debugPolling, isFalse);
+      await waitUntil(
+        () => !PcmSource.debugPolling,
+        reason: 'the poll timer outlived the sources',
+      );
     });
   });
 

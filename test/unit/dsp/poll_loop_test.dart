@@ -10,6 +10,8 @@ import 'dart:async';
 import 'package:mpv_audio_kit/src/dsp/poll_loop.dart';
 import 'package:test/test.dart';
 
+import '../../_helpers/wait_until.dart';
+
 void main() {
   const period = Duration(milliseconds: 5);
 
@@ -55,8 +57,7 @@ void main() {
     expect(loop.isArmed, isFalse);
     loop.arm(period);
     expect(loop.isArmed, isTrue);
-    await Future<void>.delayed(period * 6);
-    expect(ticks, greaterThan(0));
+    await waitUntil(() => ticks > 0, reason: 'the timer never ticked');
     loop.disarm();
     expect(loop.isArmed, isFalse);
     final stopped = ticks;
@@ -72,8 +73,7 @@ void main() {
     await Future<void>.delayed(period * 6);
     expect(ticks, 0, reason: 'the second arm kept the first timer');
     loop.rearm(period);
-    await Future<void>.delayed(period * 6);
-    expect(ticks, greaterThan(0));
+    await waitUntil(() => ticks > 0, reason: 'the rearmed timer never ticked');
     loop.disarm();
   });
 }
