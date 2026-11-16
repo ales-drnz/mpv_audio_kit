@@ -136,7 +136,9 @@ public class MediaSessionPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
       binaryMessenger: messenger)
     eventChannel.setStreamHandler(instance)
 
-    // The engine calls `detachFromEngine(for:)` only on published values.
+    // The iOS engine calls `detachFromEngine(for:)` only on published
+    // values. The macOS engine never calls it: there the session closes on
+    // `disable` alone.
     registrar.publish(instance)
   }
 
@@ -268,6 +270,9 @@ public class MediaSessionPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
     if let cfg = args["config"] as? [String: Any] { currentConfig = cfg }
     if let meta = args["metadata"] as? [String: Any] { currentMetadata = meta }
     if let pb = args["playback"] as? [String: Any] { currentPlayback = pb }
+    // A scrub of the previous session will not land in this one, as on
+    // Android.
+    frozenElapsed = nil
 
     enabled = true
     // Re-point the static handlers at this instance (engine restart
@@ -427,10 +432,7 @@ public class MediaSessionPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
     // suspended (its session deactivated in the background) — not a real
     // call/Siri interruption. Treat it as a no-op so foregrounding doesn't
     // fire a spurious pause/resume.
-    if type == .began,
-       (info[AVAudioSessionInterruptionWasSuspendedKey] as? Bool) == true {
-      return
-    }
+    if type == .began, MediaSessionPlugin.wasSuspended(info) { return }
 
     DispatchQueue.main.async {
       let policy = self.currentInterruptionPolicy()
@@ -473,6 +475,20 @@ public class MediaSessionPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
         break
       }
     }
+  }
+
+  /// Whether a `.began` interruption only says the app was suspended. iOS
+  /// reads the reason key, which replaced the suspended key in iOS 14.5;
+  /// tvOS keeps the suspended key.
+  private static func wasSuspended(_ info: [AnyHashable: Any]) -> Bool {
+    #if os(iOS)
+    guard let raw = info[AVAudioSessionInterruptionReasonKey] as? UInt else {
+      return false
+    }
+    return raw == AVAudioSession.InterruptionReason.appWasSuspended.rawValue
+    #else
+    return (info[AVAudioSessionInterruptionWasSuspendedKey] as? Bool) == true
+    #endif
   }
 
   /// Headphones unplugged → pause, regardless of `interruptionPolicy`

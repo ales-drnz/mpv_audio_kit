@@ -87,6 +87,7 @@ class MprisServer {
   void EmitWith(FlValue* command);  // takes ownership of command
   void WriteArtwork(const uint8_t* data, size_t size, const std::string& mime);
   void SweepArtwork();
+  static std::string ArtRoot(std::string* instance);
   static void RemoveStaleArtDirs(const std::string& root);
   int64_t ExtrapolatedPositionUs() const;
   void AnchorPosition();

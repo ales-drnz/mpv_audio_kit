@@ -45,7 +45,7 @@ refuses a release whose manifest names another ABI.
 * Good, because a stale module in `web/`, or one of another release, fails
   at load.
 * Good, because the layout rules are plain Dart, tested on the VM
-  (test/backend/web_layout_test.dart).
+  (test/unit/backend/web_layout_test.dart).
 * Bad, because a change of a struct needs a new ABI and a release of both
   repositories together.
 * Neutral, because the module must also be of the pinned release (record

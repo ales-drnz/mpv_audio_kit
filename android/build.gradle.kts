@@ -1,5 +1,5 @@
 group = "com.alesdrnz.mpv_audio_kit"
-version = "0.7.1"
+version = "0.7.2"
 
 // AGP and the Kotlin Gradle Plugin are supplied by the consuming app's build
 // (and by flutter_tools), so this module declares no buildscript classpath of
@@ -76,15 +76,15 @@ dependencies {
     // lock-screen / Android-11+ media controls, hardware & Bluetooth
     // media keys). The custom SimpleBasePlayer adapter is a controller
     // only — libmpv decodes in-process; Media3 never touches audio.
-    val media3Version = "1.10.1"
+    val media3Version = "1.11.1"
     implementation("androidx.media3:media3-session:$media3Version")
     implementation("androidx.media3:media3-common:$media3Version")
 
     testImplementation("org.jetbrains.kotlin:kotlin-test")
-    testImplementation("org.mockito:mockito-core:5.0.0")
-    // JUnit 5 engine for the `useJUnitPlatform()` runner above.
-    testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
+    testImplementation("org.mockito:mockito-core:5.24.0")
+    // JUnit Jupiter engine for the `useJUnitPlatform()` runner above.
+    testImplementation("org.junit.jupiter:junit-jupiter:6.1.3")
     // Gradle 9 no longer brings its own JUnit Platform launcher: the test
     // run needs it on its classpath, at the platform version of Jupiter.
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.10.2")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher:6.1.3")
 }

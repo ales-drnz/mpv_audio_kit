@@ -11,7 +11,7 @@ part '../../generated/library_versions_data.dart';
 ///
 /// {@category State and streams}
 final class LibraryVersions with _$LibraryVersions {
-  /// Version of mpv linked into the current build (e.g. `0.41.0`).
+  /// Version of mpv linked into the current build (e.g. `0.42.0`).
   /// Read once at first observe and stable for the lifetime of the
   /// [Player]. Mirrors mpv's `mpv-version`.
   final String mpvVersion;

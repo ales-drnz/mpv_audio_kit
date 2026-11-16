@@ -3,7 +3,7 @@
 // Use of this source code is governed by BSD 3-Clause license that can be
 // found in the LICENSE file.
 //
-// Shared bootstrap for the runtime-extended setter suites. Most files
+// Shared bootstrap for the runtime setter suites. Most files
 // open the same fixture in `setUpAll`, configure the null AO, and wait
 // for `state.duration` to be populated. This helper collapses that
 // boilerplate into one call.
@@ -17,6 +17,8 @@ import 'package:mpv_audio_kit/src/internals/libmpv_release.dart';
 
 import 'libmpv_resolver.dart';
 import 'release_gate.dart';
+
+export 'wait_until.dart';
 
 /// Default 1-second sine fixture used by the setter suites.
 String defaultFixturePath() =>
@@ -275,25 +277,5 @@ Future<void> expectMpv(Player player, String name, num expected) async {
     expect(int.tryParse(raw ?? ''), expected, reason: reason);
   } else {
     expect(double.tryParse(raw ?? ''), closeTo(expected, 1e-6), reason: reason);
-  }
-}
-
-/// Polls [condition] every [interval] until it holds, and fails the test
-/// with [reason] when it still does not after [timeout]. Use it in place
-/// of a fixed delay before asserting a state that mpv reaches
-/// asynchronously: it returns as soon as the state lands, and waits
-/// longer under a loaded suite instead of flaking.
-Future<void> waitUntil(
-  FutureOr<bool> Function() condition, {
-  Duration timeout = const Duration(seconds: 5),
-  Duration interval = const Duration(milliseconds: 20),
-  String? reason,
-}) async {
-  final deadline = DateTime.now().add(timeout);
-  while (!await condition()) {
-    if (DateTime.now().isAfter(deadline)) {
-      fail(reason ?? 'condition not met within $timeout');
-    }
-    await Future<void>.delayed(interval);
   }
 }

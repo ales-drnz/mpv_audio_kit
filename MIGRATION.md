@@ -135,9 +135,9 @@ await player.sendRawCommand(['change-list', 'stream-lavf-o', 'add', 'timeout=500
 
 `Media.streamLavfOptions` adds options for one entry, on top of them.
 
-## A custom libmpv
+## A libmpv through the user define
 
-An app that bundles its own libmpv through the build hook's `libmpv` user
+An app that bundles a libmpv through the build hook's `libmpv` user
 define gets a warning on `internalLog` when it is older than libmpv-r20 or
 lacks one of its patches, naming what each missing patch costs. It still
 plays. 0.6.2 refuses such a libmpv: see Migrating to 0.6.2.
@@ -390,14 +390,14 @@ Gradle, CocoaPods, SwiftPM and CMake. Nothing changes in a normal app, but:
   `libmpv_audio_kit.framework`, so it no longer collides with media_kit's
   `libmpv` or with the plugin's own framework. Scripts or build steps that
   looked for `libmpv.so` in your app need the new name.
-- To bundle your own libmpv build (offline builds, custom filters), set it
-  in your app's `pubspec.yaml`:
+- To build without network, save the release's libmpv and point the
+  `libmpv` user define at it in your app's `pubspec.yaml`:
 
   ```yaml
   hooks:
     user_defines:
       mpv_audio_kit:
-        libmpv: path/to/your/libmpv
+        libmpv: path/to/the/saved/libmpv
   ```
 
   A directory holds files named like the release assets, one per target.

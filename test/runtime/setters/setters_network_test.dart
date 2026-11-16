@@ -1,0 +1,144 @@
+// Copyright © 2026 & onwards, Alessandro Di Ronza <ales.drnz@gmail.com>.
+// All rights reserved.
+// Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
+
+@TestOn('mac-os || linux || windows')
+library;
+
+import 'dart:async';
+import 'dart:io';
+
+import 'package:mpv_audio_kit/mpv_audio_kit.dart';
+import 'package:test/test.dart';
+
+import '../../_helpers/range_http_server.dart';
+import '../../_helpers/setter_test_helpers.dart';
+
+void main() {
+  final fixturePath = defaultFixturePath();
+
+  runtimeSuite(fixturePath: fixturePath, () {
+    group('Network / demuxer / buffer setters end-to-end', () {
+      late Player player;
+
+      setUpAll(() async {
+        player = await buildPlayerWithFixture(fixturePath: fixturePath);
+      });
+
+      tearDownAll(() async {
+        await player.dispose();
+      });
+
+      test('networkTimeout / tlsVerify round-trip', () async {
+        await player.setNetworkTimeout(const Duration(seconds: 60));
+        expect(
+          player.state.settings.networkTimeout,
+          const Duration(seconds: 60),
+        );
+        await expectMpv(player, 'network-timeout', 60.0);
+
+        await player.setTlsVerify(false);
+        expect(player.state.settings.tlsVerify, isFalse);
+        await player.setTlsVerify(true);
+        expect(player.state.settings.tlsVerify, isTrue);
+      }, timeout: const Timeout(Duration(seconds: 15)));
+
+      test('a networkTimeout above the FFmpeg limit is capped, and an http '
+          'URL still opens', () async {
+        final server = await RangeHttpServer.start({
+          'a.wav': File(fixturePath).readAsBytesSync(),
+        });
+        final other = await buildPlayer();
+        final outcome = Completer<String>();
+        final subs = [
+          other.stream.seekCompleted.listen((_) {
+            if (!outcome.isCompleted) outcome.complete('loaded');
+          }),
+          other.stream.endFile.listen((event) {
+            if (event.reason == MpvEndFileReason.error &&
+                !outcome.isCompleted) {
+              outcome.complete('failed');
+            }
+          }),
+        ];
+        try {
+          await other.setNetworkTimeout(const Duration(hours: 1));
+          await other.open(Media(server.url('a.wav')), play: false);
+          expect(
+            await outcome.future.timeout(const Duration(seconds: 10)),
+            'loaded',
+            reason: 'FFmpeg refuses a timeout past INT_MAX microseconds',
+          );
+          // INT_MAX microseconds, in the state and in mpv alike.
+          const cap = Duration(microseconds: 2147483647);
+          expect(other.state.settings.networkTimeout, cap);
+          expect(await other.getRawProperty('network-timeout'), '2147.483647');
+        } finally {
+          for (final sub in subs) {
+            await sub.cancel();
+          }
+          await other.dispose();
+          await server.close();
+        }
+      }, timeout: const Timeout(Duration(seconds: 30)));
+
+      test('hlsBitrate / cookies / httpProxy round-trip', () async {
+        // Subscribed before the setter: the replay only gives a late
+        // subscriber the current value, not one already overwritten.
+        final hlsMin = player.stream.hlsBitrate
+            .firstWhere((v) => v == HlsBitrate.min)
+            .timeout(const Duration(seconds: 5));
+        await player.setHlsBitrate(HlsBitrate.min);
+        await hlsMin;
+        expect(player.state.settings.hlsBitrate, HlsBitrate.min);
+        expect(await player.getRawProperty('hls-bitrate'), 'min');
+        await player.setHlsBitrate(HlsBitrate.max);
+        expect(player.state.settings.hlsBitrate, HlsBitrate.max);
+
+        final cookiesOn = player.stream.cookies
+            .firstWhere((v) => v)
+            .timeout(const Duration(seconds: 5));
+        await player.setCookies(true);
+        await cookiesOn;
+        expect(player.state.settings.cookies, isTrue);
+        expect(await player.getRawProperty('cookies'), 'yes');
+        await player.setCookies(false);
+        expect(player.state.settings.cookies, isFalse);
+
+        const proxy = 'http://127.0.0.1:3128';
+        final proxySet = player.stream.httpProxy
+            .firstWhere((v) => v == proxy)
+            .timeout(const Duration(seconds: 5));
+        await player.setHttpProxy(proxy);
+        await proxySet;
+        expect(player.state.settings.httpProxy, proxy);
+        expect(await player.getRawProperty('http-proxy'), proxy);
+        await player.setHttpProxy('');
+        expect(player.state.settings.httpProxy, '');
+      }, timeout: const Timeout(Duration(seconds: 15)));
+
+      test(
+        'audioBuffer / audioStreamSilence / audioNullUntimed round-trip',
+        () async {
+          await player.setAudioBuffer(const Duration(milliseconds: 500));
+          expect(
+            player.state.settings.audioBuffer,
+            const Duration(milliseconds: 500),
+          );
+          await expectMpv(player, 'audio-buffer', 0.5);
+
+          await player.setAudioStreamSilence(true);
+          expect(player.state.settings.audioStreamSilence, isTrue);
+          await player.setAudioStreamSilence(false);
+          expect(player.state.settings.audioStreamSilence, isFalse);
+
+          await player.setAudioNullUntimed(true);
+          expect(player.state.settings.audioNullUntimed, isTrue);
+          await player.setAudioNullUntimed(false);
+          expect(player.state.settings.audioNullUntimed, isFalse);
+        },
+        timeout: const Timeout(Duration(seconds: 15)),
+      );
+    });
+  });
+}

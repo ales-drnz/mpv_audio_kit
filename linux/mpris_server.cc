@@ -635,9 +635,18 @@ void MprisServer::WriteArtwork(const uint8_t* data, size_t size,
     // One directory per process: two apps on the kit would otherwise
     // overwrite and delete each other's art-N files. g_get_user_runtime_dir
     // never returns NULL (it falls back to the user cache dir).
-    std::string root = std::string(g_get_user_runtime_dir()) + "/mpv_audio_kit";
-    RemoveStaleArtDirs(root);
-    art_dir_ = root + "/" + std::to_string(getpid());
+    std::string instance;
+    std::string root = ArtRoot(&instance);
+    if (instance.empty()) {
+      RemoveStaleArtDirs(root);
+      art_dir_ = root + "/" + std::to_string(getpid());
+    } else {
+      // The pid of a sandboxed app is nearly always 2 and other instances
+      // are out of sight, so the directory is named by the instance and
+      // nothing else is swept. The runtime dir is a tmpfs: what a crash
+      // leaves goes at logout.
+      art_dir_ = root + "/instance-" + instance;
+    }
   }
   g_mkdir_with_parents(art_dir_.c_str(), 0700);
 
@@ -670,6 +679,34 @@ void MprisServer::WriteArtwork(const uint8_t* data, size_t size,
   } else if (err) {
     g_error_free(err);
   }
+}
+
+// The directory the covers go in. Inside a Flatpak sandbox the runtime dir is
+// private to the sandbox, so the desktop shell, which reads mpris:artUrl from
+// the host, would not find the file. Only $XDG_RUNTIME_DIR/app/$FLATPAK_ID is
+// shared with the host, at the same path. There [instance] gets the Flatpak
+// instance id; elsewhere it stays empty.
+std::string MprisServer::ArtRoot(std::string* instance) {
+  const std::string runtime = g_get_user_runtime_dir();
+  const gchar* app_id = g_getenv("FLATPAK_ID");
+  if (app_id != nullptr && *app_id != '\0') {
+    GKeyFile* info = g_key_file_new();
+    if (g_key_file_load_from_file(info, "/.flatpak-info", G_KEY_FILE_NONE,
+                                  nullptr)) {
+      gchar* id =
+          g_key_file_get_string(info, "Instance", "instance-id", nullptr);
+      if (id != nullptr && *id != '\0' && strchr(id, '/') == nullptr) {
+        *instance = id;
+      }
+      g_free(id);
+    }
+    g_key_file_free(info);
+    if (!instance->empty() && strchr(app_id, '/') == nullptr) {
+      return runtime + "/app/" + app_id + "/mpv_audio_kit";
+    }
+    instance->clear();
+  }
+  return runtime + "/mpv_audio_kit";
 }
 
 // Deletes the artwork directories under [root] left by processes that are

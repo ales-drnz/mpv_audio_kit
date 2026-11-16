@@ -5,7 +5,7 @@ part of '../player.dart';
 
 /// Transport setters: play, pause, stop, seek, chapter navigation,
 /// and the A-B loop controls.
-mixin _PlaybackModule on _PlayerBase {
+mixin _PlaybackModule on _PlayerBase, _PropertiesModule {
   /// Starts or resumes playback. Idempotent: a no-op when already
   /// playing, including the last moments of the queue while the output
   /// buffer still plays. Once the queue has ended ([PlaybackState.completed])
@@ -182,8 +182,8 @@ mixin _PlaybackModule on _PlayerBase {
     // mpv clears its playlist on stop but reports the change only when a
     // file was playing. Idle (after a failed load) it stays silent, so the
     // state would keep the old entries and the live sources they hold.
-    final (rc, node) = await _calls.get('playlist', MpvFormat.mpvFormatNode);
-    if (rc >= 0 && node is List && !_disposed) _updatePlaylistFromNode(node);
+    final node = await _readPlaylist();
+    if (node != null) _updatePlaylistFromNode(node);
   }
 
   /// Seeks playback to a position in the current file.
@@ -334,30 +334,24 @@ mixin _PlaybackModule on _PlayerBase {
   /// of the file seeks back to A again and again. A live [PcmSource] entry
   /// plays on past B.
   Future<void> setAbLoopA(Duration? position) async {
-    await _gate();
-    await _calls.prop(
+    await _write(
       'ab-loop-a',
       position == null ? 'no' : durationToSeconds(position).toStringAsFixed(6),
-    );
-    _updateField(
-      (s) => s.copyWith(abLoopA: position),
       _reactives.abLoopA,
       position,
+      (s) => s.copyWith(abLoopA: position),
     );
   }
 
   /// Sets the A-B loop end point. Pass `null` to disable. Like A, it
   /// belongs to the current file. See [setAbLoopA].
   Future<void> setAbLoopB(Duration? position) async {
-    await _gate();
-    await _calls.prop(
+    await _write(
       'ab-loop-b',
       position == null ? 'no' : durationToSeconds(position).toStringAsFixed(6),
-    );
-    _updateField(
-      (s) => s.copyWith(abLoopB: position),
       _reactives.abLoopB,
       position,
+      (s) => s.copyWith(abLoopB: position),
     );
   }
 
@@ -370,15 +364,12 @@ mixin _PlaybackModule on _PlayerBase {
     if (count != null && count < 0) {
       throw ArgumentError.value(count, 'count', 'must be null (= inf) or >= 0');
     }
-    await _gate();
-    await _calls.prop(
+    await _write(
       'ab-loop-count',
       count == null ? 'inf' : count.toString(),
-    );
-    _updateField(
-      (s) => s.copyWith(abLoopCount: count),
       _reactives.abLoopCount,
       count,
+      (s) => s.copyWith(abLoopCount: count),
     );
   }
 }

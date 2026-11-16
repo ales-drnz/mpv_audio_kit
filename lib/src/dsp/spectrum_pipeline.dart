@@ -12,6 +12,7 @@ import '../mpv_constants.dart';
 import '../types/settings/spectrum_settings.dart';
 import 'band_processor.dart';
 import 'dsp_async_io.dart';
+import 'poll_loop.dart';
 
 /// Real-time FFT + raw PCM pipeline backed by the mpv `pcm-tap-frame`
 /// property.
@@ -84,9 +85,7 @@ class SpectrumPipeline {
   bool _pcmActive = false;
   bool _disposed = false;
   bool _idle = false;
-  Timer? _pollTimer;
-  // Guards against overlapping async polls; see [LoudnessMeterPipeline].
-  bool _polling = false;
+  late final PollLoop _loop = PollLoop(_poll, _doPoll);
 
   // Shared FFT, windowing and EMA pipeline: same component the
   // public [BandProcessor] exposes, so global and per-filter
@@ -107,10 +106,7 @@ class SpectrumPipeline {
     final emitChanged = next.emitInterval != _settings.emitInterval;
     _settings = next;
     _processor.setSettings(next);
-    if (emitChanged && _pollTimer != null) {
-      _pollTimer!.cancel();
-      _pollTimer = Timer.periodic(_interval, (_) => _poll());
-    }
+    if (emitChanged && _loop.isArmed) _loop.rearm(_interval);
   }
 
   /// Stops the poll loop while the core is idle (mpv's `core-idle`) and
@@ -120,8 +116,7 @@ class SpectrumPipeline {
     if (_disposed || idle == _idle) return;
     _idle = idle;
     if (idle) {
-      _pollTimer?.cancel();
-      _pollTimer = null;
+      _loop.disarm();
     } else if (_fftActive || _pcmActive) {
       _maybeStart();
     }
@@ -136,23 +131,21 @@ class SpectrumPipeline {
       : _settings.emitInterval;
 
   void _maybeStart() {
-    if (_disposed || _idle || _pollTimer != null) return;
+    if (_disposed || _idle) return;
     // [BandProcessor] allocates lazily on first [process], so we don't
     // need to prime anything here: just arm the poll loop.
-    _pollTimer = Timer.periodic(_interval, (_) => _poll());
+    _loop.arm(_interval);
   }
 
   void _maybeStop() {
     if (_fftActive || _pcmActive) return;
-    _pollTimer?.cancel();
-    _pollTimer = null;
+    _loop.disarm();
   }
 
   void _poll() {
-    if (_disposed || _polling) return;
+    if (_disposed) return;
     if (!_fftActive && !_pcmActive) return;
-    _polling = true;
-    unawaited(_doPoll().whenComplete(() => _polling = false));
+    _loop.run();
   }
 
   Future<void> _doPoll() async {
@@ -212,8 +205,7 @@ class SpectrumPipeline {
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
-    _pollTimer?.cancel();
-    _pollTimer = null;
+    _loop.disarm();
     if (!_fftCtrl.isClosed) await _fftCtrl.close();
     if (!_pcmCtrl.isClosed) await _pcmCtrl.close();
   }

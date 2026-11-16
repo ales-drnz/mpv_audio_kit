@@ -83,17 +83,11 @@ Loop? deriveLoop(String mpvName, String value, Loop prevMode) {
     return n != null && n > 0;
   }
 
-  final active = isActiveLoopValue(value);
-  switch (mpvName) {
-    case 'loop-file':
-      if (active) return Loop.file;
-      if (prevMode == Loop.file) return Loop.off;
-      return null;
-    case 'loop-playlist':
-      if (active) return Loop.playlist;
-      if (prevMode == Loop.playlist) return Loop.off;
-      return null;
-    default:
-      return null;
-  }
+  return switch ((mpvName, isActiveLoopValue(value))) {
+    ('loop-file', true) => Loop.file,
+    ('loop-file', false) when prevMode == Loop.file => Loop.off,
+    ('loop-playlist', true) => Loop.playlist,
+    ('loop-playlist', false) when prevMode == Loop.playlist => Loop.off,
+    _ => null,
+  };
 }

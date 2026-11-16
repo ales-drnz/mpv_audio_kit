@@ -59,7 +59,7 @@ jobs:
           pactl set-default-sink ci_null
       # The lines the tests reach: mutants of the others are not run.
       - name: Coverage of the tests the mutants run
-        run: flutter test -x network --coverage test/internal test/event_isolate test/player test/runtime test/reactive
+        run: flutter test -x network --coverage test/unit/internals test/unit/player test/unit/reactive test/unit/generated test/unit/types test/runtime/lifecycle/locale_invariant_test.dart test/runtime/lifecycle/locale_numeric_macos_test.dart test/runtime/setters/player_runtime_test.dart
       - name: Mutation test
         run: |
           dart pub get -C tool/mutation

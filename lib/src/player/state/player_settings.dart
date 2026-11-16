@@ -108,8 +108,12 @@ final class PlayerSettings with _$PlayerSettings {
   final Duration networkTimeout;
 
   /// Whether to verify TLS/SSL certificates on `https://` streams.
-  /// Mirrors mpv's `--tls-verify` default of `false`. Enable via
-  /// [Player.setTlsVerify] when a bundled CA is in use.
+  ///
+  /// `false` by default, so a home server with a self-signed certificate
+  /// plays. mpv itself verifies by default since 0.42; the player sets
+  /// `tls-verify=no` before it starts. A later release turns verification
+  /// on by default. Enable it with [Player.setTlsVerify]: the bundled
+  /// libmpv carries the Mozilla CA roots, so it works on every platform.
   final bool tlsVerify;
 
   /// Absolute filesystem path to a custom PEM bundle of trusted CA

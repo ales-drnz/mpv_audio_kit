@@ -8,19 +8,29 @@
 # API breaks and the CHANGELOG entry of this version has no **Breaking**
 # part. A run of dart_apitool that gives no report only warns.
 #
+# A change counts as breaking when the report lists it under its heading of
+# breaking changes ("### 🚨 BREAKING CHANGES") and it is not a private super
+# type of a class (a mixin named with "_"), which no user can name: a
+# restructuring of the player's private mixins is not a break.
+# API_DIFF_REPORT names a report to read instead of running dart_apitool
+# (test/ci/api_diff_test.sh).
+#
 #   scripts/ci/api_diff.sh
 set -euo pipefail
 version="$(sed -n 's/^version: //p' pubspec.yaml)"
-report="$(mktemp)"
-
-dart pub global activate dart_apitool 0.23.2 >/dev/null
 status=0
-dart pub global run dart_apitool:main diff \
-  --old pub://mpv_audio_kit \
-  --new . \
-  --version-check-mode=none \
-  --report-format=markdown \
-  --report-file-path="$report" || status=$?
+if [[ -n "${API_DIFF_REPORT:-}" ]]; then
+  report="$API_DIFF_REPORT"
+else
+  report="$(mktemp)"
+  dart pub global activate dart_apitool 0.23.2 >/dev/null
+  dart pub global run dart_apitool:main diff \
+    --old pub://mpv_audio_kit \
+    --new . \
+    --version-check-mode=none \
+    --report-format=markdown \
+    --report-file-path="$report" || status=$?
+fi
 
 if [[ ! -s "$report" ]]; then
   echo "::warning title=API against pub.dev::dart_apitool gave no report (exit $status)"
@@ -39,8 +49,15 @@ entry="$(awk -v v="## [$version]" '
   on { print }
 ' CHANGELOG.md)"
 
-# A heading of breaking changes, not of non-breaking ones.
-if grep -Eiq '^#+ *breaking' "$report"; then
+# The changes under the heading of breaking changes (whatever its emoji, not
+# the heading of non-breaking ones), but a private super type.
+breaking="$(awk '
+  /^#+ / { on = (tolower($0) ~ /breaking/ && tolower($0) !~ /non-breaking/); next }
+  on && /\*\*/ && $0 !~ /Super Type "_[^"]*" (removed|added)/ { print }
+' "$report")"
+if [[ -n "$breaking" ]]; then
+  echo "Breaking changes:"
+  echo "$breaking"
   if grep -q '^\*\*Breaking\*\*' <<<"$entry"; then
     echo "API against pub.dev: breaking changes, stated in the CHANGELOG entry of $version"
   else

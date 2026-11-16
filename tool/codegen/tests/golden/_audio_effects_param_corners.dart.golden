@@ -1,0 +1,69 @@
+// AUTO-GENERATED: do not edit by hand.
+//
+// Per-filter param corner-case manifest. See
+// test/runtime/effects/audio_effects_param_ranges_test.dart
+// for the test that iterates this list. kFilterSamples holds every
+// filter at its defaults and the curated presets, which
+// test/unit/internals/audio_effects_validation_test.dart passes through
+// the effects validator with the corners.
+
+// ignore_for_file: lines_longer_than_80_chars, unnecessary_const, prefer_const_constructors, prefer_const_literals_to_create_immutables
+
+import 'package:mpv_audio_kit/mpv_audio_kit.dart';
+
+typedef ParamCorner = ({String filter, String label, List<AudioEffect> bundle});
+
+const List<ParamCorner> kFilterParamCorners = [
+  (filter: 'acompressor', label: 'attack=attackMin', bundle: const [AcompressorEffect(attack: AcompressorEffect.attackMin)]),
+  (filter: 'acompressor', label: 'attack=attackMax', bundle: const [AcompressorEffect(attack: AcompressorEffect.attackMax)]),
+  (filter: 'acompressor', label: 'knee=kneeMin', bundle: const [AcompressorEffect(knee: AcompressorEffect.kneeMin)]),
+  (filter: 'acompressor', label: 'knee=kneeMax', bundle: const [AcompressorEffect(knee: AcompressorEffect.kneeMax)]),
+  (filter: 'acompressor', label: 'level_in=levelInMin', bundle: const [AcompressorEffect(levelIn: AcompressorEffect.levelInMin)]),
+  (filter: 'acompressor', label: 'level_in=levelInMax', bundle: const [AcompressorEffect(levelIn: AcompressorEffect.levelInMax)]),
+  (filter: 'acompressor', label: 'level_sc=levelScMin', bundle: const [AcompressorEffect(levelSc: AcompressorEffect.levelScMin)]),
+  (filter: 'acompressor', label: 'level_sc=levelScMax', bundle: const [AcompressorEffect(levelSc: AcompressorEffect.levelScMax)]),
+  (filter: 'acompressor', label: 'makeup=makeupMin', bundle: const [AcompressorEffect(makeup: AcompressorEffect.makeupMin)]),
+  (filter: 'acompressor', label: 'makeup=makeupMax', bundle: const [AcompressorEffect(makeup: AcompressorEffect.makeupMax)]),
+  (filter: 'acompressor', label: 'mix=mixMin', bundle: const [AcompressorEffect(mix: AcompressorEffect.mixMin)]),
+  (filter: 'acompressor', label: 'mix=mixMax', bundle: const [AcompressorEffect(mix: AcompressorEffect.mixMax)]),
+  (filter: 'acompressor', label: 'ratio=ratioMin', bundle: const [AcompressorEffect(ratio: AcompressorEffect.ratioMin)]),
+  (filter: 'acompressor', label: 'ratio=ratioMax', bundle: const [AcompressorEffect(ratio: AcompressorEffect.ratioMax)]),
+  (filter: 'acompressor', label: 'release=releaseMin', bundle: const [AcompressorEffect(release: AcompressorEffect.releaseMin)]),
+  (filter: 'acompressor', label: 'release=releaseMax', bundle: const [AcompressorEffect(release: AcompressorEffect.releaseMax)]),
+  (filter: 'acompressor', label: 'threshold=thresholdMin', bundle: const [AcompressorEffect(threshold: AcompressorEffect.thresholdMin)]),
+  (filter: 'acompressor', label: 'threshold=thresholdMax', bundle: const [AcompressorEffect(threshold: AcompressorEffect.thresholdMax)]),
+  (filter: 'afade', label: 'duration=500us', bundle: const [AfadeEffect(duration: Duration(microseconds: 500))]),
+  (filter: 'afade', label: 'nb_samples=nbSamplesMin', bundle: const [AfadeEffect(nbSamples: AfadeEffect.nbSamplesMin)]),
+  (filter: 'afade', label: 'nb_samples=nbSamplesMax', bundle: const [AfadeEffect(nbSamples: AfadeEffect.nbSamplesMax)]),
+  (filter: 'afade', label: 'silence=silenceMin', bundle: const [AfadeEffect(silence: AfadeEffect.silenceMin)]),
+  (filter: 'afade', label: 'silence=silenceMax', bundle: const [AfadeEffect(silence: AfadeEffect.silenceMax)]),
+  (filter: 'afade', label: 'start_sample=startSampleMin', bundle: const [AfadeEffect(startSample: AfadeEffect.startSampleMin)]),
+  (filter: 'afade', label: 'start_sample=startSampleMax', bundle: const [AfadeEffect(startSample: AfadeEffect.startSampleMax)]),
+  (filter: 'afade', label: 'start_time=500us', bundle: const [AfadeEffect(startTime: Duration(microseconds: 500))]),
+  (filter: 'afade', label: 'unity=unityMin', bundle: const [AfadeEffect(unity: AfadeEffect.unityMin)]),
+  (filter: 'afade', label: 'unity=unityMax', bundle: const [AfadeEffect(unity: AfadeEffect.unityMax)]),
+  (filter: 'compand', label: 'delay=delayMin', bundle: const [CompandEffect(delay: CompandEffect.delayMin)]),
+  (filter: 'compand', label: 'delay=delayMax', bundle: const [CompandEffect(delay: CompandEffect.delayMax)]),
+  (filter: 'compand', label: 'gain=gainMin', bundle: const [CompandEffect(gain: CompandEffect.gainMin)]),
+  (filter: 'compand', label: 'gain=gainMax', bundle: const [CompandEffect(gain: CompandEffect.gainMax)]),
+  (filter: 'compand', label: 'volume=volumeMin', bundle: const [CompandEffect(volume: CompandEffect.volumeMin)]),
+  (filter: 'compand', label: 'volume=volumeMax', bundle: const [CompandEffect(volume: CompandEffect.volumeMax)]),
+  (filter: 'ebur128', label: 'meter=meterMin', bundle: const [Ebur128Effect(meter: Ebur128Effect.meterMin)]),
+  (filter: 'ebur128', label: 'meter=meterMax', bundle: const [Ebur128Effect(meter: Ebur128Effect.meterMax)]),
+  (filter: 'ebur128', label: 'panlaw=panlawMin', bundle: const [Ebur128Effect(panlaw: Ebur128Effect.panlawMin)]),
+  (filter: 'ebur128', label: 'panlaw=panlawMax', bundle: const [Ebur128Effect(panlaw: Ebur128Effect.panlawMax)]),
+  (filter: 'ebur128', label: 'target=targetMin', bundle: const [Ebur128Effect(target: Ebur128Effect.targetMin)]),
+  (filter: 'ebur128', label: 'target=targetMax', bundle: const [Ebur128Effect(target: Ebur128Effect.targetMax)]),
+];
+
+const List<ParamCorner> kFilterSamples = [
+  (filter: 'acompressor', label: 'defaults', bundle: const [AcompressorEffect()]),
+  (filter: 'aeval', label: 'defaults', bundle: const [AevalEffect(exprs: 'val(0)|val(1)')]),
+  (filter: 'aeval', label: 'preset Passthrough', bundle: const [AevalEffect(exprs: 'val(0)|val(1)')]),
+  (filter: 'aeval', label: 'preset Mute', bundle: const [AevalEffect(exprs: '0|0')]),
+  (filter: 'aeval', label: 'preset Mono sum', bundle: const [AevalEffect(exprs: '0.5*val(0)+0.5*val(1)|0.5*val(0)+0.5*val(1)')]),
+  (filter: 'aeval', label: 'preset Invert phase', bundle: const [AevalEffect(exprs: '-val(0)|-val(1)')]),
+  (filter: 'afade', label: 'defaults', bundle: const [AfadeEffect()]),
+  (filter: 'compand', label: 'defaults', bundle: const [CompandEffect()]),
+  (filter: 'ebur128', label: 'defaults', bundle: const [Ebur128Effect()]),
+];

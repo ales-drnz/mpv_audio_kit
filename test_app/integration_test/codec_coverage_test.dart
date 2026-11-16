@@ -3,7 +3,7 @@
 // Use of this source code is governed by BSD 3-Clause license that can be
 // found in the LICENSE file.
 //
-// On-device codec coverage. Mirrors `test/runtime_extended/codec_coverage_test.dart`
+// On-device codec coverage. Mirrors `test/runtime/codec/codec_coverage_test.dart`
 // against the platform-specific libmpv binary (macOS, iOS, Android, Windows,
 // Linux).
 // Both suites read from the same `_helpers/codec.dart` matrix; the only

@@ -177,9 +177,9 @@ class MediaSessionHub {
     // SMTC types are agile, but C++/WinRT requires the apartment initialised.
     // Flutter already inits COM on this (platform) thread as STA; match that
     // (init_apartment defaults to MTA, which would just throw
-    // RPC_E_CHANGED_MODE and mask the real apartment). The artwork async work
-    // runs on its own MTA thread — see MakeThumbnail — since `.get()` is
-    // unsafe on this STA thread.
+    // RPC_E_CHANGED_MODE and mask the real apartment). MakeThumbnail builds
+    // the cover stream without async calls, since `.get()` is unsafe on this
+    // STA thread.
     try {
       winrt::init_apartment(winrt::apartment_type::single_threaded);
     } catch (const winrt::hresult_error&) {

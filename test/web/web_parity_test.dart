@@ -6,7 +6,7 @@
 // The parity scenario (test/_helpers/parity_scenario.dart) on the web
 // backend, with the module of test/web/module: its trace must be the one
 // the native backend gives (test/web/parity_trace.txt, which
-// test/runtime_extended/web_parity_native_test.dart checks on the VM).
+// test/runtime/events/web_parity_native_test.dart checks on the VM).
 // Two fixtures are files of the page over http (the test server answers
 // no Range, so they play through without seeks), two are blobs, as a
 // picked file arrives (seekable).

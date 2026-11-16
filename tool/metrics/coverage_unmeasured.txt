@@ -35,3 +35,4 @@ none lib/src/types/enums/loop.dart
 none lib/src/types/enums/media_action.dart
 none lib/src/types/enums/tap_side.dart
 none lib/src/types/state/mpv_playback_state.dart
+none lib/src/mpv_bindings.dart

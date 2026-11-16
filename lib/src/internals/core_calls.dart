@@ -72,7 +72,7 @@ final class CoreCalls {
   /// How many commands that move playlist indices went out (removes,
   /// moves, inserts, replacing loads, clears, shuffles, stop): mpv removes
   /// by index, so a read of the playlist names the right entry only if
-  /// none went out after it (see `_FfiModule._cutPcm`).
+  /// none went out after it (see `_PcmCutModule._cutPcm`).
   int get playlistShifts => _playlistShifts;
 
   /// Writes a property and throws [MpvCommandException] on rejection.
@@ -153,7 +153,7 @@ final class CoreCalls {
 
   /// Reads a property in [format] and resolves with `(error, value)`,
   /// the value decoded by the event isolate.
-  Future<(int, dynamic)> get(String name, int format) =>
+  Future<(int, Object?)> get(String name, int format) =>
       _mpv.getProperty(name, format);
 
   /// Applies a settings bundle backed by several mpv properties: [writes]

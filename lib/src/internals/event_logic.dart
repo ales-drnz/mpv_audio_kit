@@ -91,7 +91,17 @@ final class EventLogic {
 
   final CoreReader _reader;
   final _Send _send;
-  final _PropertyCache _cache = _PropertyCache();
+  late final _PropertyForwarder _properties = _PropertyForwarder(
+    _reader,
+    _send,
+  );
+  late final _EndOfContent _endOfContent = _EndOfContent(
+    _reader,
+    _send,
+    _properties,
+  );
+
+  _PropertyCache get _cache => _properties.cache;
 
   /// Registers the observe format of [name], which [property] changes and
   /// the re-read of an unavailable value use.
@@ -99,7 +109,7 @@ final class EventLogic {
 
   /// How long the pump may wait for the next event: [cap], shortened to the
   /// end of the earliest throttle window while a value is held back.
-  double waitSeconds(double cap) => _waitSeconds(_cache, cap);
+  double waitSeconds(double cap) => _properties.waitSeconds(cap);
 
   /// Whether a value is held back for a throttle window or the group, or
   /// a read of the end of content is due.
@@ -113,13 +123,13 @@ final class EventLogic {
   /// reads the end of content once that is due. Returns the future of that read; the pump waits for it
   /// before the next event.
   Future<void>? idle() {
-    _flushTrailing(_send, _cache);
+    _properties.flushTrailing();
     final again = _cache.endOfContentAgainAt;
     if (again == null || _throttleClock.elapsedMilliseconds < again) {
       return null;
     }
     _cache.endOfContentAgainAt = null;
-    return _sendEndOfContent(_reader, _send, _cache);
+    return _endOfContent.send();
   }
 
   /// A property change of [name] in [format], with the [value] the
@@ -129,15 +139,23 @@ final class EventLogic {
   /// for it before the next event.
   Future<void>? property(String name, int format, Object? value) {
     if (name == 'time-pos' && _cache.timePosRead) {
-      return _forwardFreshTimePos(_reader, _send, _cache);
+      return _properties.forwardFreshTimePos();
     }
     if (name == 'pause') {
       _cache.sentPause = value is int ? value : null;
     } else if (name != 'keep-open-parked') {
-      _dispatchProperty(_send, name, format, value, _cache);
+      _properties.dispatch(name, format, value);
+      if (identical(value, kPropertyUnavailable)) {
+        final late = _properties.rereadLate(name);
+        if (late != null) {
+          return _kEndOfContentTriggers.contains(name)
+              ? late.then((_) => _endOfContent.send())
+              : late;
+        }
+      }
     }
     if (_kEndOfContentTriggers.contains(name)) {
-      return _sendEndOfContent(_reader, _send, _cache);
+      return _endOfContent.send();
     }
     return null;
   }
@@ -147,7 +165,7 @@ final class EventLogic {
   /// from the event itself; the values it left unavailable are read again.
   /// Returns the future of the reads; the pump waits for it before the
   /// next event.
-  Future<void> audioReconfig() => _rereadUnavailable(_reader, _send, _cache);
+  Future<void> audioReconfig() => _properties.rereadUnavailable();
 
   /// Any other event, as the transport decoded it: the bare
   /// [MpvEventFileLoaded], [MpvEventPlaybackRestart] and [MpvEventEndFile]
@@ -160,10 +178,12 @@ final class EventLogic {
         // new one starts.
         _cache.trailing.clear();
         _cache.started = _StartedEntry(entryId);
+        _cache.restarted = false;
         _send(event);
       case MpvEventFileLoaded():
         return _fileLoaded();
       case final MpvEventEndFile ended:
+        _cache.restarted = false;
         if (ended.reason == mpv.MpvEndFileReason.mpvEndFileReasonEof ||
             ended.reason == mpv.MpvEndFileReason.mpvEndFileReasonError) {
           return _endFile(ended);
@@ -194,16 +214,16 @@ final class EventLogic {
     }
     // The values mpv has not notified again go first, so the player has
     // them when FILE_LOADED ends the loading state.
-    await _rereadUnavailable(_reader, _send, _cache);
+    await _properties.rereadUnavailable();
     _send(loaded);
     // A short entry can reach EOF before this event is handled: its
     // `eof-reached` change may already be spent (re-read above, or skipped
     // by mpv), so the end of content is read again after it.
-    await _sendEndOfContent(_reader, _send, _cache);
+    await _endOfContent.send();
   }
 
   Future<void> _endFile(MpvEventEndFile ended) async {
-    final lastEntry = await _isLastEntry(_reader, ended.entryId);
+    final lastEntry = await _endOfContent.isLastEntry(ended.entryId);
     _send(_endFileEvent(ended, lastEntry: lastEntry));
   }
 
@@ -238,14 +258,13 @@ final class EventLogic {
   // already have moved.
   Future<void> _playbackRestart() async {
     _cache.trailing.remove('time-pos');
-    _flushGroup(_send, _cache);
+    _properties.flushGroup();
     // Ahead of the event, so a listener of the restart sees `playing`.
-    await _forwardCoreIdle(_reader, _send, _cache);
-    _send(
-      MpvEventPlaybackRestart(timePos: await _readTimePos(_reader, _cache)),
-    );
-    await _rereadUnavailable(_reader, _send, _cache);
-    await _sendEndOfContent(_reader, _send, _cache);
+    await _properties.forwardCoreIdle();
+    _send(MpvEventPlaybackRestart(timePos: await _properties.readTimePos()));
+    await _properties.rereadUnavailable();
+    _cache.restarted = true;
+    await _endOfContent.send();
   }
 
   /// Reads the file-load payload (path, playlist, position, chapters,
@@ -263,7 +282,7 @@ final class EventLogic {
     return MpvEventFileLoaded(
       path: await _reader.string('path'),
       playlist: await _reader.node('playlist'),
-      timePos: await _readTimePos(_reader, _cache),
+      timePos: await _properties.readTimePos(),
       chapterIndex: await _reader.int64('chapter'),
       chapterList: await _reader.node('chapter-list'),
       coverData: switch (cover?.$1) {

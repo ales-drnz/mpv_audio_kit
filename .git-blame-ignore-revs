@@ -1,2 +1,27 @@
 # Repo-wide reformat with the tall-style formatter (no logic change).
 493277dedbbf6ce3014138ecded59282ee71c3f4
+
+# The settings class emitter of tool/codegen split into one function per section (no logic change).
+abc5d40885ffc5fd5285b9a70218a92933797d9a
+# Each generated effect class moved into its own part of audio_effects_settings (no logic change).
+dc1e1b0821a3bd85b4452c9adba82d9ea6173c39
+# K10 moves of 0.7.2, no logic change: the libmpv functions in ffi/.
+d9521a935435ffdd03d2f8433651f7cd1f0573ca
+# The five structs only the tests use, moved to test/.
+24043bb44c90f78fe2e366aac5e5db01498af34a
+# event_isolate.dart in four files.
+91b6b5b2c7540c242971ee015ab67bd0a96e0b51
+# default_specs.dart in a part per domain.
+12cc3a32d169d78edaf039c5467ec1da385bd3f6
+# The poll and the registry of the live PCM sources in parts.
+b7ff433f6fa360a5bc98f217d3d0ada1aa9e4e25
+# The URI functions of the media session in media_session_uris.dart.
+64c2833523949746ae1f509eb07cc878ff98b61c
+# _PlayerBase in its own part, transport and lifecycle parts out of mixins (move only).
+b222a71cbd066fa458943dd6dc92efdcd5669277
+# The four largest player parts split by what they hold (move only).
+3cab0812dce3399731b705b0accf6f278cf9ccf8
+# The cut of an aborted live source in its own part (move only).
+53a0063118de8dddcd2082be6b7419d39341f352
+# The tests in test/unit by area of lib/src and in test/runtime by theme (move only).
+d65c665b1a63bad622cf2e7fb121e386993321be

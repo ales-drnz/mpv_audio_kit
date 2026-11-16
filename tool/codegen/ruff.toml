@@ -1,0 +1,8 @@
+# ruff for the codegen, as in libmpv-scripts: pyflakes and the pycodestyle
+# errors and warnings, without the line length (the emitted Dart and its
+# doc text make long lines). CI runs it in the Analyze job.
+cache-dir = ".build/ruff"
+
+[lint]
+select = ["E", "F", "W"]
+ignore = ["E501"]

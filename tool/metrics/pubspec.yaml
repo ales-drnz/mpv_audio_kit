@@ -3,10 +3,10 @@ description: The metrics of mpv_audio_kit the CI ratchet holds (tool/metrics/REA
 publish_to: none
 
 environment:
-  sdk: ^3.10.0
+  sdk: ^3.13.0
 
 dependencies:
-  analyzer: ^9.0.0
+  analyzer: ^14.7.0
 
 dev_dependencies:
-  test: ^1.25.0
+  test: ^1.33.0

@@ -20,6 +20,8 @@ await player.setCache(player.state.settings.cache.copyWith(secs: const Duration(
 
 With `onDisk`, create the player with `PlayerConfiguration(demuxerCacheDir: ...)` and a writable folder. The default location is often not writable on mobile.
 
+`onDisk` moves the cache out of memory, and it is not a persistent cache. mpv creates a new file with a random name each time it opens a source, and never reads an earlier one. By default it deletes the file as soon as it creates it. A file played again is downloaded again. To keep a file, see Offline listening below.
+
 ### Demuxer buffer
 
 The demuxer reads the container and buffers its packets. `setDemuxer` sets how much it keeps.
@@ -35,6 +37,34 @@ await player.setDemuxer(const DemuxerSettings(
 <img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/demuxer_cache.png" width="100%" alt="The demuxer cache around the playhead: maxBackBytes behind it, maxBytes and CacheSettings.secs ahead of it">
 
 `maxBytes` bounds the cache in practice, because the default `CacheSettings.secs` is 1000 hours.
+
+## Offline listening
+
+Download the file with the app's HTTP client and open it as a local file. Write to a temporary name and rename it at the end, so a cut download never plays as a whole file.
+
+```dart
+Future<Media> download(Uri url, File target) async {
+  final part = File('${target.path}.part');
+  final client = HttpClient();
+  try {
+    final request = await client.getUrl(url);
+    request.headers.set('Authorization', 'Bearer my_token');
+    final response = await request.close();
+    if (response.statusCode != HttpStatus.ok) {
+      throw HttpException('HTTP ${response.statusCode}', uri: url);
+    }
+    await response.pipe(part.openWrite());
+    await part.rename(target.path);
+  } finally {
+    client.close();
+  }
+  return Media(Uri.file(target.path).toString());
+}
+
+await player.open(await download(url, File('${dir.path}/episode-42.mp3')));
+```
+
+The app decides where the files go, when they expire and how much space they take. The example uses `dart:io`, so it does not run on the web. There a downloaded `Blob` plays with `Media.fromBlob` while the page stays open.
 
 ## Live streams
 
@@ -83,6 +113,7 @@ await player.setCookies(true);                          // off by default
 
 - `Duration.zero` uses FFmpeg's default timeout for each protocol. For `smb2://` it gives the connection 30 s and no limit on the reads.
 - The longest timeout is about 36 minutes, and a longer one is capped there.
+- TLS verification is off by default, so a server with a self-signed certificate plays. A later release turns it on by default.
 - TLS verification uses the CA roots built into libmpv. A CA file replaces them.
 - The proxy and cookies take effect from the next load. `https://` sources go through the proxy with `CONNECT`.
 

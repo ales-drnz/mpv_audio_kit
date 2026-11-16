@@ -3,12 +3,17 @@
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 #include "media_session_smtc.h"
 
+#include <windows.h>
+
+#include <shcore.h>
+#include <shlwapi.h>
+
 #include <winrt/Windows.Foundation.Collections.h>
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.Storage.Streams.h>
 
 #include <chrono>
-#include <future>
+#include <limits>
 #include <utility>
 
 namespace mpv_audio_kit {
@@ -44,43 +49,35 @@ std::string RepeatToLoop(wm::MediaPlaybackAutoRepeatMode mode) {
 }
 
 // Builds an in-memory thumbnail stream reference from raw encoded image bytes.
-// C++/WinRT's blocking `.get()` is only safe on an MTA thread, but the Flutter
-// platform thread (where the channel handlers run) is STA — calling `.get()`
-// there can assert/deadlock. So the async store/flush run on a dedicated MTA
-// thread; the platform thread blocks on a std::future (a plain C++ wait, not a
-// COM wait). The returned reference is agile, so it crosses back safely.
+// The stream is made synchronously on the calling thread: SHCreateMemStream
+// copies the bytes into a COM stream and CreateRandomAccessStreamOverStream
+// wraps it as a WinRT stream. Nothing waits on an async operation, so the
+// platform thread (STA, where `.get()` is unsafe) never blocks on a worker.
 // Returns the RandomAccessStreamReference runtime class (not the bare
 // IRandomAccessStreamReference interface): the SMTC DisplayUpdater's `Thumbnail`
 // setter is projected as `Thumbnail(RandomAccessStreamReference const&)`, and
 // the interface does not implicitly convert back up to the concrete class.
 wss::RandomAccessStreamReference MakeThumbnail(const std::vector<uint8_t>& bytes) {
-  // By reference: the caller waits in get() below until the worker is done,
-  // so the bytes outlive it and are not copied for it.
-  return std::async(std::launch::async,
-                    [&bytes]() -> wss::RandomAccessStreamReference {
-    // `.get()` is only safe on an MTA thread; this dedicated worker is MTA.
-    // init_apartment can throw RPC_E_CHANGED_MODE on a pooled/reused thread —
-    // swallow it (agile work is fine regardless). Do NOT uninit_apartment():
-    // COM tears down on thread exit, and an explicit uninit here would destroy
-    // the apartment while the returned reference's proxy is still live.
-    try {
-      winrt::init_apartment(winrt::apartment_type::multi_threaded);
-    } catch (const winrt::hresult_error&) {
-    }
-    try {
-      wss::InMemoryRandomAccessStream stream;
-      wss::DataWriter writer{stream};
-      writer.WriteBytes(winrt::array_view<uint8_t const>(
-          bytes.data(), bytes.data() + bytes.size()));
-      writer.StoreAsync().get();  // commits the buffer to the in-memory stream
-      writer.DetachStream();
-      stream.Seek(0);
-      return wss::RandomAccessStreamReference::CreateFromStream(stream);
-    } catch (const winrt::hresult_error&) {
-      // Undecodable / bad blob → no thumbnail rather than a crashed thread.
-      return wss::RandomAccessStreamReference{nullptr};
-    }
-  }).get();
+  if (bytes.size() > (std::numeric_limits<UINT>::max)()) {
+    return wss::RandomAccessStreamReference{nullptr};
+  }
+  IStream* memory =
+      SHCreateMemStream(bytes.data(), static_cast<UINT>(bytes.size()));
+  if (memory == nullptr) return wss::RandomAccessStreamReference{nullptr};
+  wss::IRandomAccessStream stream{nullptr};
+  const winrt::guid iid = winrt::guid_of<wss::IRandomAccessStream>();
+  const HRESULT hr = CreateRandomAccessStreamOverStream(
+      memory, BSOS_DEFAULT, reinterpret_cast<const GUID&>(iid),
+      winrt::put_abi(stream));
+  // The WinRT stream holds its own reference to the COM stream.
+  memory->Release();
+  if (FAILED(hr) || !stream) return wss::RandomAccessStreamReference{nullptr};
+  try {
+    return wss::RandomAccessStreamReference::CreateFromStream(stream);
+  } catch (const winrt::hresult_error&) {
+    // A bad blob gives no thumbnail rather than a failed metadata push.
+    return wss::RandomAccessStreamReference{nullptr};
+  }
 }
 
 flutter::EncodableValue Str(const std::optional<std::string>& v) {

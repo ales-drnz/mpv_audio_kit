@@ -144,15 +144,15 @@ List<Field> fieldsOf(DataClass c) {
     featureSet: FeatureSet.latestLanguageVersion(),
   ).unit;
   final cls = unit.declarations.whereType<ClassDeclaration>().singleWhere(
-    (d) => d.name.lexeme == c.name,
+    (d) => d.namePart.typeName.lexeme == c.name,
   );
   final types = <String, String>{
-    for (final f in cls.members.whereType<FieldDeclaration>())
+    for (final f in cls.body.members.whereType<FieldDeclaration>())
       if (!f.isStatic)
         for (final v in f.fields.variables)
           v.name.lexeme: f.fields.type!.toSource(),
   };
-  final ctor = cls.members.whereType<ConstructorDeclaration>().singleWhere(
+  final ctor = cls.body.members.whereType<ConstructorDeclaration>().singleWhere(
     (k) => k.name == null,
   );
   return [
@@ -307,9 +307,8 @@ String generateComposite(
     ..writeln('      identical(this, other) ||')
     ..writeln('      (other is ${c.name} &&')
     ..writeln(
-      [
-        for (final g in groups) '          other.${g.name} == _self.${g.name}',
-      ].join(' &&\n'),
+      [for (final g in groups) '          other.${g.name} == _self.${g.name}']
+          .join(' &&\n'),
     )
     ..writeln('      );')
     ..writeln()

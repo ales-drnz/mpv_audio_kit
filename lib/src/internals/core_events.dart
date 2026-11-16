@@ -234,7 +234,7 @@ class MpvEventEndOfContent extends MpvIsolateEvent {
 class MpvEventShutdown extends MpvIsolateEvent {}
 
 /// A `MPV_FORMAT_DOUBLE` property change (e.g. `time-pos`, `volume`).
-class MpvEventPropertyDouble extends MpvPropertyEvent {
+final class MpvEventPropertyDouble extends MpvPropertyEvent {
   /// The mpv property name that changed.
   final String name;
 
@@ -247,7 +247,7 @@ class MpvEventPropertyDouble extends MpvPropertyEvent {
 
 /// A `MPV_FORMAT_FLAG` or `MPV_FORMAT_INT64` property change, both
 /// delivered as a Dart [int].
-class MpvEventPropertyInt extends MpvPropertyEvent {
+final class MpvEventPropertyInt extends MpvPropertyEvent {
   /// The mpv property name that changed.
   final String name;
 
@@ -259,7 +259,7 @@ class MpvEventPropertyInt extends MpvPropertyEvent {
 }
 
 /// A `MPV_FORMAT_STRING` property change.
-class MpvEventPropertyString extends MpvPropertyEvent {
+final class MpvEventPropertyString extends MpvPropertyEvent {
   /// The mpv property name that changed.
   final String name;
 
@@ -273,7 +273,7 @@ class MpvEventPropertyString extends MpvPropertyEvent {
 /// An observed property that had a value became unavailable
 /// (`MPV_FORMAT_NONE`): the file was unloaded, or the new one has no such
 /// value. The player returns the matching state field to its seed.
-class MpvEventPropertyUnavailable extends MpvPropertyEvent {
+final class MpvEventPropertyUnavailable extends MpvPropertyEvent {
   /// The mpv property name that became unavailable.
   final String name;
 
@@ -287,7 +287,7 @@ class MpvEventPropertyUnavailable extends MpvPropertyEvent {
 /// `double`, `bool`), `Uint8List` for `MPV_FORMAT_BYTE_ARRAY`, or `null` for
 /// an `MPV_FORMAT_NONE` node inside the tree. A property that is NONE
 /// itself arrives as [MpvEventPropertyUnavailable].
-class MpvEventPropertyNode extends MpvPropertyEvent {
+final class MpvEventPropertyNode extends MpvPropertyEvent {
   /// The mpv property name that changed.
   final String name;
 
@@ -303,7 +303,7 @@ class MpvEventPropertyNode extends MpvPropertyEvent {
 /// by the event pump so the cell moves once: each of [events] is an
 /// [MpvEventPropertyNode], [MpvEventPropertyString] or
 /// [MpvEventPropertyUnavailable], applied in order.
-class MpvEventPropertyGroup extends MpvPropertyEvent {
+final class MpvEventPropertyGroup extends MpvPropertyEvent {
   /// The held property changes, oldest first.
   final List<MpvIsolateEvent> events;
 

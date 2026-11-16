@@ -7,7 +7,7 @@
 // driver on iOS and Android (and any other Flutter platform that needs
 // device-side FFI coverage). The user-facing demo lives in `example/`.
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 
 void main() {
   runApp(const _TestAppShell());
@@ -18,10 +18,11 @@ class _TestAppShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      title: 'mpv_audio_kit test harness',
-      debugShowCheckedModeBanner: false,
-      home: Scaffold(body: Center(child: Text('mpv_audio_kit test harness'))),
+    // Widgets only: package:flutter/material.dart is deprecated from
+    // Flutter 3.50 and the shell needs none of it.
+    return const Directionality(
+      textDirection: TextDirection.ltr,
+      child: Center(child: Text('mpv_audio_kit test harness')),
     );
   }
 }

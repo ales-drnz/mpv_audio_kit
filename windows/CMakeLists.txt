@@ -66,5 +66,10 @@ target_link_libraries(${PLUGIN_NAME} PRIVATE windowsapp)
 # a consistent source identity on unpackaged .exe builds.
 target_link_libraries(${PLUGIN_NAME} PRIVATE shell32)
 
+# shlwapi provides SHCreateMemStream and shcore
+# CreateRandomAccessStreamOverStream, which build the cover stream for the
+# SystemMediaTransportControls thumbnail.
+target_link_libraries(${PLUGIN_NAME} PRIVATE shlwapi shcore)
+
 # libmpv is not built or bundled here: the package's build hook
 # (hook/build.dart) downloads it and Flutter bundles it as a code asset.

@@ -4,9 +4,10 @@
 
 // Build hook: fetches the libmpv binary for the target from the
 // libmpv-<release> GitHub release, checks its SHA-256 and bundles it as the
-// code asset `package:mpv_audio_kit/libmpv`, which lib/src/mpv_bindings.dart
-// binds with @Native. One script for every platform, in place of a Gradle
-// task, two podspecs, two SwiftPM manifests and two CMake files.
+// code asset `package:mpv_audio_kit/libmpv`, which
+// lib/src/ffi/mpv_library_bundled.dart binds with @Native. One script for
+// every platform, in place of a Gradle task, two podspecs, two SwiftPM
+// manifests and two CMake files.
 //
 // Offline builds and custom binaries: point the app at a local copy with
 //
@@ -34,7 +35,6 @@
 import 'dart:io';
 
 import 'package:code_assets/code_assets.dart';
-import 'package:crypto/crypto.dart';
 import 'package:hooks/hooks.dart';
 
 import 'package:mpv_audio_kit/src/internals/hook_download.dart';
@@ -47,27 +47,27 @@ const _baseUrl =
 /// SHA-256 of every release asset, from the release's manifest.json.
 const _sha256 = <String, String>{
   'libmpv_android-arm64-v8a.so':
-      'bf11d648068de5c86cfabe6218a68fea11c853e8e4501bd0c2b8dbf16eded0bb',
+      '36884ee5c162f3a676cfbbebea737c3379981a372b56d3a0d72006ce560b0899',
   'libmpv_android-armeabi-v7a.so':
-      'd17d038b9c9802413d64db99171c18742a7caf23c11425cbdc15a5e9e67af746',
+      '050b17820eea37e8e2e64704ed025d9daec7e51a74a18d6c6f0333b15ddc4557',
   'libmpv_android-x86_64.so':
-      '4efb5fc402f1578166af521a236ee4f93f4a1ae47cc62c7dcd815bb9ec39c231',
+      '1eb936ee38b8ba97db4bd6d5f5d8979d7e69a427011ca65b73d1fdc40e9ea549',
   'libmpv_ios.xcframework.zip':
-      'e91f608f0da0eb69e14dbab973b48e01b3cc7eb04677bd61e96c8538cc480543',
+      '18235b759fcd7591dc5da987119a32d16b76f45601e92b73d80d4b80406f09aa',
   'libmpv_linux-aarch64.so':
-      '5ac4bcedf72fa11d511d4485bc9411635ca3a1078147e4f2f165dbd8c000ef20',
+      '4f68d40ac29240d19f4a5770346496cc4b23f0d2436ef608bce8ff65f00727cb',
   'libmpv_linux-x86_64.so':
-      '3289429c30129da3dd2cafef473290bdc4ab77e7f93f10eb2e41985d59d44a3e',
+      'b44be4f526d74825fd9f4d2f9b6a2362cd3dabc5434ac83c412f652ff94495cd',
   'libmpv_macos.xcframework.zip':
-      'fb6b49b519b9c3df87440b02d5609f03ac42e47ab6166d587147bd1e18be5745',
+      'a734a0526b3a536709ceb1cd7ee4caa4a2045e7ddfe910e376269bbe5f4234d3',
   'libmpv_tizen-armv7l.so':
-      '84f9769698b782fbf006d6875f849ccd2058e2c80107646ef3253c5a859742ef',
+      '6dbe648b566264c7d920d4c52e1ee39b253fc3ac004c4f39a40e2f953fa9f112',
   'libmpv_tizen-x86_64.so':
-      '6638c7bec649d52c9f5cf398b6d475378874058c7c9de8eac7ab4575d312291a',
+      'a388ced43ef043b1b929b56ef5b9dfeb24d302139a29838a56df9ef5189e3876',
   'libmpv_windows-arm64.dll':
-      '8c5bf0dfd78b1d98dcf69aa672a4883e26fea730dc5c38eb8e670e82a59964e2',
+      '50297806c489266eeccffa8d92315a465f382db621dca9173976b5f6a94e1aa7',
   'libmpv_windows-x86_64.dll':
-      'd6cd088c41c4b17a441d0b90b5095fa0316f912165c0122e4e4416a9fe755121',
+      '1ba497325c21b83f23369f3e51f55792929454f278b2f81dc9f304a0b13eabaa',
 };
 
 /// The tizen user define, true or false. Anything else fails the build: an
@@ -120,7 +120,8 @@ void main(List<String> args) async {
         await asset.copy(out.path);
       } else {
         // A pinned download never changes, so its unpacked copy is kept
-        // beside it; a local zip may, so it is unpacked again each build.
+        // beside it and its binary checked on each build; a local zip may,
+        // so it is unpacked again each build.
         final unpacked = local == null
             ? Directory('${asset.parent.path}/unzipped')
             : Directory.fromUri(input.outputDirectory.resolve('unzipped'));
@@ -133,6 +134,7 @@ void main(List<String> args) async {
           target,
           code.targetArchitecture,
           out,
+          zipSha256: local == null ? _sha256[target.asset] : null,
         );
       }
     }
@@ -265,60 +267,44 @@ Future<File> _localAsset(Uri dir, String asset) async {
 }
 
 /// The release [asset], downloaded once into [cacheDir] and reused by every
-/// build that asks for the same checksum.
+/// build that asks for the same checksum. The assets of other releases are
+/// pruned from [cacheDir] after it.
 Future<File> _fetch(String asset, Uri cacheDir) async {
   final expected = _sha256[asset];
   if (expected == null || expected.isEmpty) {
     throw StateError('mpv_audio_kit: no SHA-256 pinned for $asset');
   }
-  final cached = File.fromUri(cacheDir.resolve('$expected/$asset'));
-  if (await _matches(cached, expected)) return cached;
-
-  await cached.parent.create(recursive: true);
-  // One partial file per build: Flutter can run the hook for two
-  // architectures at once, and both would download the same asset.
-  final partial = File('${cached.path}.$pid.part');
-  try {
-    await download('$_baseUrl/$asset', partial);
-    if (!await _matches(partial, expected)) {
-      throw StateError(
-        'mpv_audio_kit: SHA-256 mismatch for $asset from $_baseUrl',
-      );
-    }
-    return await partial.rename(cached.path);
-  } finally {
-    if (await partial.exists()) await partial.delete();
-  }
+  final file = await fetchPinned(
+    asset: asset,
+    release: _release,
+    url: '$_baseUrl/$asset',
+    sha256Hex: expected,
+    cacheDir: cacheDir,
+  );
+  await pruneCache(cacheDir, _sha256.values);
+  return file;
 }
 
 /// Copies the libmpv binary of the xcframework slice, unpacked from [zip]
-/// into [dir], into [out], thinned to [arch] when the slice is universal:
-/// Flutter runs the hook once per architecture and merges the results
-/// itself.
+/// into [dir] and checked by [unpackedBinary], into [out], thinned to
+/// [arch] when the slice is universal: Flutter runs the hook once per
+/// architecture and merges the results itself.
 Future<void> _extractAppleSlice(
   File zip,
   Directory dir,
   _Target target,
   Architecture arch,
-  File out,
-) async {
-  final framework =
-      '${dir.path}/libmpv.xcframework/${target.appleSlice}/libmpv.framework';
-  if (!await dir.exists()) {
-    // Unpack beside it and rename into place, so an interrupted unzip
-    // never leaves a half directory that a later build would trust.
-    await dir.parent.create(recursive: true);
-    final staging = await dir.parent.createTemp('unzip-');
-    await _run('unzip', ['-q', zip.path, '-d', staging.path]);
-    try {
-      await staging.rename(dir.path);
-    } on FileSystemException {
-      // Another build unpacked the same zip first; its copy is identical.
-      await staging.delete(recursive: true);
-    }
-  }
-  // A macOS framework keeps its binary under Versions/; follow the link.
-  final binary = await File('$framework/libmpv').resolveSymbolicLinks();
+  File out, {
+  String? zipSha256,
+}) async {
+  // A macOS framework keeps its binary under Versions/; the path returned
+  // follows the link.
+  final binary = await unpackedBinary(
+    zip,
+    dir,
+    'libmpv.xcframework/${target.appleSlice}/libmpv.framework/libmpv',
+    zipSha256: zipSha256,
+  );
   final lipoArch = switch (arch) {
     Architecture.arm64 => 'arm64',
     Architecture.x64 => 'x86_64',
@@ -336,12 +322,6 @@ Future<void> _extractAppleSlice(
   } else {
     await _run('lipo', [binary, '-thin', lipoArch, '-output', out.path]);
   }
-}
-
-Future<bool> _matches(File file, String sha256Hex) async {
-  if (!await file.exists()) return false;
-  final digest = await sha256.bind(file.openRead()).first;
-  return digest.toString() == sha256Hex;
 }
 
 Future<String> _run(String executable, List<String> arguments) async {

@@ -20,5 +20,5 @@ unnamed constructor, in their order, with the types of the fields:
 
 A new field needs only its declaration and its constructor parameter, then
 a run of the generator. The job Quality fails when the generated files
-differ from what the generator emits. test/models/data_classes_test.dart
+differ from what the generator emits. test/unit/models/data_classes_test.dart
 checks the generated code against the code written by hand up to 0.6.1.

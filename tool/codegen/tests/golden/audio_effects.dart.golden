@@ -1,0 +1,299 @@
+// Copyright © 2026 & onwards, Alessandro Di Ronza <ales.drnz@gmail.com>.
+// All rights reserved.
+// Use of this source code is governed by BSD 3-Clause license
+// that can be found in the LICENSE file.
+//
+// AUTO-GENERATED: do not edit by hand.
+//
+// The descriptions of the filters and of their options in the
+// documentation comments are FFmpeg's (doc/filters.texi and the option
+// help of libavfilter, https://ffmpeg.org) and keep FFmpeg's licenses: the
+// LGPL, version 2.1 or later (FFmpeg's LICENSE.md), and for the option help of
+// deesser, arnndn and hdcd the MIT or BSD terms of their source files; the BSD
+// 3-Clause license above covers the rest of this file.
+// ignore_for_file: unnecessary_ignore, constant_identifier_names, camel_case_types, non_constant_identifier_names
+
+
+/// Values for the `detection` option of the `acompressor` audio filter.
+enum AcompressorDetection {
+  /// The `peak` option value.
+  peak,
+  /// The `rms` option value.
+  rms,
+  ;
+
+  /// Wire-side string consumed by mpv.
+  String get mpvValue => switch (this) {
+    peak => 'peak',
+    rms => 'rms',
+  };
+
+  /// Parses a mpv wire string back into a [AcompressorDetection].
+  /// Unknown or empty input falls back to the first member.
+  static AcompressorDetection fromMpv(String? raw) => values.firstWhere((v) => v.mpvValue == raw, orElse: () => peak);
+}
+
+/// Values for the `link` option of the `acompressor` audio filter.
+enum AcompressorLink {
+  /// The `average` option value.
+  average,
+  /// The `maximum` option value.
+  maximum,
+  ;
+
+  /// Wire-side string consumed by mpv.
+  String get mpvValue => switch (this) {
+    average => 'average',
+    maximum => 'maximum',
+  };
+
+  /// Parses a mpv wire string back into a [AcompressorLink].
+  /// Unknown or empty input falls back to the first member.
+  static AcompressorLink fromMpv(String? raw) => values.firstWhere((v) => v.mpvValue == raw, orElse: () => average);
+}
+
+/// Values for the `mode` option of the `acompressor` audio filter.
+enum AcompressorMode {
+  /// The `downward` option value.
+  downward,
+  /// The `upward` option value.
+  upward,
+  ;
+
+  /// Wire-side string consumed by mpv.
+  String get mpvValue => switch (this) {
+    downward => 'downward',
+    upward => 'upward',
+  };
+
+  /// Parses a mpv wire string back into a [AcompressorMode].
+  /// Unknown or empty input falls back to the first member.
+  static AcompressorMode fromMpv(String? raw) => values.firstWhere((v) => v.mpvValue == raw, orElse: () => downward);
+}
+
+/// Values for the `curve` option of the `afade` audio filter.
+enum AfadeCurve {
+  /// no fade; keep audio as-is
+  nofade,
+  /// linear slope
+  tri,
+  /// quarter of sine wave
+  qsin,
+  /// exponential sine wave
+  esin,
+  /// half of sine wave
+  hsin,
+  /// logarithmic
+  log,
+  /// inverted parabola
+  ipar,
+  /// quadratic
+  qua,
+  /// cubic
+  cub,
+  /// square root
+  squ,
+  /// cubic root
+  cbr,
+  /// parabola
+  par,
+  /// exponential
+  exp,
+  /// inverted quarter of sine wave
+  iqsin,
+  /// inverted half of sine wave
+  ihsin,
+  /// double-exponential seat
+  dese,
+  /// double-exponential sigmoid
+  desi,
+  /// logistic sigmoid
+  losi,
+  /// sine cardinal function
+  sinc,
+  /// inverted sine cardinal function
+  isinc,
+  /// quartic
+  quat,
+  /// quartic root
+  quatr,
+  /// squared quarter of sine wave
+  qsin2,
+  /// squared half of sine wave
+  hsin2,
+  ;
+
+  /// Wire-side string consumed by mpv.
+  String get mpvValue => switch (this) {
+    nofade => 'nofade',
+    tri => 'tri',
+    qsin => 'qsin',
+    esin => 'esin',
+    hsin => 'hsin',
+    log => 'log',
+    ipar => 'ipar',
+    qua => 'qua',
+    cub => 'cub',
+    squ => 'squ',
+    cbr => 'cbr',
+    par => 'par',
+    exp => 'exp',
+    iqsin => 'iqsin',
+    ihsin => 'ihsin',
+    dese => 'dese',
+    desi => 'desi',
+    losi => 'losi',
+    sinc => 'sinc',
+    isinc => 'isinc',
+    quat => 'quat',
+    quatr => 'quatr',
+    qsin2 => 'qsin2',
+    hsin2 => 'hsin2',
+  };
+
+  /// Parses a mpv wire string back into a [AfadeCurve].
+  /// Unknown or empty input falls back to the first member.
+  static AfadeCurve fromMpv(String? raw) => values.firstWhere((v) => v.mpvValue == raw, orElse: () => nofade);
+}
+
+/// Values for the `type` option of the `afade` audio filter.
+enum AfadeType {
+  /// fade-in
+  in_,
+  /// fade-out
+  out,
+  ;
+
+  /// Wire-side string consumed by mpv.
+  String get mpvValue => switch (this) {
+    in_ => 'in',
+    out => 'out',
+  };
+
+  /// Parses a mpv wire string back into a [AfadeType].
+  /// Unknown or empty input falls back to the first member.
+  static AfadeType fromMpv(String? raw) => values.firstWhere((v) => v.mpvValue == raw, orElse: () => in_);
+}
+
+/// Values for the `gauge` option of the `ebur128` audio filter.
+enum Ebur128Gaugetype {
+  /// display momentary value
+  momentary,
+  /// display momentary value
+  m,
+  /// display short-term value
+  shortterm,
+  /// display short-term value
+  s,
+  ;
+
+  /// Wire-side string consumed by mpv.
+  String get mpvValue => switch (this) {
+    momentary => 'momentary',
+    m => 'm',
+    shortterm => 'shortterm',
+    s => 's',
+  };
+
+  /// Parses a mpv wire string back into a [Ebur128Gaugetype].
+  /// Unknown or empty input falls back to the first member.
+  static Ebur128Gaugetype fromMpv(String? raw) => values.firstWhere((v) => v.mpvValue == raw, orElse: () => momentary);
+}
+
+/// Values for the `framelog` option of the `ebur128` audio filter.
+enum Ebur128Level {
+  /// logging disabled
+  quiet,
+  /// information logging level
+  info,
+  /// verbose logging level
+  verbose,
+  ;
+
+  /// Wire-side string consumed by mpv.
+  String get mpvValue => switch (this) {
+    quiet => 'quiet',
+    info => 'info',
+    verbose => 'verbose',
+  };
+
+  /// Parses a mpv wire string back into a [Ebur128Level].
+  /// Unknown or empty input falls back to the first member.
+  static Ebur128Level fromMpv(String? raw) => values.firstWhere((v) => v.mpvValue == raw, orElse: () => quiet);
+}
+
+/// Values for the `peak` option of the `ebur128` audio filter.
+enum Ebur128Mode {
+  /// disable any peak mode
+  none,
+  /// enable peak-sample mode
+  sample,
+  /// enable true-peak mode
+  true_,
+  ;
+
+  /// Wire-side string consumed by mpv.
+  String get mpvValue => switch (this) {
+    none => 'none',
+    sample => 'sample',
+    true_ => 'true',
+  };
+
+  /// Parses a mpv wire string back into a [Ebur128Mode].
+  /// Unknown or empty input falls back to the first member.
+  static Ebur128Mode fromMpv(String? raw) => values.firstWhere((v) => v.mpvValue == raw, orElse: () => none);
+}
+
+/// Values for the `scale` option of the `ebur128` audio filter.
+enum Ebur128Scaletype {
+  /// display absolute values (LUFS)
+  absolute,
+  /// display absolute values (LUFS)
+  lufs,
+  /// display values relative to target (LU)
+  relative,
+  /// display values relative to target (LU)
+  lu,
+  ;
+
+  /// Wire-side string consumed by mpv.
+  String get mpvValue => switch (this) {
+    absolute => 'absolute',
+    lufs => 'LUFS',
+    relative => 'relative',
+    lu => 'LU',
+  };
+
+  /// Parses a mpv wire string back into a [Ebur128Scaletype].
+  /// Unknown or empty input falls back to the first member.
+  static Ebur128Scaletype fromMpv(String? raw) => values.firstWhere((v) => v.mpvValue == raw, orElse: () => absolute);
+}
+
+/// Identifies one of the typed audio filters: one value per
+/// `XxxEffect` class, i.e. per filter compiled into the bundled
+/// libmpv. Use it as a typed identifier in APIs that pick a filter,
+/// e.g. `player.stream.tap(AudioFilter.equalizer, side: TapSide.post)`.
+enum AudioFilter {
+  /// The `acompressor` audio filter.
+  acompressor,
+  /// The `aeval` audio filter.
+  aeval,
+  /// The `afade` audio filter.
+  afade,
+  /// The `compand` audio filter.
+  compand,
+  /// The `ebur128` audio filter.
+  ebur128,
+  ;
+
+  /// mpv filter-type name. Coincides with the enum value
+  /// [name] for every entry on the current whitelist; the
+  /// getter exists so consumers don't depend on that
+  /// coincidence (a future filter colliding with a Dart
+  /// reserved word would gain a trailing `_` on its enum
+  /// value, which this getter would strip).
+  String get filterName {
+    final n = name;
+    return n.endsWith('_') ? n.substring(0, n.length - 1) : n;
+  }
+}

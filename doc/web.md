@@ -15,7 +15,7 @@ Cross-Origin-Embedder-Policy: credentialless
 | A host that reads a `_headers` file, such as Netlify or Cloudflare Pages | A `web/_headers` file with the two headers under `/*` |
 | GitHub Pages | A service worker that adds them, such as coi-serviceworker. [mpv_studio](https://github.com/ales-drnz/mpv_studio) shows the setup in its `web/` folder. The app also needs a `web/flutter_bootstrap.js` that calls `_flutter.loader.load()` without `serviceWorkerSettings`. Otherwise Flutter's own worker replaces the one that adds the headers. |
 
-With `credentialless` it needs Chrome or Edge 96 or Firefox 119 or later. With `require-corp` it needs Chrome or Edge 92, Firefox 79 or Safari 15.2 or later.
+With `credentialless` it needs Chrome or Edge 96 or Firefox 119 or later. With `require-corp` it needs Chrome or Edge 92, Firefox 114 or Safari 15.2 or later. Firefox 114 is the first to start the module's threads, which are module workers.
 
 Safari accepts only `require-corp` for the second header. Each image or font from another origin then needs a `Cross-Origin-Resource-Policy` header.
 

@@ -24,9 +24,9 @@ The define holds for every build of the app: with it `flutter build linux` on x6
 
 The library plays through `ao_tizen`, an output on Tizen's `audio_out` with the media stream type. The playback focus is the app's to take with Tizen's sound manager. The media session has no Tizen side. `setMediaSession` keeps its value in the player's state and does nothing else there: no entry in the TV's interface, no command from the remote, no artwork URL loaded, and no error.
 
-## A libmpv of your own
+## Building without network
 
-The `libmpv` user define works as on the other platforms: a file, bundled for every target, or a directory with `libmpv_tizen-armv7l.so` and `libmpv_tizen-x86_64.so`. It must be a build of libmpv-scripts at the release the package pins.
+The first build downloads the library of the release the package pins. To build without network, save its `libmpv_tizen-armv7l.so` and `libmpv_tizen-x86_64.so` in a directory and point the `libmpv` user define of the build hook at it, as on the other platforms.
 
 ## What was checked
 

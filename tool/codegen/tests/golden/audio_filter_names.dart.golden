@@ -1,0 +1,20 @@
+// Copyright © 2026 & onwards, Alessandro Di Ronza <ales.drnz@gmail.com>.
+// All rights reserved.
+// Use of this source code is governed by BSD 3-Clause license
+// that can be found in the LICENSE file.
+//
+// AUTO-GENERATED: do not edit by hand.
+
+
+library;
+
+/// Names of every typed audio filter of the public API, in
+/// alphabetical order. Kept in `test/` because no production code
+/// consumes the list.
+const List<String> kAudioFilterNames = [
+  'acompressor',
+  'aeval',
+  'afade',
+  'compand',
+  'ebur128',
+];

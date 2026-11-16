@@ -17,12 +17,12 @@ printf '#!/usr/bin/env bash\necho "00:00 +1: All tests passed!"\n' > "$fake/flut
 chmod +x "$fake/flutter"
 
 repo="$scratch/repo"
-mkdir -p "$repo/test/player" "$repo/lib" "$repo/scripts/ci"
+mkdir -p "$repo/test/unit/player" "$repo/lib" "$repo/scripts/ci"
 cd "$repo"
 git init -q
 git config user.email ci@example.com
 git config user.name CI
-printf "test('a pause stays a pause', () {});\n" > test/player/pause_test.dart
+printf "test('a pause stays a pause', () {});\n" > test/unit/player/pause_test.dart
 printf 'name: fake\n' > pubspec.yaml
 printf '// lib\n' > lib/a.dart
 printf '# script\n' > scripts/ci/a.sh

@@ -20,7 +20,13 @@
 #   - the pinned manifest (tool/codegen/libmpv_manifest.json) is not the one
 #     of libmpvRelease, a file it lists under web.files is missing from web/
 #     or has another SHA-256, THIRD_PARTY_LICENSES.txt is missing, or web/
-#     holds a file that is none of them.
+#     holds a file that is none of them;
+#   - the release libmpv-<pin> is not published on GitHub, or an asset the
+#     manifest lists is missing from it or has another SHA-256 there: the
+#     build hook of everyone who installs the package downloads it;
+#   - the first title of the CHANGELOG has no date.
+# --versions checks the versions only: the others, --check and --dry-run
+# included, check all of it.
 #
 # Usage (from anywhere):
 #   scripts/publish.sh              checks, then flutter pub publish, which
@@ -33,6 +39,7 @@
 # Reads from the environment, for the tests:
 #   PUBLISH_ROOT    the package, the parent of scripts/ by default
 #   PUBLISH_REMOTE  the remote asked for the tag, origin by default
+# It asks GitHub with gh, logged in or with GH_TOKEN.
 # =============================================================================
 
 set -euo pipefail
@@ -92,6 +99,13 @@ same_version "The first title of CHANGELOG.md" \
 
 if [[ "$mode" != --versions ]]; then
 
+  # ── The date ───────────────────────────────────────────────────────────────
+
+  title="$(read_version CHANGELOG.md '/^## \[/p')"
+  if [[ ! "$title" =~ ^'## ['[^]]+'] - '[0-9]{1,2}-[0-9]{1,2}-[0-9]{4}$ ]]; then
+    refuse "The first title of CHANGELOG.md has no date ('$title'): write it as in the titles below, '## [$version] - D-M-YYYY'"
+  fi
+
   # ── The tree ───────────────────────────────────────────────────────────────
 
   dirty="$(git status --porcelain)"
@@ -148,6 +162,31 @@ if [[ "$mode" != --versions ]]; then
     for e in "${expected[@]}"; do [[ "$e" == "$name" ]] && known=true; done
     $known || refuse "web/$name is not a file of the web module, and would be published"
   done < <(find web -mindepth 1 | LC_ALL=C sort)
+
+  # ── The libmpv release ─────────────────────────────────────────────────────
+
+  repo="$(sed -n 's#.*https://github\.com/\([^/]*/[^/]*\)/releases/download/.*#\1#p' hook/build.dart | head -n 1)"
+  tag="libmpv-$pin"
+  err="$(mktemp)"
+  if ! published="$(gh api "repos/$repo/releases/tags/$tag" \
+    --jq '.assets[] | "\(.name) \(.digest // "")"' 2> "$err")"; then
+    if grep -q '(HTTP 404)' "$err"; then
+      refuse "the release $tag is not published on $repo: publish it before the package, whose build hook downloads it"
+    else
+      refuse "could not ask GitHub for the release $tag on $repo: $(tr '\n' ' ' < "$err")"
+    fi
+  else
+    while read -r name sha; do
+      sha="${sha%$'\r'}"
+      digest="$(awk -v n="$name" '$1 == n { print $2 }' <<<"$published")"
+      if ! grep -q "^$name " <<<"$published"; then
+        refuse "the release $tag has no $name, which $manifest lists: its upload may not be finished"
+      elif [[ "$digest" != "sha256:$sha" ]]; then
+        refuse "$name of the release $tag is not the one of $manifest (${digest:-no SHA-256} there, sha256:$sha in the manifest)"
+      fi
+    done < <(jq -r '.assets | to_entries[] | "\(.key) \(.value)"' "$manifest")
+  fi
+  rm -f "$err"
 fi
 
 if ((refusals)); then
@@ -160,7 +199,7 @@ case "$mode" in
     echo "publish: every file says $version."
     ;;
   --check)
-    echo "publish: $version is ready: clean tree, one version, no tag v$version, the web module of libmpv-$release."
+    echo "publish: $version is ready: dated, clean tree, one version, no tag v$version, the web module of libmpv-$release, which is published."
     ;;
   --dry-run)
     flutter pub publish --dry-run

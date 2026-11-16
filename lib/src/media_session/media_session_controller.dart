@@ -3,21 +3,18 @@
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
 import '../models/cover_art.dart';
-import '../models/media.dart';
-import '../models/media_session.dart';
 import '../player/player_state.dart';
-import '../types/enums/loop.dart';
-import '../types/sealed/media_session_artwork.dart';
 import '../types/sealed/media_session_command.dart';
 import 'artwork_fetcher.dart';
 import 'artwork_loader.dart';
 import 'media_session_channel.dart';
 import 'media_session_inputs.dart';
+import 'media_session_snapshots.dart';
+import 'media_session_uris.dart';
 
 /// Orchestrates the bridge between the [Player]'s reactive state and
 /// the OS media session.
@@ -55,7 +52,7 @@ class MediaSessionController {
   final void Function()? _onAudioOutputReset;
   final MediaSessionChannel _channel;
 
-  /// Loads artwork URLs ([_fetches]) so the OS gets the image
+  /// Loads artwork URLs ([fetchesArtwork]) so the OS gets the image
   /// bytes, never the URL (see [downloadsArtworkOn]). Without one, artwork
   /// URLs show no artwork. It runs one load at a time, cancels the one a
   /// track change leaves behind and keeps the last few covers.
@@ -136,7 +133,7 @@ class MediaSessionController {
   /// arbitrary event sequences.
   ///
   /// [artworkLoader] defaults to one over [loadArtwork] (see
-  /// [downloadsArtworkOn]). It gets the artwork URLs [_fetches] names.
+  /// [downloadsArtworkOn]). It gets the artwork URLs [fetchesArtwork] names.
   /// [artworkFetcher] is a plain fetcher for it to run instead.
   static Future<MediaSessionController> create({
     required PlayerState Function() stateSnapshot,
@@ -241,7 +238,7 @@ class MediaSessionController {
     final native = await _channel.enable(
       session: session,
       metadata: metadata,
-      playback: _computePlayback(),
+      playback: _pushedPlayback(),
     );
     if (_disposed) return;
     if (!native) {
@@ -354,107 +351,26 @@ class MediaSessionController {
       final seek = _playbackSeek;
       _playbackDirty = false;
       _playbackSeek = false;
-      unawaited(_channel.updatePlayback(_computePlayback(seek: seek)));
+      unawaited(_channel.updatePlayback(_pushedPlayback(seek: seek)));
     }
   }
 
   // ── Snapshot builders ───────────────────────────────────────────────
 
-  MediaSessionMetadataSnapshot _computeMetadata() {
-    final state = _stateSnapshot();
-    final override = state.settings.mediaSession;
-    final mpvMeta = state.file.metadata;
+  MediaSessionMetadataSnapshot _computeMetadata() =>
+      metadataSnapshot(_stateSnapshot(), _artworkFor);
 
-    // The currently-playing queue item. Its consumer-attached
-    // [Media.extras] are the metadata fallback for tag-less files, most
-    // importantly transcoded streams (HLS or DASH), where mpv sees no tags and
-    // reports the stream URL as `media-title`. extras sit below mpv's real
-    // tags but above the filename-derived `media-title`.
-    final item = _currentItem(state);
-    final extras = item?.extras;
-
-    // Title falls through: explicit override → mpv's `metadata.title` tag
-    // → consumer-attached `extras['title']` → mpv's `media-title` (which
-    // itself falls back to the filename for files without a title tag).
-    // For a network item that last fallback is derived from the URL, so its
-    // query string (often credentials) is stripped first.
-    final remote = item != null && !_isLocalUri(item.uri);
-    final title =
-        override?.title ??
-        _firstTagValue(mpvMeta, const ['title']) ??
-        _extra(extras, 'title') ??
-        _mediaTitle(state.file.mediaTitle, remote: remote);
-
-    final artist =
-        override?.artist ??
-        _firstTagValue(mpvMeta, const ['artist', 'album_artist']) ??
-        _extra(extras, 'artist');
-
-    final album =
-        override?.album ??
-        _firstTagValue(mpvMeta, const ['album']) ??
-        _extra(extras, 'album');
-
-    final duration =
-        override?.duration ??
-        (state.playback.duration == Duration.zero
-            ? null
-            : state.playback.duration);
-
-    // Rich tags (mpv-derived, with the extras-attached artist as a final
-    // fallback for the album-artist line on tag-less streams).
-    final albumArtist =
-        _firstTagValue(mpvMeta, const ['album_artist']) ??
-        _extra(extras, 'artist');
-    final genre = _firstTagValue(mpvMeta, const ['genre']);
-    // mpv `track` and `disc` tags are often "3" or "3/12"; take the leading
-    // int.
-    final trackNumber = _parseLeadingInt(
-      _firstTagValue(mpvMeta, const ['track']),
+  /// The playback snapshot to push now. It is pushed, so it records the
+  /// `seekable` the OS shows.
+  MediaSessionPlaybackSnapshot _pushedPlayback({bool seek = false}) {
+    final snap = playbackSnapshot(
+      _stateSnapshot(),
+      seek: seek,
+      pushedSeekable: _pushedSeekable,
+      appPauses: _appPauses,
     );
-    final discNumber = _parseLeadingInt(
-      _firstTagValue(mpvMeta, const ['disc']),
-    );
-
-    // Source URI of the current item, for MPRIS xesam:url, which takes a URI:
-    // a bare path is not one. Only local files: the bus is readable by every
-    // process in the session, and a network URL can carry credentials
-    // (Subsonic `u`, `t` and `s`, Jellyfin `api_key`).
-    final url = remote || item == null ? null : _fileUri(item.uri);
-
-    final (:cover, :artworkUrl) = _artworkFor(
-      _resolveArtwork(override, state.file.coverArt, extras),
-    );
-
-    return MediaSessionMetadataSnapshot(
-      title: title,
-      artist: artist,
-      album: album,
-      artwork: cover,
-      duration: duration,
-      trackNumber: trackNumber,
-      discNumber: discNumber,
-      albumArtist: albumArtist,
-      genre: genre,
-      url: url,
-      artworkUrl: artworkUrl,
-    );
-  }
-
-  /// The item of [state]'s playlist that is current, `null` when none is.
-  static Media? _currentItem(PlayerState state) {
-    final playlist = state.playback.playlist;
-    final index = playlist.index;
-    if (index < 0 || index >= playlist.items.length) return null;
-    return playlist.items[index];
-  }
-
-  /// mpv's `media-title`, the last fallback of the title: `null` when
-  /// empty, its query string stripped for a [remote] item, whose title is
-  /// derived from the URL.
-  static String? _mediaTitle(String mediaTitle, {required bool remote}) {
-    if (mediaTitle.isEmpty) return null;
-    return remote ? _redactUrlTitle(mediaTitle) : mediaTitle;
+    _pushedSeekable = snap.seekable;
+    return snap;
   }
 
   /// The picture of [artwork] for the native side, and the URL the browser
@@ -467,187 +383,11 @@ class MediaSessionController {
   ) {
     final uri = artwork.uri;
     if (uri == null) return (cover: artwork.bytes, artworkUrl: null);
-    final cover = _native && _artworkLoader != null && _fetches(uri)
+    final cover = _native && _artworkLoader != null && fetchesArtwork(uri)
         ? _downloadedArtwork(uri)
         : null;
-    final showUrl = passesArtworkUrl && cover == null && _isHttp(uri);
+    final showUrl = passesArtworkUrl && cover == null && isHttpUri(uri);
     return (cover: cover, artworkUrl: showUrl ? uri : null);
-  }
-
-  /// Reads a non-empty string [key] from a queue item's [Media.extras];
-  /// `null` if the map is absent, lacks the key, or the value is blank or
-  /// not a string. Lets a consumer supply lockscreen metadata for streams
-  /// the file itself can't tag.
-  String? _extra(Map<String, Object?>? extras, String key) {
-    final v = extras?[key];
-    return (v is String && v.isNotEmpty) ? v : null;
-  }
-
-  /// Whether [uri] names a local file: a `file:` URI, a plain path, or a
-  /// Windows drive path (which parses with a one-letter scheme).
-  static bool _isLocalUri(String uri) {
-    final scheme = Uri.tryParse(uri)?.scheme ?? '';
-    return scheme.isEmpty || scheme == 'file' || scheme.length == 1;
-  }
-
-  /// The local item [uri] as a `file:` URI, percent-encoded from the path
-  /// mpv opens: a path as it is, a relative one under the working
-  /// directory. mpv takes all that follows `file://` as the path,
-  /// percent-decoded, so a `#` or a `?` there is part of the name (and so
-  /// is a raw space). `null` for a path no URI can name.
-  static String? _fileUri(String uri) {
-    final parsed = Uri.tryParse(uri);
-    var path = uri;
-    if (parsed?.scheme == 'file' || uri.toLowerCase().startsWith('file:')) {
-      if (!uri.toLowerCase().startsWith('file:///')) {
-        // A host, or no `//`: not a path of this machine as mpv reads it.
-        return parsed?.toString();
-      }
-      final bytes = _unescape(uri.substring('file://'.length));
-      path = utf8.decode(bytes, allowMalformed: true);
-      // On Windows `/C:/Music` names `C:/Music`, as mpv reads it there.
-      // Elsewhere it is the path it looks like, and so is `/a:b`.
-      final drive = _onWindows && _drivePath.hasMatch(path);
-      if (drive) path = path.substring(1);
-      if (!_isUtf8(bytes)) {
-        // A name that is not UTF-8 (Latin-1): no string holds its bytes,
-        // so the URI is written from them. The string stands in for the
-        // name where a path no URI can name is told.
-        if (_pathUri(path) == null) return null;
-        return 'file://${_encodePath(bytes, windows: drive)}';
-      }
-    }
-    return _pathUri(path);
-  }
-
-  /// The path [path] as a `file:` URI, a relative one under the working
-  /// directory. `null` for a path no URI can name.
-  static String? _pathUri(String path) {
-    final drive = Uri.tryParse(path)?.scheme.length == 1;
-    try {
-      return Uri.base
-          .resolveUri(Uri.file(path, windows: drive ? true : null))
-          .toString();
-    } on ArgumentError {
-      return null;
-    }
-  }
-
-  static final RegExp _drivePath = RegExp('^/[A-Za-z]:');
-
-  /// Whether paths are read as Windows reads them: the platform the app
-  /// runs on, or the host whose rules `Uri.file` follows. The two differ
-  /// under `flutter test`, where the platform is Android on every host
-  /// while `Uri.file` still takes a backslash for a separator on Windows.
-  static bool get _onWindows =>
-      !kIsWeb &&
-      (defaultTargetPlatform == TargetPlatform.windows ||
-          Uri.file(r'a\b').pathSegments.length == 2);
-
-  /// The bytes of [s] with each `%` and two hex digits decoded, the way
-  /// mpv decodes a `file:` URI (and `fileUrlToPath` after it). A `%`
-  /// without them is kept with the two characters after it, so an escape
-  /// that starts inside those is not one: `%%41` stays as it is.
-  static List<int> _unescape(String s) {
-    final src = utf8.encode(s);
-    final bytes = <int>[];
-    for (var i = 0; i < src.length;) {
-      if (src[i] != 0x25 || i + 2 >= src.length) {
-        bytes.add(src[i++]);
-        continue;
-      }
-      final hi = _hexDigit(src[i + 1]);
-      final lo = _hexDigit(src[i + 2]);
-      if (hi >= 0 && lo >= 0) {
-        bytes.add(hi * 16 + lo);
-      } else {
-        bytes.addAll(src.sublist(i, i + 3));
-      }
-      i += 3;
-    }
-    return bytes;
-  }
-
-  static bool _isUtf8(List<int> bytes) {
-    try {
-      utf8.decode(bytes);
-      return true;
-    } on FormatException {
-      return false;
-    }
-  }
-
-  /// The absolute path [bytes] as the path of a URI: what `Uri.file`
-  /// leaves as it is stays, every other byte is percent-encoded. On
-  /// [windows] a backslash separates, as a slash does.
-  static String _encodePath(List<int> bytes, {required bool windows}) {
-    const hex = '0123456789ABCDEF';
-    final out = StringBuffer();
-    for (final byte in bytes) {
-      if (windows && byte == 0x5c) {
-        out.write('/');
-      } else if (byte < 0x80 && _pathBytes.contains(byte)) {
-        out.writeCharCode(byte);
-      } else {
-        out
-          ..write('%')
-          ..write(hex[byte >> 4])
-          ..write(hex[byte & 0xf]);
-      }
-    }
-    return out.toString();
-  }
-
-  // The characters a URI path holds as they are, the ones `Uri.file`
-  // does not encode.
-  static final Set<int> _pathBytes =
-      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-              r"-._~!$&'()*+,;=:@/"
-          .codeUnits
-          .toSet();
-
-  static int _hexDigit(int c) {
-    if (c >= 0x30 && c <= 0x39) return c - 0x30;
-    final letter = c | 0x20;
-    return letter >= 0x61 && letter <= 0x66 ? letter - 0x61 + 10 : -1;
-  }
-
-  /// Whether [uri] is an `http(s)://` URL.
-  static bool _isHttp(String? uri) {
-    if (uri == null) return false;
-    final scheme = Uri.tryParse(uri)?.scheme.toLowerCase();
-    return scheme == 'http' || scheme == 'https';
-  }
-
-  /// Whether the artwork [uri] goes through [_artworkLoader]: an
-  /// `http(s)://`, `file://` or `asset://` URL, a `content://` or
-  /// `android.resource://` one on Android and a `blob:` one in the browser.
-  /// Any other scheme shows no artwork.
-  static bool _fetches(String uri) {
-    return switch (Uri.tryParse(uri)?.scheme.toLowerCase()) {
-      'http' || 'https' || 'file' || 'asset' => true,
-      'content' || 'android.resource' =>
-        !kIsWeb && defaultTargetPlatform == TargetPlatform.android,
-      'blob' => kIsWeb,
-      _ => false,
-    };
-  }
-
-  /// Removes what could be credentials from a title mpv derived from a URL:
-  /// a trailing `key=value` query or fragment, and the userinfo of a full
-  /// URL. A real title with a `?` in it ("Who Are You?") has no `=` after
-  /// it and is left alone. `null` when nothing is left.
-  static String? _redactUrlTitle(String title) {
-    var t = title;
-    final query = RegExp(r'[?#]\S*$').firstMatch(t);
-    if (query != null && query.group(0)!.contains('=')) {
-      t = t.substring(0, query.start);
-    }
-    t = t.replaceFirstMapped(
-      RegExp(r'^([a-z][a-z0-9+.-]*://)[^/@\s]*@', caseSensitive: false),
-      (m) => m.group(1)!,
-    );
-    return t.isEmpty ? null : t;
   }
 
   /// The cover loaded from the artwork [uri], or `null` while the load is
@@ -693,94 +433,6 @@ class MediaSessionController {
           _markMetadata();
         }),
       );
-    }
-    return null;
-  }
-
-  /// Parses the leading integer from a tag like `"3"` or `"3/12"`; `null` if
-  /// absent or non-numeric.
-  int? _parseLeadingInt(String? raw) {
-    if (raw == null) return null;
-    final match = RegExp(r'^\s*(\d+)').firstMatch(raw);
-    return match == null ? null : int.tryParse(match.group(1)!);
-  }
-
-  /// Resolves the effective artwork into one of two shapes: decoded [bytes]
-  /// (embedded or custom) or a [uri], which the fetcher loads.
-  ///
-  /// For the default [MediaSessionArtwork.embedded] the file's embedded cover
-  /// wins; when it has none (the common case for a transcoded stream) we
-  /// fall back to a network artwork URL the consumer attached to the queue
-  /// item as `extras['art']`, mirroring the title, artist and album fallback.
-  /// An explicit [MediaSessionArtwork.none] suppresses art outright (no
-  /// fallback).
-  ({CoverArt? bytes, String? uri}) _resolveArtwork(
-    MediaSession? override,
-    CoverArt? embedded,
-    Map<String, Object?>? extras,
-  ) {
-    final artwork = override?.artwork ?? MediaSessionArtwork.embedded;
-    return switch (artwork) {
-      MediaSessionArtworkNone() => (bytes: null, uri: null),
-      MediaSessionArtworkCustom(:final cover) => (bytes: cover, uri: null),
-      MediaSessionArtworkUri(:final uri) => (bytes: null, uri: uri.toString()),
-      MediaSessionArtworkEmbedded() =>
-        embedded != null
-            ? (bytes: embedded, uri: null)
-            : (bytes: null, uri: _extra(extras, 'art')),
-    };
-  }
-
-  MediaSessionPlaybackSnapshot _computePlayback({bool seek = false}) {
-    final state = _stateSnapshot();
-    // Navigability: a real multi-item mpv playlist reflects its bounds
-    // (loop=playlist wraps both ways); a single item stays navigable so an
-    // external-queue consumer still receives next and previous.
-    final pl = state.playback.playlist;
-    final multi = pl.items.length > 1;
-    final loopPlaylist = state.playback.loop == Loop.playlist;
-    final hasNext = !multi || loopPlaylist || pl.index < pl.items.length - 1;
-    final hasPrevious = !multi || loopPlaylist || pl.index > 0;
-    // Built only to be pushed, so it records what the OS now shows.
-    final seekable = state.network.buffering
-        ? _pushedSeekable ?? state.playback.seekable
-        : state.playback.seekable;
-    _pushedSeekable = seekable;
-    return MediaSessionPlaybackSnapshot(
-      playing: state.playback.playWhenReady,
-      position: state.playback.position,
-      rate: state.settings.rate,
-      seekable: seekable,
-      loop: state.playback.loop,
-      shuffle: state.playback.shuffle,
-      // Terminal end-of-content. The end-of-content settle releases
-      // `playWhenReady` at true EOF, which already drives a playback push,
-      // so the completed transition is carried on that same snapshot.
-      completed: state.playback.completed,
-      seek: seek,
-      // Actual output + buffering, for extrapolation gating and the loading
-      // state. Independent of the intent axis the button binds to.
-      actualPlaying: state.playback.playing,
-      buffering: state.network.buffering,
-      hasNext: hasNext,
-      hasPrevious: hasPrevious,
-      appPauses: _appPauses,
-    );
-  }
-
-  /// First non-empty value among [keys] in the mpv metadata map, matched
-  /// **case-insensitively**: mpv's tag-key casing varies by container
-  /// (ID3v2 and Vorbis come back lowercase, but MP4 and iTunes atoms do not),
-  /// so never assume a fixed case. [keys] are given lowercase; the list
-  /// also carries semantic fallbacks (e.g. `album_artist` when `artist`
-  /// is absent).
-  String? _firstTagValue(Map<String, String> meta, List<String> keys) {
-    for (final key in keys) {
-      for (final entry in meta.entries) {
-        if (entry.value.isNotEmpty && entry.key.toLowerCase() == key) {
-          return entry.value;
-        }
-      }
     }
     return null;
   }

@@ -84,9 +84,10 @@ final class EntryTable {
   /// map by URI, two entries with the same URI keep their own `extras`.
   late final Map<int, Media> media = _MediaView(this);
 
-  /// The last `playlist` node [onPlaylist] got, parsed again when a
-  /// `loadfile` reply registers an entry id after mpv already reported the
-  /// entry.
+  /// The last `playlist` node the state was parsed from, a report
+  /// ([onPlaylist]) or the read of a FILE_LOADED ([onLoadedNode]). Parsed
+  /// again when a `loadfile` reply registers an entry id after the state
+  /// already listed the entry.
   Object? get lastNode => _lastNode;
 
   /// The entry mpv is loading: from its START_FILE to the FILE_LOADED or
@@ -150,6 +151,14 @@ final class EntryTable {
       if (_holdsAnyLive) _confirm();
     });
     unawaited(live.done.then((_) => _detachLive(live.key)));
+  }
+
+  /// The playlist read with a FILE_LOADED, which the state was parsed from.
+  /// It can list an entry whose `loadfile` reply is still on its way, as a
+  /// report can, so a late reply parses it again. It is not a report for
+  /// the rule of [onPlaylist].
+  void onLoadedNode(Object? node) {
+    if (node != null) _lastNode = node;
   }
 
   /// A `playlist` report from mpv: the entries it does not list leave by

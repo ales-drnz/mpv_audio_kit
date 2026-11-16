@@ -2,23 +2,6 @@ ffi MpvEvent.0 eventId: @Int32() int
 ffi MpvEvent.1 error: @Int32() int
 ffi MpvEvent.2 replyUserdata: @Uint64() int
 ffi MpvEvent.3 data: Pointer<Void>
-ffi MpvEventStartFileData.0 playlistEntryId: @Int64() int
-ffi MpvEventEndFile.0 reason: @Int32() int
-ffi MpvEventEndFile.1 error: @Int32() int
-ffi MpvEventEndFile.2 playlistEntryId: @Int64() int
-ffi MpvEventEndFile.3 playlistInsertId: @Int64() int
-ffi MpvEventEndFile.4 playlistInsertNumEntries: @Int32() int
-ffi MpvEventEndFile.5 makReadError: @Int32() int
-ffi MpvEventEndFile.6 makSkippedSegments: @Int64() int
-ffi MpvEventEndFile.7 makDuration: @Double() double
-ffi MpvEventEndFile.8 makPosition: @Double() double
-ffi MpvEventProperty.0 name: Pointer<Void>
-ffi MpvEventProperty.1 format: @Int32() int
-ffi MpvEventProperty.2 data: Pointer<Void>
-ffi MpvEventLogMessage.0 prefix: Pointer<Void>
-ffi MpvEventLogMessage.1 level: Pointer<Void>
-ffi MpvEventLogMessage.2 text: Pointer<Void>
-ffi MpvEventLogMessage.3 logLevel: @Int32() int
 ffi MpvNode.0 u: MpvNodeUnion
 ffi MpvNode.1 format: @Int32() int
 ffi MpvNodeUnion.0 string: Pointer<Utf8>
@@ -32,6 +15,6 @@ ffi MpvNodeList.1 values: Pointer<MpvNode>
 ffi MpvNodeList.2 keys: Pointer<Pointer<Utf8>>
 ffi MpvByteArray.0 data: Pointer<Void>
 ffi MpvByteArray.1 size: @Size() int
-ffi MpvEventHook.0 name: Pointer<Void>
-ffi MpvEventHook.1 id: @Uint64() int
-wasm32 _kLayout = [16, 8, 12, 4, 8, 8, 4, 24, 4, 8, 16, 12, 4, 8, 16, 8, 12, 56, 4, 8, 16, 24, 28, 32, 40, 48, 16, 8]
+table lp64 = StructLayout._(pointerSize: 8, eventSize: 24, eventId: 0, eventError: 4, eventReplyUserdata: 8, eventData: 16, startFileSize: 8, startFileEntryId: 0, endFileSize: 56, endFileReason: 0, endFileError: 4, endFileEntryId: 8, endFileInsertId: 16, endFileInsertNumEntries: 24, endFileReadError: 28, endFileSkippedSegments: 32, endFileDuration: 40, endFilePosition: 48, propertySize: 24, propertyName: 0, propertyFormat: 8, propertyData: 16, logSize: 32, logPrefix: 0, logLevel: 8, logText: 16, logLogLevel: 24, nodeSize: 16, nodeU: 0, nodeFormat: 8, nodeListSize: 24, nodeListNum: 0, nodeListValues: 8, nodeListKeys: 16, byteArraySize: 16, byteArrayData: 0, byteArraySizeField: 8, hookSize: 16, hookName: 0, hookId: 8)
+table ilp32 = StructLayout._(pointerSize: 4, eventSize: 24, eventId: 0, eventError: 4, eventReplyUserdata: 8, eventData: 16, startFileSize: 8, startFileEntryId: 0, endFileSize: 56, endFileReason: 0, endFileError: 4, endFileEntryId: 8, endFileInsertId: 16, endFileInsertNumEntries: 24, endFileReadError: 28, endFileSkippedSegments: 32, endFileDuration: 40, endFilePosition: 48, propertySize: 12, propertyName: 0, propertyFormat: 4, propertyData: 8, logSize: 16, logPrefix: 0, logLevel: 4, logText: 8, logLogLevel: 12, nodeSize: 16, nodeU: 0, nodeFormat: 8, nodeListSize: 12, nodeListNum: 0, nodeListValues: 4, nodeListKeys: 8, byteArraySize: 8, byteArrayData: 0, byteArraySizeField: 4, hookSize: 16, hookName: 0, hookId: 8)
+wasm32 _kLayout = StructLayout.ilp32.webTable

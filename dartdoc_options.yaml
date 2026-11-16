@@ -20,6 +20,8 @@ dartdoc:
       markdown: doc/analysis.md
     "Media session":
       markdown: doc/media_session.md
+    "Platforms":
+      markdown: doc/platforms.md
     "Web":
       markdown: doc/web.md
     "Android TV":
@@ -39,6 +41,7 @@ dartdoc:
     - "Hooks and raw access"
     - "Visualizer and analysis"
     - "Media session"
+    - "Platforms"
     - "Web"
     - "Android TV"
     - "Tizen"

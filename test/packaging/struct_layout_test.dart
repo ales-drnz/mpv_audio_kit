@@ -6,9 +6,10 @@
 // the package reads. libmpv-scripts measures sizeof and offsetof on the
 // patched client.h of the release, per data model, and write_manifest.sh
 // puts them under structLayout in the manifest scripts/update_libmpv.sh
-// copies to tool/codegen: the FFI structs of mpv_bindings.dart (lp64, the
-// hosts the tests run on) and the wasm32 table of web_layout.dart (ilp32)
-// must say the same, or a pin of a release that moved a field fails here.
+// copies to tool/codegen: the two tables of struct_layout.dart, which the
+// decoder reads, the FFI structs (lp64, the hosts the tests run on) and the
+// wasm32 table of web_layout.dart (ilp32) must say the same, or a pin of a
+// release that moved a field fails here.
 
 import 'dart:convert';
 import 'dart:ffi';
@@ -16,8 +17,11 @@ import 'dart:io';
 
 import 'package:ffi/ffi.dart';
 import 'package:mpv_audio_kit/src/backend/web/web_layout.dart';
+import 'package:mpv_audio_kit/src/internals/struct_layout.dart';
 import 'package:mpv_audio_kit/src/mpv_bindings.dart' as ffi;
 import 'package:test/test.dart';
+
+import '../_helpers/mpv_test_structs.dart' as ffi;
 
 typedef _Layout = Map<String, ({int size, Map<String, int> fields})>;
 
@@ -225,7 +229,92 @@ final Map<String, _Measured> _ffiStructs = {
   ),
 };
 
+/// [t] as the manifest names it.
+Map<String, ({int size, Map<String, int> fields})> _table(StructLayout t) => {
+  'mpv_event': (
+    size: t.eventSize,
+    fields: {
+      'event_id': t.eventId,
+      'error': t.eventError,
+      'reply_userdata': t.eventReplyUserdata,
+      'data': t.eventData,
+    },
+  ),
+  'mpv_event_start_file': (
+    size: t.startFileSize,
+    fields: {'playlist_entry_id': t.startFileEntryId},
+  ),
+  'mpv_event_end_file': (
+    size: t.endFileSize,
+    fields: {
+      'reason': t.endFileReason,
+      'error': t.endFileError,
+      'playlist_entry_id': t.endFileEntryId,
+      'playlist_insert_id': t.endFileInsertId,
+      'playlist_insert_num_entries': t.endFileInsertNumEntries,
+      'mak_read_error': t.endFileReadError,
+      'mak_skipped_segments': t.endFileSkippedSegments,
+      'mak_duration': t.endFileDuration,
+      'mak_position': t.endFilePosition,
+    },
+  ),
+  'mpv_event_property': (
+    size: t.propertySize,
+    fields: {
+      'name': t.propertyName,
+      'format': t.propertyFormat,
+      'data': t.propertyData,
+    },
+  ),
+  'mpv_event_log_message': (
+    size: t.logSize,
+    fields: {
+      'prefix': t.logPrefix,
+      'level': t.logLevel,
+      'text': t.logText,
+      'log_level': t.logLogLevel,
+    },
+  ),
+  'mpv_node': (
+    size: t.nodeSize,
+    fields: {'u': t.nodeU, 'format': t.nodeFormat},
+  ),
+  'mpv_node_list': (
+    size: t.nodeListSize,
+    fields: {
+      'num': t.nodeListNum,
+      'values': t.nodeListValues,
+      'keys': t.nodeListKeys,
+    },
+  ),
+  'mpv_byte_array': (
+    size: t.byteArraySize,
+    fields: {'data': t.byteArrayData, 'size': t.byteArraySizeField},
+  ),
+  'mpv_event_hook': (
+    size: t.hookSize,
+    fields: {'name': t.hookName, 'id': t.hookId},
+  ),
+};
+
 void main() {
+  for (final (name, table, pointer) in [
+    ('lp64', StructLayout.lp64, 8),
+    ('ilp32', StructLayout.ilp32, 4),
+  ]) {
+    test('the $name table the decoder reads is the release\'s', () {
+      expect(table.pointerSize, pointer);
+      expect(StructLayout.of(pointer), same(table));
+      final release = _model(name);
+      final ours = _table(table);
+      expect(ours.keys.toSet(), release.keys.toSet());
+      for (final MapEntry(key: struct, value: want) in release.entries) {
+        expect(ours[struct]!.size, want.size, reason: 'sizeof $struct');
+        expect(ours[struct]!.fields, want.fields, reason: struct);
+      }
+    });
+  }
+
   test('the FFI structs lay out as the release states for lp64', () {
     expect(sizeOf<Pointer>(), 8, reason: 'the tests run on 64-bit hosts');
     final release = _model('lp64');

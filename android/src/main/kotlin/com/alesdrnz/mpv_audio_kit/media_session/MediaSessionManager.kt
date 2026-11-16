@@ -180,8 +180,12 @@ internal object MediaSessionManager {
                 MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
                     .add(SessionCommand(MediaSessionMappers.LIKE_ACTION, Bundle.EMPTY))
                     .build()
-            return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
+            // The builder of media3 1.11 with no defaults, given those the
+            // deprecated AcceptedResultBuilder(session) set: every controller
+            // keeps the player's default commands, trusted or not.
+            return MediaSession.ConnectionResult.AcceptedResultBuilder()
                 .setAvailableSessionCommands(sessionCommands)
+                .setAvailablePlayerCommands(MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS)
                 .build()
         }
 

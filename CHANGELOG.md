@@ -1,3 +1,59 @@
+## [0.7.2] - 16-11-2026
+
+A new engine under the same API: mpv 0.42.0, FFmpeg 9.0.2 and OpenSSL 4.1.0. Decoding, network and what mpv reports can differ in places from 0.7.1, so try an app's own files and servers before updating.
+
+### libmpv-r26
+**All platforms**
+- mpv 0.42.0, from 0.41.0, and FFmpeg 9.0.2, from 8.1.1, with OpenSSL 4.1.0 and libplacebo 7.387.0. The libraries say `mpv v0.42.0+r26`.
+- mpv 0.42.0 names a local file by its absolute, normalized path, with backslashes on Windows: a relative path, `./`, `//` and `..` come back rewritten in `playlist` and in `state.file.path`. The playlist of the state keeps the `Media` the app gave.
+- No `env://` protocol and no `env` property: a playlist or a property expansion can no longer read the environment of the app.
+- The HLS demuxer keeps its persistent connections under FFmpeg 9.0, which turned them off when mpv reads the playlist.
+- A stream whose cache fills before its end gets its waveform again, from the re-open or from playback. It could end `failed` when the analysis was behind the download.
+- The AES cipher of TLS runs in constant time. GHASH, the hash of AES-GCM, keeps its C code with tables.
+- zlib 1.4, xz 5.8.4, expat 2.10.0, libxml2 2.15.4, libpng 1.6.59 and libiconv 1.19.1.
+
+**Android**
+- Built with NDK r30. The minimum stays Android 7.0 (SDK 24).
+
+**Tizen**
+- A seek no longer plays audio from before it.
+
+**Web**
+- Emscripten 7.0.0. The module runs from Chrome 92, Firefox 114 and Safari 15.2.
+
+### All platforms
+**Changed**
+- Certificates are still not verified by default (`tls-verify` off), so a home server with a self-signed certificate plays: mpv 0.42.0 turns verification on, the player keeps it off. `setTlsVerify(true)` turns it on. A later release will make verification the default.
+
+**Fixed**
+- The build hook drops the libmpv binaries of earlier releases from its shared cache, about 8 MB per release and per target.
+- A libmpv download that fails on the network names the release and the asset, and the `libmpv` user define that builds without network.
+- `setVolume` above `volumeMax` and `setVolumeGain` outside `volumeGainMin` and `volumeGainMax` play the value again, as their docs say. On mpv 0.42.0 they threw `MpvCommandException`.
+- An entry added while a file loads keeps its `Media` and `extras` once `add` returns. It could show a bare `Media` of its path until the next playlist report.
+- A file opened paused gets its audio params. When mpv reported them unavailable after the file had started, they stayed empty until the next file.
+
+**Docs**
+- A Platforms topic says what each platform has: output drivers, devices, passthrough, media session, SMB, analysis, live PCM and cover.
+- The Network and cache topic and `CacheSettings.onDisk` say the disk cache is not persistent, with a recipe for offline listening. The Output topic says why Android has no audio offload.
+
+### Android
+**Changed**
+- Media3 1.11.1.
+
+### iOS, tvOS, macOS
+**Fixed**
+- The build hook checks the unpacked libmpv against the hash it recorded on unpacking, and unpacks it again when they differ.
+- Enabling the media session again drops a seek bar still held by a scrub of the session before.
+- On iOS an interruption that only means the app was suspended is told by its reason key, which replaced the older key in iOS 14.5.
+
+### Linux
+**Fixed**
+- An app in a Flatpak sandbox shows its cover in the desktop media controls.
+
+### Windows
+**Fixed**
+- The cover of the media controls is built without a thread of its own, so a cover can no longer freeze the app.
+
 ## [0.7.1] - 15-11-2026
 
 ### libmpv-r25
