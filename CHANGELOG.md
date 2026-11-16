@@ -1,5 +1,7 @@
 ## [0.7.2]
 
+A new engine under the same API: mpv 0.42.0, FFmpeg 9.0.2 and OpenSSL 4.1.0. Decoding, network and what mpv reports can differ in places from 0.7.1, so try an app's own files and servers before updating.
+
 ### libmpv-r26
 **All platforms**
 - mpv 0.42.0, from 0.41.0, and FFmpeg 9.0.2, from 8.1.1, with OpenSSL 4.1.0 and libplacebo 7.387.0. The libraries say `mpv v0.42.0+r26`.
