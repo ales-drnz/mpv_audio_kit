@@ -364,6 +364,8 @@ jobs:
       actions: read
       contents: read
     steps:
+      # A download that fails leaves summaries missing, which the step
+      # below fails on.
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         continue-on-error: true
         with:
@@ -404,11 +406,25 @@ jobs:
                       never.append(f'{where}: {m.group(1)}')
           if never:
               green = False
+          # Each device job leaves a summary of its files: one missing (an
+          # artifact not uploaded, or not downloaded) means files nobody
+          # read, so the run is not green. The names follow the matrix of
+          # android-emu and the upload of ios-integration.
+          expected = ['android-emu-24', 'android-emu-29', 'android-emu-34',
+                      'android-emu-36-tv', 'ios-integration-*']
+          absent = [name for name in expected
+                    if not glob.glob(f'device-logs/{name}/summary*.txt')]
+          if absent:
+              green = False
+              print('::error title=Device summaries missing::' + ', '.join(absent))
           verdict = 'green' if green else 'not green'
           out.write(f'### Devices, {verdict}\n\n')
           out.write(f"libmpv: {libmpv}. Kit: `{os.environ['GITHUB_REF_NAME']}` at {os.environ['GITHUB_SHA'][:7]}.\n\n")
           out.write('| job | result |\n|---|---|\n')
           out.write('\n'.join(rows) + '\n\n')
+          if absent:
+              out.write('**No summary from** ' + ', '.join(f'`{a}`' for a in absent)
+                        + ': its files were not read, so this run is not green.\n\n')
           if never:
               out.write('**Never started, so not checked** (' + str(len(never)) + '): a device job is green '
                         'without them, this run is not. Run them again before a release.\n\n')
@@ -420,6 +436,7 @@ jobs:
               'libmpv_run': run, 'pin': plan.get('pin'),
               'kit_ref': os.environ['GITHUB_REF_NAME'], 'kit_sha': os.environ['GITHUB_SHA'],
               'green': green, 'jobs': results, 'never_started': never,
+              'summaries_missing': absent,
           }, open('devices-result.json', 'w'), indent=2)
           raise SystemExit(0 if green else 1)
           EOF
