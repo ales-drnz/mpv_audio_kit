@@ -145,6 +145,14 @@ final class EventLogic {
       _cache.sentPause = value is int ? value : null;
     } else if (name != 'keep-open-parked') {
       _properties.dispatch(name, format, value);
+      if (identical(value, kPropertyUnavailable)) {
+        final late = _properties.rereadLate(name);
+        if (late != null) {
+          return _kEndOfContentTriggers.contains(name)
+              ? late.then((_) => _endOfContent.send())
+              : late;
+        }
+      }
     }
     if (_kEndOfContentTriggers.contains(name)) {
       return _endOfContent.send();
@@ -170,10 +178,12 @@ final class EventLogic {
         // new one starts.
         _cache.trailing.clear();
         _cache.started = _StartedEntry(entryId);
+        _cache.restarted = false;
         _send(event);
       case MpvEventFileLoaded():
         return _fileLoaded();
       case final MpvEventEndFile ended:
+        _cache.restarted = false;
         if (ended.reason == mpv.MpvEndFileReason.mpvEndFileReasonEof ||
             ended.reason == mpv.MpvEndFileReason.mpvEndFileReasonError) {
           return _endFile(ended);
@@ -253,6 +263,7 @@ final class EventLogic {
     await _properties.forwardCoreIdle();
     _send(MpvEventPlaybackRestart(timePos: await _properties.readTimePos()));
     await _properties.rereadUnavailable();
+    _cache.restarted = true;
     await _endOfContent.send();
   }
 

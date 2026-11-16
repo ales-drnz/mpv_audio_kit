@@ -60,6 +60,11 @@ class _PropertyCache {
   final lastTimestamps = <String, int>{};
   final unavailable = <String>{};
 
+  /// Whether the file mpv plays is past its PLAYBACK_RESTART, the last of
+  /// the points that read the [unavailable] properties again, until the
+  /// next START_FILE or END_FILE.
+  bool restarted = false;
+
   /// The newest value of each throttled property held back inside its
   /// window, sent when the window closes.
   final trailing = <String, double>{};
@@ -281,29 +286,48 @@ final class _PropertyForwarder {
   Future<void> rereadUnavailable() async {
     if (cache.unavailable.isEmpty) return;
     for (final name in cache.unavailable.toList(growable: false)) {
-      final format = cache.formats[name];
-      if (format == null) continue;
-      // One property that fails to read or decode must not cost the others,
-      // or the event (FILE_LOADED, AUDIO_RECONFIG) the caller sends next.
-      try {
-        // One await on a future picked first, not one per arm of a switch
-        // expression (see the WebAssembly note in _EndOfContent.send).
-        final read = switch (format) {
-          mpv.MpvFormat.mpvFormatDouble => _reader.float(name),
-          mpv.MpvFormat.mpvFormatFlag => _reader.flag(name),
-          mpv.MpvFormat.mpvFormatInt64 => _reader.int64(name),
-          mpv.MpvFormat.mpvFormatString => _reader.string(name),
-          mpv.MpvFormat.mpvFormatNode => _reader.node(name),
-          _ => null,
-        };
-        final value = await read;
-        if (name == 'time-pos') cache.timePosRead = true;
-        if (value != null) _forwardValue(name, format, value);
-      } catch (e) {
-        _send(MpvEventInternalLog('warn', 're-reading $name failed: $e'));
-      }
+      await _reread(name);
     }
   }
+
+  /// Reads [name] again when mpv reported it unavailable after the restart
+  /// of the file it plays: mpv hands its queued events out before the
+  /// property changes it sampled, so a change sampled while the files
+  /// switched can come after every point that reads it again, and mpv does
+  /// not report the value of the new file after it. Returns the read, or
+  /// `null` when there is none to make.
+  Future<void>? rereadLate(String name) {
+    if (!cache.restarted || !cache.unavailable.contains(name)) return null;
+    return _reread(name);
+  }
+
+  /// Reads [name] again and forwards it when it is back.
+  Future<void> _reread(String name) async {
+    final format = cache.formats[name];
+    if (format == null) return;
+    // One property that fails to read or decode must not cost the others,
+    // or the event (FILE_LOADED, AUDIO_RECONFIG) the caller sends next.
+    try {
+      // One await on a future picked first, not one per arm of a switch
+      // expression (see the WebAssembly note in _EndOfContent.send).
+      final value = await _readAs(name, format);
+      if (name == 'time-pos') cache.timePosRead = true;
+      if (value != null) _forwardValue(name, format, value);
+    } catch (e) {
+      _send(MpvEventInternalLog('warn', 're-reading $name failed: $e'));
+    }
+  }
+
+  /// The read of [name] in its observe [format], `null` for a format
+  /// the pump does not read.
+  Future<Object?>? _readAs(String name, int format) => switch (format) {
+    mpv.MpvFormat.mpvFormatDouble => _reader.float(name),
+    mpv.MpvFormat.mpvFormatFlag => _reader.flag(name),
+    mpv.MpvFormat.mpvFormatInt64 => _reader.int64(name),
+    mpv.MpvFormat.mpvFormatString => _reader.string(name),
+    mpv.MpvFormat.mpvFormatNode => _reader.node(name),
+    _ => null,
+  };
 
   /// Reads `time-pos` for the pump's own use: the payloads of FILE_LOADED
   /// and PLAYBACK_RESTART, and the park. The next change mpv sends for it is

@@ -90,6 +90,13 @@ Map<String, Object?> _parkedFirstOfTwo() => {
   'duration': 1.0,
 };
 
+/// Sends the held audio params group, as the pump does once its window
+/// has closed.
+Future<void> _closeGroupWindow(EventLogic logic) async {
+  await Future<void>.delayed(const Duration(milliseconds: 40));
+  await logic.idle();
+}
+
 /// A script of decoded events, each a dispatch or a property change.
 typedef _Step = Future<void>? Function(EventLogic logic);
 
@@ -569,6 +576,56 @@ void main() {
       'group audio-params={channels: 2}, audio-codec=flac, '
           'audio-codec-name=flac',
     ]);
+  });
+
+  test('a property mpv reports unavailable after the restart of its file is '
+      'read again at once', () async {
+    // The order of a paused open in CI: mpv hands its queued events out
+    // before the property changes it sampled, so the change it sampled
+    // between the two files came after PLAYBACK_RESTART, the last point
+    // that read it again. mpv does not report the value of the new file
+    // after that, and the state kept no audio params.
+    final params = {'samplerate': 44100, 'channel-count': 2};
+    final reader = _Reader({'audio-params': params, 'time-pos': 0.0});
+    final out = <String>[];
+    final logic = EventLogic(reader, (e) => out.add(_describe(e)))
+      ..observe('audio-params', MpvFormat.mpvFormatNode);
+    await logic.property('audio-params', MpvFormat.mpvFormatNode, {
+      'samplerate': 48000,
+    });
+    await _closeGroupWindow(logic);
+    await logic.dispatch(MpvEventStartFile(2));
+    await logic.dispatch(MpvEventPlaybackRestart());
+    out.clear();
+    await logic.property(
+      'audio-params',
+      MpvFormat.mpvFormatNone,
+      kPropertyUnavailable,
+    );
+    await _closeGroupWindow(logic);
+    expect(out, ['group audio-params=$params']);
+  });
+
+  test('a property unavailable between two files waits for the re-reads of '
+      'the next one', () async {
+    final reader = _Reader({'audio-params': null});
+    final out = <String>[];
+    final logic = EventLogic(reader, (e) => out.add(_describe(e)))
+      ..observe('audio-params', MpvFormat.mpvFormatNode);
+    await logic.property('audio-params', MpvFormat.mpvFormatNode, {
+      'samplerate': 48000,
+    });
+    await logic.dispatch(MpvEventPlaybackRestart());
+    await logic.dispatch(
+      MpvEventEndFile(2, MpvEndFileReason.mpvEndFileReasonStop, 0),
+    );
+    reader.reads.clear();
+    await logic.property(
+      'audio-params',
+      MpvFormat.mpvFormatNone,
+      kPropertyUnavailable,
+    );
+    expect(reader.reads, isEmpty);
   });
 
   test('a repeated value is sent once, an unobserved format never', () async {
