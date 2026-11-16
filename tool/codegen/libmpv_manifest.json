@@ -491,28 +491,28 @@
     ]
   },
   "source": {
-    "commit": "d1432a1082fea23b82e64f369bc54cd6fd54e02c",
-    "run": "43843399097"
+    "commit": "ede2de14c605c8985b616a6044585af21b858086",
+    "run": "43921534261"
   },
   "assets": {
     "libmpv_android-arm64-v8a.so": "36884ee5c162f3a676cfbbebea737c3379981a372b56d3a0d72006ce560b0899",
     "libmpv_android-armeabi-v7a.so": "050b17820eea37e8e2e64704ed025d9daec7e51a74a18d6c6f0333b15ddc4557",
     "libmpv_android-x86_64.so": "1eb936ee38b8ba97db4bd6d5f5d8979d7e69a427011ca65b73d1fdc40e9ea549",
-    "libmpv_ios.xcframework.zip": "3f1cdb192f41be30236231616ddbefd9b8041208679e81c710446d7f9a7d65db",
+    "libmpv_ios.xcframework.zip": "18235b759fcd7591dc5da987119a32d16b76f45601e92b73d80d4b80406f09aa",
     "libmpv_linux-aarch64.so": "4f68d40ac29240d19f4a5770346496cc4b23f0d2436ef608bce8ff65f00727cb",
     "libmpv_linux-x86_64.so": "b44be4f526d74825fd9f4d2f9b6a2362cd3dabc5434ac83c412f652ff94495cd",
-    "libmpv_macos.xcframework.zip": "da2005249e09c27907854e7111ec3d0ff69b20ae73f0d41d755e60c462cf4d02",
+    "libmpv_macos.xcframework.zip": "a734a0526b3a536709ceb1cd7ee4caa4a2045e7ddfe910e376269bbe5f4234d3",
     "libmpv_tizen-armv7l.so": "6dbe648b566264c7d920d4c52e1ee39b253fc3ac004c4f39a40e2f953fa9f112",
     "libmpv_tizen-x86_64.so": "a388ced43ef043b1b929b56ef5b9dfeb24d302139a29838a56df9ef5189e3876",
-    "libmpv_tvos.xcframework.zip": "c40f1f0bf5d349ef6a9443881d8399d36b60c776cd854d0f194c111f4806ba64",
+    "libmpv_tvos.xcframework.zip": "2ba4ff3cdcb9e63259ce33298ec2144be45640792dccb7dc450617231ec81cd6",
     "libmpv_web.zip": "2b82ed8cd0b3764c5182db623753675772f8017d1f1895ebd7811202d9e0565d",
     "libmpv_webos-armv7l.so": "c47e14efaa4469bee3b04bf648774e166f08382046aead73cea6fe298f13b6e9",
-    "libmpv_windows-arm64.dll": "8cda5daaaf6bf8101484baa697a46044d8e4ff6f2ea120b8fbd15966bad44efc",
-    "libmpv_windows-x86_64.dll": "3bc862d2e464efa513d802e81f5e3762037399bc58a717e458c2030328c47ed7"
+    "libmpv_windows-arm64.dll": "50297806c489266eeccffa8d92315a465f382db621dca9173976b5f6a94e1aa7",
+    "libmpv_windows-x86_64.dll": "1ba497325c21b83f23369f3e51f55792929454f278b2f81dc9f304a0b13eabaa"
   },
   "licenses": {
     "asset": "licenses.zip",
-    "sha256": "61c45f23a090fb1c9dffa0cbd08ff1b3d454bf06dcbf4ade8e8730fcc7d76e8e"
+    "sha256": "c9585343e31b698f55eb036add7a5d0cbc2a14daa0fde60a47d70aa19ded2ec0"
   },
   "components": {
     "android-arm64-v8a": {
