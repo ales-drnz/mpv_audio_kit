@@ -29,7 +29,7 @@ void main() {
       tearDownAll(() async {
         // Stop + clear before dispose: the seek tests leave the player
         // mid-playback, and an active demuxer thread can stall the
-        // dispose chain when many runtime_extended files run in parallel.
+        // dispose chain when many runtime files run in parallel.
         await player.stop();
         await player.clearPlaylist();
         await player.dispose();

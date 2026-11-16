@@ -8,7 +8,7 @@
 // the name raw comes back from the playlist as the Media the caller
 // passed, and mpv opens that very file. One file for each piece that
 // broke something once (test/_helpers/file_names.dart); the pure half of
-// the journey is in test/internal/uri_resolver_property_test.dart.
+// the journey is in test/unit/internals/uri_resolver_property_test.dart.
 //
 // POSIX hosts: Windows forbids most of these names, and its paths have
 // cases of their own in file_url_media_test.dart.

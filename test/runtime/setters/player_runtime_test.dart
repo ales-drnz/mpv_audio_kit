@@ -207,7 +207,7 @@ void main() {
           // Smoke test: verifies the multitrack MKA fixture is decoded by the
           // bundled libmpv (FLAC-in-Matroska + multi-track demux). If this
           // fails, the bundled binary lacks the matroska demuxer / FLAC
-          // decoder and the runtime_extended track tests would fail too.
+          // decoder and the runtime track tests would fail too.
           final multitrackPath =
               '${Directory.current.path}/test/fixtures/multitrack_two_audio.mka';
           if (!File(multitrackPath).existsSync()) {

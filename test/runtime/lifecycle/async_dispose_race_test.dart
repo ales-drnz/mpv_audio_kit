@@ -35,7 +35,7 @@ void main() {
       }
       // A crash, or a write left waiting on the freed handle, fails this
       // run. The closed-client guard itself is pinned without timing in
-      // test/internal/mpv_client_test.dart.
+      // test/unit/internals/mpv_client_test.dart.
     });
 
     test(

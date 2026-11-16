@@ -16,11 +16,12 @@ import '../../_helpers/setter_test_helpers.dart';
 ///
 /// `flutter test` runs each test file in its own Dart isolate group;
 /// this file's [Player] is logically separate from the one in
-/// `test/runtime/player_runtime_test.dart`, so it does not contribute
-/// to the per-isolate Player count that triggers the libmpv-internal
-/// segfault on the third instance. The other `setters_*_test.dart`
-/// files in this directory rely on the same property — if a future
-/// flutter_test change ever broke per-file isolation, this guard test
+/// `test/runtime/setters/player_runtime_test.dart`, so it does not
+/// contribute to the per-isolate Player count that triggers the
+/// libmpv-internal segfault on the third instance. The
+/// `setters_*_test.dart` files of test/runtime rely on the same
+/// property — if a future flutter_test change ever broke per-file
+/// isolation, this guard test
 /// (or one of the parallel setter tests) would crash before the
 /// breakage reached production builds.
 ///

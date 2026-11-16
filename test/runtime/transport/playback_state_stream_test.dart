@@ -15,8 +15,8 @@ import '../../_helpers/setter_test_helpers.dart';
 
 void main() {
   // MpvPlaybackState aggregate stream — the derivation logic is unit-
-  // tested in `test/internal/playback_state_test.dart` and
-  // `test/internal/lifecycle_transitions_test.dart`. What's NOT covered
+  // tested in `test/unit/player/playback_state_test.dart` and
+  // `test/unit/player/lifecycle_transitions_test.dart`. What's NOT covered
   // there is the runtime stream wiring: the lazy-bind that subscribes
   // when the consumer first listens, and the actual emit cadence as
   // open / play / pause / stop progress.

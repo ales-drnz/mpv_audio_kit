@@ -41,7 +41,8 @@ void main() {
         expect(player.state.settings.audioSpdif, {Spdif.ac3});
         // The full set of codecs mpv accepts round-trips through real libmpv.
         // The enum deliberately omits aac/mp3 — mpv's audio-spdif rejects them,
-        // so a setter call with them would throw (see test/models/spdif_test.dart).
+        // so a setter call with them would throw (see
+        // test/unit/models/spdif_test.dart).
         await player.setAudioSpdif({
           Spdif.ac3,
           Spdif.dts,
