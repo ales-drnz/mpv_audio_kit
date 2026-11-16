@@ -8,7 +8,7 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 /// Every `Stream` field of [PlayerStream], by name, in declaration order.
 /// The method `tap` is not here: its streams are made per stage.
 ///
-/// test/internal/stream_close_coverage_test.dart compares the keys with
+/// test/unit/player/stream_close_coverage_test.dart compares the keys with
 /// the fields declared in lib/src/player/player_stream.dart, so a stream
 /// added there without an entry here fails the suite.
 final Map<String, Stream<Object?> Function(PlayerStream s)> playerStreams = {

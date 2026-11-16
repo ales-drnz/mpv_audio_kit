@@ -16,7 +16,7 @@
     <regex pattern="debugLog\([^;]*;" dotAll="true"/>
   </exclude>
   <commands>
-    <command group="test" expected-return="0" working-directory="." timeout="900">flutter test -x network test/internal test/event_isolate test/player test/runtime test/reactive</command>
+    <command group="test" expected-return="0" working-directory="." timeout="900">flutter test -x network test/unit/internals test/unit/player test/unit/reactive test/unit/generated test/unit/types test/runtime/lifecycle/locale_invariant_test.dart test/runtime/lifecycle/locale_numeric_macos_test.dart test/runtime/setters/player_runtime_test.dart</command>
   </commands>
   <threshold failure="0">
     <rating over="80" name="A"/>

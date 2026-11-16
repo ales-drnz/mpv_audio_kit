@@ -20,7 +20,7 @@
 # (the build hook's libmpv user define), which no unit test calls.
 set -euo pipefail
 range="${1:-origin/main..HEAD}"
-unit_dirs='^test/(internal|models|backend|player|packaging|event_isolate|reactive|dsp|pcm|utils)/'
+unit_dirs='^test/(unit|packaging)/'
 root="$(git rev-parse --show-toplevel)"
 if ! git rev-list "$range" > /dev/null 2>&1; then
   echo "::error title=Red by machine::the range $range does not resolve"

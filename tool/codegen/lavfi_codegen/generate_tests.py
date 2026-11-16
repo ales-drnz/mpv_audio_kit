@@ -732,10 +732,10 @@ def _emit_param_corners(
         "// AUTO-GENERATED: do not edit by hand.",
         "//",
         "// Per-filter param corner-case manifest. See",
-        "// test/runtime_extended/audio_effects_param_ranges_test.dart",
+        "// test/runtime/effects/audio_effects_param_ranges_test.dart",
         "// for the test that iterates this list. kFilterSamples holds every",
         "// filter at its defaults and the curated presets, which",
-        "// test/internal/audio_effects_validation_test.dart passes through",
+        "// test/unit/internals/audio_effects_validation_test.dart passes through",
         "// the effects validator with the corners.",
         "",
         "// ignore_for_file: lines_longer_than_80_chars,"
@@ -833,7 +833,7 @@ def _emit_runtime_coverage(filters: dict, sorted_names: list[str]) -> str:
     arg is a runtime path, not a const literal. Its `model=` wire string is
     additionally asserted statically below.
 
-    Modeled on test/runtime_extended/audio_effects_param_ranges_test.dart
+    Modeled on test/runtime/effects/audio_effects_param_ranges_test.dart
     (same libmpv_resolver + mpv_error_capture plumbing + setUpAll Player)."""
     pkg = _CONSUMER_PACKAGE
     lp = _WIRE.label_prefix

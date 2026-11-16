@@ -6,7 +6,7 @@ constant), runs the tests, and lists the mutants the tests let live: code
 whose behavior no test pins.
 
     dart pub get -C tool/mutation
-    flutter test -x network --coverage test/internal test/event_isolate test/player test/runtime test/reactive
+    flutter test -x network --coverage test/unit/internals test/unit/player test/unit/reactive test/unit/generated test/unit/types test/runtime/lifecycle/locale_invariant_test.dart test/runtime/lifecycle/locale_numeric_macos_test.dart test/runtime/setters/player_runtime_test.dart
     dart tool/mutation/bin/mutation.dart --coverage coverage/lcov.info
 
 from the root of the package, with libmpv bundled as for the other tests.
