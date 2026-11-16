@@ -223,9 +223,10 @@ jobs:
     name: Android emulator API ${{ matrix.api }}${{ matrix.target == 'android-tv' && ' TV' || '' }}
     needs: plan
     runs-on: ubuntu-24.04
-    # Six files of at most two 8 minute tries each, plus the boot: a job cut
-    # by its timeout could not tell infra from fail.
-    timeout-minutes: 130
+    # Six files and the two ways of the keys, each of at most three 8 minute
+    # tries (the third only after a lost adb link), the F278 file and the
+    # boot: a job cut by its timeout could not tell infra from fail.
+    timeout-minutes: 230
     strategy:
       fail-fast: false
       matrix:
