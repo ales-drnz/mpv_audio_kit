@@ -9,7 +9,7 @@ A new engine under the same API: mpv 0.42.0, FFmpeg 9.0.2 and OpenSSL 4.1.0. Dec
 - No `env://` protocol and no `env` property: a playlist or a property expansion can no longer read the environment of the app.
 - The HLS demuxer keeps its persistent connections under FFmpeg 9.0, which turned them off when mpv reads the playlist.
 - A stream whose cache fills before its end gets its waveform again, from the re-open or from playback. It could end `failed` when the analysis was behind the download.
-- The AES of TLS runs in constant time.
+- The AES cipher of TLS runs in constant time. GHASH, the hash of AES-GCM, keeps its C code with tables.
 - zlib 1.4, xz 5.8.4, expat 2.10.0, libxml2 2.15.4, libpng 1.6.59 and libiconv 1.19.1.
 
 **Android**
