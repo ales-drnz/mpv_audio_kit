@@ -68,6 +68,7 @@ A `PcmSource` plays raw PCM as it arrives, such as speech from a socket.
 ```dart
 final source = await player.openPcmStream(
   const PcmFormat(sampleRate: 24000, channels: 1), // s16le by default
+  play: true, // null follows PlayerConfiguration.autoPlay, as for open
 );
 await source.addStream(socket
     .where((m) => m is List<int>)

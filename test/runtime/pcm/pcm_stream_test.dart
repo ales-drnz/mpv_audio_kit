@@ -204,7 +204,7 @@ Future<Map<String, Object?>> _playThrough(
     }),
   );
   final watch = _Watch(player);
-  final source = await player.openPcmStream(f);
+  final source = await player.openPcmStream(f, play: true);
   watch.start();
   DateTime? firstAdd;
   final arrivals = <(int, DateTime)>[];
@@ -381,7 +381,7 @@ void main() {
       final sub = player.stream.endFile.listen((e) {
         if (!ended.isCompleted) ended.complete((DateTime.now(), e));
       });
-      final source = await player.openPcmStream(_speech);
+      final source = await player.openPcmStream(_speech, play: true);
       final feeding = source.addStream(_feed(_speech, totalMs: 4000));
       await waitUntil(
         () async =>
@@ -526,7 +526,7 @@ void main() {
     for (final action in ['stop', 'dispose', 'open']) {
       test('$action while the reader waits for input returns soon', () async {
         final player = await buildPlayer();
-        final source = await player.openPcmStream(_speech);
+        final source = await player.openPcmStream(_speech, play: true);
         source.add(_tone(_speech, 0, 500));
         await waitUntil(
           () async =>
@@ -564,7 +564,11 @@ void main() {
       for (final low in [false, true]) {
         final player = await buildPlayer();
         final watch = _Watch(player);
-        final source = await player.openPcmStream(_speech, lowLatency: low);
+        final source = await player.openPcmStream(
+          _speech,
+          play: true,
+          lowLatency: low,
+        );
         watch.start();
         final feeding = source.addStream(_feed(_speech, totalMs: 300));
         await waitUntil(() => watch.started != null, reason: 'playback starts');
@@ -600,7 +604,11 @@ void main() {
           await player.setRawProperty('ao', realAudioOutputs);
           await player.setVolume(0);
           final watch = _Watch(player);
-          final source = await player.openPcmStream(_speech, lowLatency: low);
+          final source = await player.openPcmStream(
+            _speech,
+            play: true,
+            lowLatency: low,
+          );
           watch.start();
           final first = DateTime.now();
           final feeding = source.addStream(_feed(_speech, totalMs: 600));
@@ -707,7 +715,7 @@ void main() {
         player.stream.error.listen(errors.add),
       ];
       final completed = player.stream.completed.firstWhere((c) => c);
-      final source = await player.openPcmStream(_speech);
+      final source = await player.openPcmStream(_speech, play: true);
       await source.addStream(_feed(_speech, totalMs: 1500));
       await source.close();
       await completed.timeout(const Duration(seconds: 10));
@@ -785,7 +793,7 @@ void main() {
           await player.setCache(
             player.state.settings.cache.copyWith(mode: cache),
           );
-          final source = await player.openPcmStream(_speech);
+          final source = await player.openPcmStream(_speech, play: true);
           final feeding = source.addStream(_feed(_speech, totalMs: 3000));
           await waitUntil(
             () async =>

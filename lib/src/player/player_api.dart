@@ -97,10 +97,11 @@ abstract interface class PlayerApi {
   Future<void> openPlaylistFile(Media playlist, {bool? play});
 
   /// Creates a live [PcmSource] of [format] and opens it as the sole
-  /// playlist entry. See [Player.openPcmStream].
+  /// playlist entry. When [play] is null the configuration's autoplay
+  /// value decides, as for [open]. See [Player.openPcmStream].
   Future<PcmSource> openPcmStream(
     PcmFormat format, {
-    bool play = true,
+    bool? play,
     Duration maxBuffered = const Duration(seconds: 30),
     bool lowLatency = false,
     Map<String, Object?>? extras,

@@ -13,7 +13,9 @@ mixin _PcmModule on _PlayerBase, _OpenModule {
   /// Creates a live [PcmSource] of [format] and opens it as the sole
   /// playlist entry, like [Player.open] with its [PcmSource.toMedia].
   /// Feed the returned source and [PcmSource.close] it when the input
-  /// ends: the entry then ends normally after the last sample.
+  /// ends: the entry then ends normally after the last sample. When
+  /// [play] is null [PlayerConfiguration.autoPlay] decides, as for
+  /// [Player.open].
   ///
   /// Playback starts a fraction of a second after the first chunk, once
   /// the audio output buffer is full (see [PcmSource]). [maxBuffered] and
@@ -31,6 +33,7 @@ mixin _PcmModule on _PlayerBase, _OpenModule {
   /// ```dart
   /// final source = await player.openPcmStream(
   ///   const PcmFormat(sampleRate: 24000, channels: 1),
+  ///   play: true,
   /// );
   /// socket.listen(
   ///   (message) => source.add(message as Uint8List),
@@ -39,7 +42,7 @@ mixin _PcmModule on _PlayerBase, _OpenModule {
   /// ```
   Future<PcmSource> openPcmStream(
     PcmFormat format, {
-    bool play = true,
+    bool? play,
     Duration maxBuffered = const Duration(seconds: 30),
     bool lowLatency = false,
     Map<String, Object?>? extras,

@@ -44,7 +44,7 @@ class _ApiProbe implements PlayerApi {
   @override
   Future<PcmSource> openPcmStream(
     PcmFormat format, {
-    bool play = true,
+    bool? play,
     Duration maxBuffered = const Duration(seconds: 30),
     bool lowLatency = false,
     Map<String, Object?>? extras,

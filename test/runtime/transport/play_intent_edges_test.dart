@@ -100,7 +100,7 @@ void main() {
       final completed = player.stream.completed
           .firstWhere((c) => c)
           .timeout(const Duration(seconds: 10));
-      final source = await player.openPcmStream(speech);
+      final source = await player.openPcmStream(speech, play: true);
       source.add(tone(500));
       await source.close();
       await completed;
