@@ -49,6 +49,7 @@ getter into a chain of two.
 | `setAudioBuffer`, `setNetworkTimeout`, `setAudioSampleRate` take any value | throw `RangeError` outside 0 to 10 s, below 0, and outside 0 to 768000 |
 | `class CoverArt`, `FftFrame`, `Loudness`, `LoudnessScan`, `MediaSession`, `MpvHookEvent`, `MpvLogEntry`, `PcmFrame`, `PlayerConfiguration`, `BandProcessor` | `final class`: they cannot be extended or implemented outside the package |
 | `class Player`, `class PlayerStream` | `interface class`: a fake still implements them, nothing extends them |
+| A fake that implements `PlayerApi` or `Player` overrides `stop()` | overrides `stop({bool keepPlaylist = false})`, and implements `initialized` unless it has a `noSuchMethod` |
 
 A `switch` over `PlayerException` that lists every case needs a
 `MediaSessionException` case. An `on PlayerException` no longer catches

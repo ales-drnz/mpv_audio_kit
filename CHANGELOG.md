@@ -10,17 +10,15 @@ Breaking: the cleanup 0.7.0 announced, on the same libmpv-r26. See MIGRATION.md.
 - `setMediaSession` throws `MediaSessionException`, a `PlayerException` with a `reason`, where it threw `StateError`.
 - The setters with a range throw `RangeError` before writing: `setVolume`, `setVolumeGain`, `setVolumeGainMin`, `setVolumeGainMax`, `setVolumeMax`, `setAbLoopCount`, `setAudioBuffer`, `setNetworkTimeout` and `setAudioSampleRate`.
 - The value classes are `final`, and `Player` and `PlayerStream` are `interface` classes: a fake still implements them.
+- `stop` takes `keepPlaylist`, so a class that implements `PlayerApi` and overrides `stop` adds the parameter.
 
-**Docs**
-- Tizen and webOS are marked experimental: they have not run on a TV yet.
-
-## [0.7.3]
-
-### All platforms
 **Added**
 - `stop(keepPlaylist: true)` unloads the file and keeps the playlist. The index stays on the entry that stopped, and `play` starts it again from its beginning.
 - `state.playbackState`, the value `stream.playbackState` emitted last.
 - `initialized` completes once the player has started, or with the `PlayerInitException` of a start that failed.
+
+**Docs**
+- Tizen and webOS are marked experimental: they have not run on a TV yet.
 
 ### Linux
 **Fixed**
