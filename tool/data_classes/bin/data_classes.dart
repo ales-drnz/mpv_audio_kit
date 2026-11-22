@@ -79,16 +79,8 @@ const List<DataClass> classes = [
 
 /// A class made of groups, each a data class of [classes]: its fields are
 /// the groups, and its copyWith also takes every field of every group, so
-/// a caller can set one value without naming its group. Each flat field
-/// has a deprecated getter that reads it from its group, but those of
-/// [groupOnly], added after the groups, which never were flat.
-typedef CompositeClass = ({
-  String library,
-  String name,
-  String copyWithDoc,
-  String deprecation,
-  Set<String> groupOnly,
-});
+/// a caller can set one value without naming its group.
+typedef CompositeClass = ({String library, String name, String copyWithDoc});
 
 const List<CompositeClass> composites = [
   (
@@ -99,8 +91,6 @@ const List<CompositeClass> composites = [
         '/// replaces its value in its group, after a group given whole. Pass\n'
         '/// `null` for a nullable field to clear it; omitted fields keep their\n'
         '/// current value.',
-    deprecation: 'the flat fields go in 0.8.0',
-    groupOnly: {'durationEstimated'},
   ),
 ];
 
@@ -250,9 +240,8 @@ String generate(DataClass c, List<Field> fields) {
 }
 
 /// The part file of the composite [c]: copyWith over its [groups] and
-/// every [flat] field of each group, == and hashCode over the groups, and a
-/// deprecated getter for each flat field. A group none of whose fields is
-/// given keeps its instance.
+/// every [flat] field of each group, and == and hashCode over the groups.
+/// A group none of whose fields is given keeps its instance.
 String generateComposite(
   CompositeClass c,
   List<Field> groups,
@@ -266,9 +255,7 @@ String generateComposite(
     ..writeln()
     ..writeln("part of '../${c.library.substring('lib/src/'.length)}';")
     ..writeln()
-    ..writeln(
-      '/// The copyWith, == and hashCode of [${c.name}], and its flat fields.',
-    )
+    ..writeln('/// The copyWith, == and hashCode of [${c.name}].')
     ..writeln('mixin _\$${c.name} {')
     ..writeln('  ${c.name} get _self => this as ${c.name};')
     ..writeln()
@@ -317,18 +304,6 @@ String generateComposite(
       '  int get hashCode => Object.hash('
       '${groups.map((g) => '_self.${g.name}').join(', ')});',
     );
-  for (final g in groups) {
-    for (final f in flat[g.name]!) {
-      if (c.groupOnly.contains(f.name)) continue;
-      b
-        ..writeln()
-        ..writeln(
-          '  /// Deprecated: [${g.type}.${f.name}] of [${c.name}.${g.name}].',
-        )
-        ..writeln("  @Deprecated('Use ${g.name}.${f.name}; ${c.deprecation}.')")
-        ..writeln('  ${f.type} get ${f.name} => _self.${g.name}.${f.name};');
-    }
-  }
   b.writeln('}');
   return b.toString();
 }

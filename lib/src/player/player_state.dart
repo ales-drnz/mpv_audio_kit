@@ -6,10 +6,8 @@ import '../generated/audio_effects_settings.dart';
 import '../internals/unset_sentinel.dart';
 import '../models/audio_params.dart';
 import '../models/chapter.dart';
-import '../models/cover_art.dart';
 import '../models/demuxer_cache_state.dart';
 import '../models/device.dart';
-import '../models/media_session.dart';
 import '../models/mpv_track.dart';
 import '../models/playlist.dart';
 import '../types/enums/cover.dart';
@@ -42,9 +40,9 @@ part '../generated/player_state_data.dart';
 /// Retrieve the current snapshot synchronously via `player.state`, or subscribe
 /// to individual fields via the typed streams in `player.stream`.
 ///
-/// The flat fields of 0.6 (`position`, `volume`, ... on the state) still read
-/// the same values from their groups, deprecated: they go in 0.8.0.
-/// [copyWith] takes the groups and every field of every group.
+/// A value is read from its group: `state.playback.position`,
+/// `state.settings.volume`. [copyWith] takes the groups and every field of
+/// every group.
 ///
 /// {@category State and streams}
 final class PlayerState with _$PlayerState {
