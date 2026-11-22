@@ -59,6 +59,12 @@ abstract interface class PlayerApi {
 
   // ── Lifecycle ──────────────────────────────────────────────────────
 
+  /// Completes once the player has started its core, or with a
+  /// [PlayerInitException] when it could not. Every call already waits
+  /// for it, so awaiting it is only needed to learn of a failed start
+  /// before the first call, as when a screen shows an error at once.
+  Future<void> get initialized;
+
   /// Tears down the player. Idempotent: every call returns the same
   /// teardown future.
   ///
@@ -112,9 +118,11 @@ abstract interface class PlayerApi {
   /// Pauses playback, preserving the playhead position. Idempotent.
   Future<void> pause();
 
-  /// Stops playback and unloads the current file; the next track must be
-  /// loaded with [open].
-  Future<void> stop();
+  /// Stops playback and unloads the current file. The playlist is cleared
+  /// and the next track must be loaded with [open], unless [keepPlaylist]
+  /// keeps the entries: the playlist index stays on the entry that stopped
+  /// and [play] starts it from its beginning.
+  Future<void> stop({bool keepPlaylist = false});
 
   /// Seeks within the current file. With [relative] `false` [position] is
   /// an absolute timestamp, a negative one going to the start; with `true`

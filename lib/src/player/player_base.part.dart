@@ -202,9 +202,12 @@ abstract class _PlayerBase {
     // this one: see `_InitModule._start`.
   }
 
-  /// Test-only: allows tests to await the post-`Player()` init that
-  /// runs in the background. Public methods already
-  /// `await _ready` internally so consumers don't normally need this.
+  /// Completes once the core has started, or with a
+  /// [PlayerInitException] when it could not. Every call already awaits
+  /// it: await it to learn of a failed start before the first call.
+  Future<void> get initialized => _ready;
+
+  /// Test-only alias of [initialized].
   @visibleForTesting
   Future<void> get ready => _ready;
 

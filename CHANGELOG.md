@@ -1,3 +1,15 @@
+## [0.7.3]
+
+### All platforms
+**Added**
+- `stop(keepPlaylist: true)` unloads the file and keeps the playlist. The index stays on the entry that stopped, and `play` starts it again from its beginning.
+- `state.playbackState`, the value `stream.playbackState` emitted last.
+- `initialized` completes once the player has started, or with the `PlayerInitException` of a start that failed.
+
+### Linux
+**Fixed**
+- MPRIS reports `Stopped`, with no metadata, after a stop of the app or of the desktop controls. It reported `Paused`.
+
 ## [0.7.2] - 16-11-2026
 
 A new engine under the same API: mpv 0.42.0, FFmpeg 9.0.2 and OpenSSL 4.1.0. Decoding, network and what mpv reports can differ in places from 0.7.1, so try an app's own files and servers before updating.

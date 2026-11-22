@@ -87,6 +87,7 @@ void main() {
       'loop',
       'shuffle',
       'completed',
+      'stopped',
       'seek',
       'actualPlaying',
       'buffering',
@@ -134,7 +135,13 @@ void main() {
     test('carry the playback flags as booleans', () async {
       final sent = await _enableArguments();
       final map = sent['playback']! as Map;
-      for (final key in ['completed', 'actualPlaying', 'buffering', 'seek']) {
+      for (final key in [
+        'completed',
+        'stopped',
+        'actualPlaying',
+        'buffering',
+        'seek',
+      ]) {
         expect(map[key], isA<bool>(), reason: key);
       }
     });

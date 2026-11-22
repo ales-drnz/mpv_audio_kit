@@ -13,7 +13,8 @@ mixin _PlaybackModule on _PlayerBase, _PropertiesModule {
   /// cannot seek back there (a live stream, a closed [PcmSource]) stays at
   /// its end and the intent stays off. With nothing loaded (before any
   /// open, after [stop]) there is nothing to resume and the intent stays
-  /// off too. The future completes once mpv has taken the unpause; the
+  /// off too; after `stop(keepPlaylist: true)` it starts the entry that
+  /// stopped from its beginning, as [jump] does. The future completes once mpv has taken the unpause; the
   /// playback itself is observable via [PlayerStream.playing]. A [pause],
   /// [stop] or load called after it has the last word: then it writes
   /// nothing.
@@ -89,6 +90,8 @@ mixin _PlaybackModule on _PlayerBase, _PropertiesModule {
     var idle = _transport.loadsInFlight == 0;
     if (idle) idle = await _readString('idle-active') == 'yes';
     if (idle && _transport.loadsInFlight == 0 && _transport.owns(intent)) {
+      // After stop(keepPlaylist: true) the entry that stopped starts.
+      if (await _resumeKeptStop(intent)) return;
       _transport.writeIntent(false);
     }
   }
@@ -158,15 +161,41 @@ mixin _PlaybackModule on _PlayerBase, _PropertiesModule {
   }
 
   /// Stops playback and unloads the current file. Distinct from [pause]:
-  /// the demuxer is torn down, the playhead is reset, and the next call
-  /// must be [open] (not [play]) to start a new track.
-  Future<void> stop() {
+  /// the demuxer is torn down and the playhead is reset.
+  ///
+  /// By default the playlist is cleared, and the next call must be [open]
+  /// (not [play]) to start a new track. With [keepPlaylist] the entries
+  /// stay and `state.playback.playlist.index` stays on the entry that
+  /// stopped, with no file loaded: [play] starts that entry from its
+  /// beginning, [jump] starts another. Removed before the [play], the
+  /// entry leaves nothing to start. A live PCM entry stays without its source, as after a
+  /// skip (see [PcmSource]).
+  ///
+  /// The media session shows the stop where the platform has a stopped
+  /// state: MPRIS reports `Stopped` on Linux.
+  Future<void> stop({bool keepPlaylist = false}) {
     _mediaSessionController?.appPaused();
-    return _stop();
+    return _stop(keepPlaylist: keepPlaylist);
+  }
+
+  /// Starts the entry a kept stop left, for the [play] that claimed
+  /// [intent] on an idle core and has written the unpause. Whether it did.
+  Future<bool> _resumeKeptStop(int intent) async {
+    final id = _entries.stopped;
+    if (id == null || _entries.hiddenAt != null) return false;
+    final node = await _readPlaylist() ?? const <Object?>[];
+    final index = node.indexWhere((e) => e is Map && e['id'] == id);
+    // A pause() called since keeps the entry for the next play().
+    if (!_transport.owns(intent)) return false;
+    _entries.stopped = null;
+    if (index < 0) return false;
+    await _calls.commandChecked(['playlist-play-index', '$index']);
+    if (_transport.wantsPlay(intent)) _transport.writeIntent(true);
+    return true;
   }
 
   /// [stop] for a command of the media session (see [_pause]).
-  Future<void> _stop() async {
+  Future<void> _stop({bool keepPlaylist = false}) async {
     _checkNotDisposed();
     // Claim the load epoch synchronously so an in-flight open() that is
     // still resolving its URI aborts instead of resuming after this call
@@ -178,7 +207,20 @@ mixin _PlaybackModule on _PlayerBase, _PropertiesModule {
     _transport.claimIntent(false);
     // Execute in-flight transport writes first; see [CoreCalls.settleWrites].
     await _calls.settleWrites();
-    await _calls.commandChecked(['stop']);
+    int? stoppedId;
+    if (keepPlaylist) {
+      final node = await _readPlaylist();
+      for (final entry in node ?? const <Object?>[]) {
+        if (entry is Map && entry['current'] == true && entry['id'] is int) {
+          stoppedId = entry['id'] as int;
+        }
+      }
+    }
+    await _calls.commandChecked(['stop', if (keepPlaylist) 'keep-playlist']);
+    _entries.stopped = stoppedId;
+    // The app's stop and the session's own Stop: the OS shows it stopped
+    // until the next load or play.
+    _mediaSessionController?.stopped();
     // mpv clears its playlist on stop but reports the change only when a
     // file was playing. Idle (after a failed load) it stays silent, so the
     // state would keep the old entries and the live sources they hold.

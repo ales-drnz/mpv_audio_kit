@@ -24,6 +24,8 @@ import '../types/settings/demuxer_settings.dart';
 import '../types/settings/replay_gain_settings.dart';
 import '../types/settings/spectrum_settings.dart';
 import '../types/state/audio_output_state.dart';
+import '../types/state/mpv_playback_state.dart';
+import 'mpv_playback_state_derive.dart';
 import 'state/file_state.dart';
 import 'state/library_versions.dart';
 import 'state/network_state.dart';
@@ -74,6 +76,19 @@ final class PlayerState with _$PlayerState {
     this.settings = const PlayerSettings(),
     this.versions = const LibraryVersions(),
   });
+
+  /// The aggregate playback lifecycle of this snapshot, the value
+  /// `PlayerStream.playbackState` emits: derived from
+  /// [PlaybackState.playing], [NetworkState.buffering],
+  /// [PlaybackState.completed], [NetworkState.pausedForCache] and whether
+  /// [FileState.path] names a loaded file.
+  MpvPlaybackState get playbackState => deriveMpvPlaybackState(
+    playing: playback.playing,
+    buffering: network.buffering,
+    completed: playback.completed,
+    pausedForCache: network.pausedForCache,
+    fileLoaded: file.path.isNotEmpty,
+  );
 
   @override
   String toString() =>

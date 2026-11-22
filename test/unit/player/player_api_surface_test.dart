@@ -60,7 +60,10 @@ class _ApiProbe implements PlayerApi {
   Future<void> pause() => _record('pause');
 
   @override
-  Future<void> stop() => _record('stop');
+  Future<void> stop({bool keepPlaylist = false}) => _record('stop');
+
+  @override
+  Future<void> get initialized => Future.value();
 
   @override
   Future<void> seekToPercent(

@@ -121,6 +121,14 @@ class MediaSessionPlaybackSnapshot {
   /// | Web | not read: `playbackState` stays `paused` |
   final bool completed;
 
+  /// The player stopped ([Player.stop]) and nothing loaded or played since.
+  ///
+  /// | Platform | What it does with `stopped` |
+  /// | :--- | :--- |
+  /// | Linux | MPRIS `PlaybackStatus=Stopped` with empty `Metadata` |
+  /// | Android, Apple, Windows, Web | not read |
+  final bool stopped;
+
   /// This snapshot originates from a seek landing (PLAYBACK_RESTART), as
   /// opposed to a plain play, pause or rate change. Linux MPRIS uses it to emit
   /// the `Seeked` signal deterministically, even for a sub-second scrub that
@@ -180,6 +188,7 @@ class MediaSessionPlaybackSnapshot {
     required this.loop,
     required this.shuffle,
     this.completed = false,
+    this.stopped = false,
     this.seek = false,
     this.actualPlaying = false,
     this.buffering = false,
@@ -369,6 +378,7 @@ class MediaSessionChannel {
         'loop': p.loop.name,
         'shuffle': p.shuffle,
         'completed': p.completed,
+        'stopped': p.stopped,
         'seek': p.seek,
         'actualPlaying': p.actualPlaying,
         'buffering': p.buffering,

@@ -824,7 +824,9 @@ void MprisServer::Enable(FlValue* config, FlValue* metadata, FlValue* playback) 
   // playback (anchor without seek detection on enable)
   playing_ = FlBool(playback, "playing", false);
   actual_playing_ = FlBool(playback, "actualPlaying", false);
-  completed_ = FlBool(playback, "completed", false);
+  // A stop shows as the end of content does: Stopped, empty Metadata.
+  completed_ = FlBool(playback, "completed", false) ||
+               FlBool(playback, "stopped", false);
   int64_t pos = 0;
   if (FlInt(playback, "positionMs", &pos)) position_ms_ = pos;
   rate_ = FlDouble(playback, "rate", 1.0);
@@ -974,7 +976,9 @@ void MprisServer::UpdatePlayback(FlValue* playback) {
   const bool was_shuffle = shuffle_;
   playing_ = FlBool(playback, "playing", false);
   actual_playing_ = FlBool(playback, "actualPlaying", false);
-  completed_ = FlBool(playback, "completed", false);
+  // A stop shows as the end of content does: Stopped, empty Metadata.
+  completed_ = FlBool(playback, "completed", false) ||
+               FlBool(playback, "stopped", false);
   if (have_pos) position_ms_ = new_pos_ms;
   rate_ = FlDouble(playback, "rate", 1.0);
   seekable_ = FlBool(playback, "seekable", false);

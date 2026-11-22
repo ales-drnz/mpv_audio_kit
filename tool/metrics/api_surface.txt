@@ -3549,6 +3549,7 @@ Player.Future<void> clearPlaylist({bool keepCurrent = false})
 Player.Future<void> continueHook(int id)
 Player.Future<void> deleteResumeConfig({String? filename})
 Player.Future<void> dispose()
+Player.Future<void> get initialized
 Player.Future<void> insert(int index, Media media)
 Player.Future<void> jump(int index)
 Player.Future<void> move(int from, int to)
@@ -3612,7 +3613,7 @@ Player.Future<void> setVolumeGain(double gainDb)
 Player.Future<void> setVolumeGainMax(double gainDb)
 Player.Future<void> setVolumeGainMin(double gainDb)
 Player.Future<void> setVolumeMax(double limit)
-Player.Future<void> stop()
+Player.Future<void> stop({bool keepPlaylist = false})
 Player.Future<void> updateAudioEffects(List<AudioEffect> Function(List<AudioEffect>) mapper)
 Player.Future<void> writeResumeConfig()
 Player.PlayerState get state
@@ -3638,6 +3639,7 @@ PlayerApi.Future<void> clearPlaylist({bool keepCurrent = false})
 PlayerApi.Future<void> continueHook(int id)
 PlayerApi.Future<void> deleteResumeConfig({String? filename})
 PlayerApi.Future<void> dispose()
+PlayerApi.Future<void> get initialized
 PlayerApi.Future<void> insert(int index, Media media)
 PlayerApi.Future<void> jump(int index)
 PlayerApi.Future<void> move(int from, int to)
@@ -3704,7 +3706,7 @@ PlayerApi.Future<void> setVolumeGain(double gainDb)
 PlayerApi.Future<void> setVolumeGainMax(double gainDb)
 PlayerApi.Future<void> setVolumeGainMin(double gainDb)
 PlayerApi.Future<void> setVolumeMax(double limit)
-PlayerApi.Future<void> stop()
+PlayerApi.Future<void> stop({bool keepPlaylist = false})
 PlayerApi.Future<void> updateAudioEffects(List<AudioEffect> Function(List<AudioEffect>) mapper)
 PlayerApi.Future<void> writeResumeConfig()
 PlayerApi.PlayerConfiguration get configuration
@@ -3878,6 +3880,7 @@ PlayerState.@Deprecated('Use versions.mpvVersion; the flat fields go in 0.8.0.')
 PlayerState.@override String toString()
 PlayerState.@override bool operator ==(Object other)
 PlayerState.@override int get hashCode
+PlayerState.MpvPlaybackState get playbackState
 PlayerState.PlayerState copyWith({PlaybackState? playback, NetworkState? network, FileState? file, OutputState? output, PlayerSettings? settings, LibraryVersions? versions, Playlist? playlist, bool? playing, bool? playWhenReady, bool? completed, Duration? position, Duration? duration, bool? durationEstimated, bool? seeking, bool? seekable, bool? partiallySeekable, double? percentPos, Duration? timeRemaining, Duration? playtimeRemaining, bool? eofReached, Duration? audioPts, Object? currentChapter = unset, Loop? loop, bool? shuffle, Object? abLoopA = unset, Object? abLoopB = unset, Object? abLoopCount = unset, Object? remainingAbLoops = unset, bool? buffering, Duration? buffer, double? bufferingPercentage, Duration? bufferDuration, DemuxerCacheState? demuxerCacheState, bool? pausedForCache, bool? demuxerViaNetwork, bool? demuxerIdle, double? cacheSpeed, int? cacheBufferingState, Object? readError = unset, Object? skippedSegments = unset, Map<String, String>? metadata, Map<String, String>? chapterMetadata, List<Chapter>? chapters, List<MpvTrack>? tracks, Object? currentAudioTrack = unset, AudioParams? audioParams, Object? audioBitrate = unset, Object? coverArt = unset, String? mediaTitle, String? fileFormat, int? fileSize, String? path, String? filename, String? streamPath, String? streamOpenFilename, String? playlistPath, String? currentDemuxer, Duration? demuxerStartTime, AudioParams? audioOutParams, Device? audioDevice, List<Device>? audioDevices, AudioOutputState? audioOutputState, String? currentAo, Object? systemVolume = unset, Object? systemMute = unset, double? volume, bool? mute, double? volumeMax, double? volumeGain, double? volumeGainMin, double? volumeGainMax, double? rate, double? pitch, bool? pitchCorrection, Duration? audioDelay, Gapless? gapless, ReplayGainSettings? replayGain, List<AudioEffect>? audioEffects, SpectrumSettings? spectrum, Cover? coverArtAuto, bool? prefetchPlaylist, CacheSettings? cache, DemuxerSettings? demuxer, Duration? networkTimeout, bool? tlsVerify, String? tlsCaFile, HlsBitrate? hlsBitrate, bool? cookies, String? httpProxy, bool? audioExclusive, bool? audioMediaRole, Duration? audioBuffer, bool? audioStreamSilence, bool? audioNullUntimed, Set<Spdif>? audioSpdif, int? audioSampleRate, Format? audioFormat, Channels? audioChannels, String? audioClientName, String? audioDriver, Object? mediaSession = unset, String? mpvVersion, String? ffmpegVersion})
 PlayerState.final FileState file
 PlayerState.final LibraryVersions versions

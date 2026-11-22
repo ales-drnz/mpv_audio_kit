@@ -189,6 +189,26 @@ void main() {
       await eventually(bus.playbackStatus, (s) => s == 'Paused');
     }, skip: !Platform.isLinux);
 
+    testWidgets('a stop shows Stopped until the next play', (_) async {
+      final fixture = await materializeFixture('with_chapters.mka');
+      await player.openAll([Media(fixture), Media(fixture)], play: true);
+      await player.stream.playing
+          .firstWhere((p) => p)
+          .timeout(const Duration(seconds: 10));
+      await player.setMediaSession(session);
+      await eventually(bus.playbackStatus, (s) => s == 'Playing');
+
+      await player.stop(keepPlaylist: true);
+      await eventually(bus.playbackStatus, (s) => s == 'Stopped');
+      await eventually(bus.metadata, (m) => m['xesam:title'] == null);
+
+      await player.play();
+      await eventually(bus.playbackStatus, (s) => s == 'Playing');
+
+      await bus.call('Stop');
+      await eventually(bus.playbackStatus, (s) => s == 'Stopped');
+    }, skip: !Platform.isLinux);
+
     testWidgets('SetPosition and Seek from the bus move the player', (_) async {
       final fixture = await materializeFixture('with_chapters.mka');
       await player.open(Media(fixture), play: false);

@@ -181,7 +181,12 @@ class MediaSessionController {
     // seeks. The `seekCompleted` push re-syncs the landed position on
     // EVERY restart (seek + file-load) so the OS slider tracks mpv (e.g.
     // snaps to ~0 on playlist auto-advance).
-    _subscriptions.add(_inputs.playWhenReady.listen((_) => _markPlayback()));
+    _subscriptions.add(
+      _inputs.playWhenReady.listen((play) {
+        if (play) _clearStopped();
+        _markPlayback();
+      }),
+    );
     // Actual-output + buffering changes drive position-extrapolation gating and
     // the loading indication. They do NOT touch the OS play-pause button (bound
     // to playWhenReady), so they can't flicker it; same-turn pushes coalesce.
@@ -189,6 +194,7 @@ class MediaSessionController {
     // Loading ends: push the metadata held back while it lasted.
     _subscriptions.add(
       _inputs.buffering.listen((buffering) {
+        if (buffering) _clearStopped();
         _markPlayback();
         if (!buffering) _markMetadata();
       }),
@@ -307,6 +313,22 @@ class MediaSessionController {
     _markPlayback();
   }
 
+  /// The player stopped: the OS shows a stopped state, where it has one,
+  /// until a load starts or the play intent turns on.
+  void stopped() {
+    _stopped = true;
+    _markPlayback();
+  }
+
+  /// Set by [stopped], cleared by the next load or play.
+  bool _stopped = false;
+
+  void _clearStopped() {
+    if (!_stopped) return;
+    _stopped = false;
+    _markPlayback();
+  }
+
   void _markMetadata() {
     _metadataDirty = true;
     _scheduleFlush();
@@ -368,6 +390,7 @@ class MediaSessionController {
       seek: seek,
       pushedSeekable: _pushedSeekable,
       appPauses: _appPauses,
+      stopped: _stopped,
     );
     _pushedSeekable = snap.seekable;
     return snap;
