@@ -181,7 +181,11 @@ abstract class _PlayerBase {
     int? wakeupCounterAddress,
   }) : _session = createMpvSession(wakeupCounterAddress: wakeupCounterAddress) {
     // Pure-Dart setup runs on the main isolate (microseconds).
-    _reactives = DefaultPropertyReactives();
+    _reactives = DefaultPropertyReactives(tlsVerify: configuration.tlsVerify);
+    // The state starts with the value mpv starts with, before it reports.
+    _state = PlayerState(
+      settings: PlayerSettings(tlsVerify: configuration.tlsVerify),
+    );
     _durationHint = DurationHint(_reactives);
     _registry = PropertyRegistry()
       ..registerAll(

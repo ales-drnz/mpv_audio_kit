@@ -9,11 +9,10 @@
 # dart doc writes the page of a topic only when an element is in it
 # ({@category Name}), and warns of nothing otherwise: each topic has one, or
 # the README's link to its page is a 404.
-# Nor does a reference point at a flat field of PlayerState, deprecated
-# until 0.8.0: [PlaybackState.position], not [PlayerState.position]. Nor does
-# a doc comment of lib read one in its prose or in an example:
-# `state.playback.position`, not `state.position`. Who copies the example
-# gets a deprecation warning, and in 0.8.0 it no longer compiles.
+# Nor does a reference point at a flat field of PlayerState, gone since
+# 0.8.0: [PlaybackState.position], not [PlayerState.position]. Nor does a
+# doc comment of lib read one in its prose or in an example:
+# `state.playback.position`, not `state.position`, which no longer compiles.
 #
 #   bash test/docs/dartdoc_test.sh      (after flutter pub get)
 set -euo pipefail
@@ -22,11 +21,13 @@ out="$(dart doc --dry-run 2>&1)" || { echo "$out"; exit 1; }
 summary="$(grep -E '^Found [0-9]+ warnings? and [0-9]+ errors?' <<<"$out" || true)"
 echo "${summary:-dart doc printed no summary}"
 grep -E '^ *(warning|error):' <<<"$out" || true
-flat="$(sed -nE "s/^ *@Deprecated\('Use [a-z]+\.([A-Za-z]+);.*/\1/p" lib/src/generated/player_state_data.dart | paste -sd'|')"
+# The fields of the groups, the flat fields of 0.6 and 0.7.
+flat="$(sed -nE 's/^  final [^;]+ ([a-zA-Z]+);$/\1/p' lib/src/player/state/*.dart | sort -u | paste -sd'|')"
+[[ -n "$flat" ]] || { echo "no field found in lib/src/player/state"; exit 1; }
 deprecated="$(grep -rnE "\[PlayerState\.($flat)\]" lib --include='*.dart' | grep -v '/generated/' || true)"
-[[ -z "$deprecated" ]] || { echo "references to the deprecated flat fields:"; echo "$deprecated"; }
+[[ -z "$deprecated" ]] || { echo "references to the flat fields:"; echo "$deprecated"; }
 flat_docs="$(grep -rnE "^[[:space:]]*///.*\bstate\.($flat)\b" lib --include='*.dart' || true)"
-[[ -z "$flat_docs" ]] || { echo "doc comments that read the deprecated flat fields:"; echo "$flat_docs"; }
+[[ -z "$flat_docs" ]] || { echo "doc comments that read the flat fields:"; echo "$flat_docs"; }
 empty=""
 while read -r topic; do
   grep -rqF "{@category $topic}" lib --include='*.dart' || empty+="${empty:+, }$topic"
