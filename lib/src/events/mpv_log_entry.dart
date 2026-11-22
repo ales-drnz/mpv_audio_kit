@@ -18,7 +18,7 @@ import '../types/enums/log_level.dart';
 ///   }
 /// });
 /// ```
-class MpvLogEntry {
+final class MpvLogEntry {
   /// The mpv subsystem that generated this message (e.g. `'ffmpeg'`, `'demux'`).
   final String prefix;
 

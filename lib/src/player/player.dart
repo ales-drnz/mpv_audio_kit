@@ -118,7 +118,7 @@ part 'transport.part.dart';
 /// (`class MockPlayer extends Mock implements PlayerApi {}`).
 ///
 /// {@category Playback}
-class Player extends _PlayerBase
+interface class Player extends _PlayerBase
     with
         _PcmCutModule,
         _PropertiesModule,

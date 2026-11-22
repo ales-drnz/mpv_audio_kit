@@ -29,7 +29,7 @@ import '../types/enums/hook.dart';
 ///   }
 /// });
 /// ```
-class MpvHookEvent {
+final class MpvHookEvent {
   /// Opaque identifier required by [Player.continueHook], unique to this
   /// event.
   final int id;

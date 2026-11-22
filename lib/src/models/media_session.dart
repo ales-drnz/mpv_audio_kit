@@ -48,7 +48,7 @@ import '../types/sealed/media_session_artwork.dart';
 /// ```
 ///
 /// {@category Media session}
-class MediaSession {
+final class MediaSession {
   // ── Metadata override (null = derive from mpv) ─────────────────────
 
   /// Track title shown on the lockscreen or SMTC top line. `null` falls

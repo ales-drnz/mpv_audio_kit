@@ -17,7 +17,7 @@ import '../types/enums/log_level.dart';
 /// before the first `setX` can land ([initialVolume], [logLevel]). The
 /// audio-only library invariants (video and scripting disabled, …) are fixed
 /// and deliberately not configurable.
-class PlayerConfiguration {
+final class PlayerConfiguration {
   /// If `true`, playback starts automatically as soon as a track finishes
   /// loading. Default: `false`.
   final bool autoPlay;

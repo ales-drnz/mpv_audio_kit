@@ -24,7 +24,7 @@ import 'package:flutter/widgets.dart';
 /// cache keys.
 ///
 /// {@category Metadata}
-class CoverArt {
+final class CoverArt {
   /// Creates a cover-art payload from raw image [bytes] and their [mimeType].
   const CoverArt({required this.bytes, required this.mimeType});
 
