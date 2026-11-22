@@ -31,6 +31,13 @@
 //     user_defines:
 //       mpv_audio_kit:
 //         tizen: true
+//
+// OpenHarmony and HarmonyOS (OHOS), through Flutter-OH
+// (https://gitcode.com/CPF-Flutter/flutter_flutter), are linux here too,
+// with the arch of the HAP: they take the libmpv_ohos assets, which are
+// built against the musl of the OHOS native SDK. A build is OHOS when the
+// target OS is ohos or when the C compiler Flutter-OH passes is the clang
+// of the OpenHarmony SDK; `ohos: true` or `ohos: false` says it outright.
 
 import 'dart:io';
 
@@ -58,6 +65,10 @@ const _sha256 = <String, String>{
       '4f68d40ac29240d19f4a5770346496cc4b23f0d2436ef608bce8ff65f00727cb',
   'libmpv_linux-x86_64.so':
       'b44be4f526d74825fd9f4d2f9b6a2362cd3dabc5434ac83c412f652ff94495cd',
+  // Not published yet: until libmpv-r27, an OHOS build needs the libmpv
+  // user define.
+  'libmpv_ohos-arm64-v8a.so': '',
+  'libmpv_ohos-x86_64.so': '',
   'libmpv_macos.xcframework.zip':
       'a734a0526b3a536709ceb1cd7ee4caa4a2045e7ddfe910e376269bbe5f4234d3',
   'libmpv_tizen-armv7l.so':
@@ -80,6 +91,41 @@ bool _tizen(BuildInput input) => switch (input.userDefines['tizen']) {
   ),
 };
 
+/// Whether the build is for OHOS: the ohos user define, true or false, or
+/// when it is not set, a target OS of ohos (a Flutter-OH that stops writing
+/// linux) or the SDK's clang as the C compiler. Anything else fails the
+/// build.
+bool _ohos(BuildInput input) => switch (input.userDefines['ohos']) {
+  true => true,
+  false => false,
+  null => _targetOSName(input) == 'ohos' || _ohosCompiler(input),
+  final other => throw ArgumentError(
+    'mpv_audio_kit: the ohos user define is true or false, not $other',
+  ),
+};
+
+/// Whether the C compiler of the input is the clang of the OpenHarmony SDK,
+/// `<sdk>/<version>/openharmony/native/llvm/bin/clang`, which Flutter-OH
+/// passes to the hooks of an OHOS build (`cCompilerConfigOhos`). Read raw,
+/// as [_targetOSName].
+bool _ohosCompiler(BuildInput input) {
+  final extensions = input.config.json['extensions'];
+  final code = extensions is Map ? extensions['code_assets'] : null;
+  final compiler = code is Map ? code['c_compiler'] : null;
+  final cc = compiler is Map ? compiler['cc'] : null;
+  if (cc is! String) return false;
+  return cc.replaceAll(r'\', '/').contains('/openharmony/native/llvm/bin/');
+}
+
+/// The target architecture as the hook protocol writes it, read raw: an
+/// OHOS target OS is one code_assets cannot parse.
+String? _targetArchitectureName(BuildInput input) {
+  final extensions = input.config.json['extensions'];
+  final code = extensions is Map ? extensions['code_assets'] : null;
+  final arch = code is Map ? code['target_architecture'] : null;
+  return arch is String ? arch : null;
+}
+
 void main(List<String> args) async {
   await build(args, (input, output) async {
     if (!input.config.buildCodeAssets) return;
@@ -89,12 +135,23 @@ void main(List<String> args) async {
     // input.config.code, which code_assets before 2.0.0 cannot parse for
     // an OS it does not know.
     if (_targetOSName(input) == 'tvos') return;
-    final code = input.config.code;
-    final target = _Target.of(
-      code,
-      iOSVersion: _iOSVersion(input),
-      tizen: _tizen(input),
-    );
+    final tizen = _tizen(input);
+    final ohos = _ohos(input);
+    if (tizen && ohos) {
+      throw ArgumentError(
+        'mpv_audio_kit: a build is for Tizen or for OHOS, not both',
+      );
+    }
+    // OHOS before input.config.code, which fails on a target OS of ohos.
+    final _Target target;
+    final CodeConfig? code;
+    if (ohos) {
+      code = null;
+      target = _Target.ohos(_targetArchitectureName(input));
+    } else {
+      code = input.config.code;
+      target = _Target.of(code, iOSVersion: _iOSVersion(input), tizen: tizen);
+    }
     final out = File.fromUri(input.outputDirectory.resolve(target.fileName));
 
     final local = input.userDefines.path('libmpv');
@@ -132,7 +189,7 @@ void main(List<String> args) async {
           asset,
           unpacked,
           target,
-          code.targetArchitecture,
+          code!.targetArchitecture,
           out,
           zipSha256: local == null ? _sha256[target.asset] : null,
         );
@@ -190,6 +247,16 @@ class _Target {
   /// The xcframework directory holding the slice, on Apple.
   final String? appleSlice;
 
+  /// OHOS on [arch], the target architecture's name in the hook protocol:
+  /// arm64 for the devices, x64 for the emulators. No 32-bit arm build.
+  static _Target ohos(String? arch) => _Target(switch (arch) {
+    'arm64' => 'libmpv_ohos-arm64-v8a.so',
+    'x64' => 'libmpv_ohos-x86_64.so',
+    _ => throw UnsupportedError(
+      'mpv_audio_kit: no libmpv for ohos $arch in $_release',
+    ),
+  }, 'libmpv_audio_kit.so');
+
   static _Target of(CodeConfig code, {int? iOSVersion, bool tizen = false}) {
     final arch = code.targetArchitecture;
     Never unsupported() => throw UnsupportedError(
@@ -211,6 +278,8 @@ class _Target {
       // writes linux with the arch of the Tizen build: arm for the TVs,
       // which Flutter's Linux desktop never builds, and x64 for the TV
       // emulator, which it does, so there the app sets the tizen user define.
+      // Flutter-OH writes linux too, but its builds never get here: they
+      // are _Target.ohos.
       OS.linux => _Target(switch ((arch, tizen)) {
         (Architecture.arm, _) => 'libmpv_tizen-armv7l.so',
         (Architecture.x64, true) => 'libmpv_tizen-x86_64.so',
