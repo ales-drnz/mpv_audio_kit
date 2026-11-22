@@ -42,7 +42,7 @@ The snapshot holds its values in six groups:
 
 The streams stay flat: `player.stream.position` follows `state.playback.position`. The flat fields of 0.6 and 0.7, such as `state.position`, are gone since 0.8.0.
 
-A few values live on one side only. `playbackState`, `prefetchState`, `prefetchCacheDuration`, `waveform`, `loudnessScan` and the event streams, `fft`, `pcm` and `loudnessMeter` among them, have no field in `state`. `tlsCaFile`, `readError` and `skippedSegments` have no stream.
+A few values live on one side only. `prefetchState`, `prefetchCacheDuration`, `waveform`, `loudnessScan` and the event streams, `fft`, `pcm` and `loudnessMeter` among them, have no field in `state`. `tlsCaFile`, `readError` and `skippedSegments` have no stream.
 
 ### Current entry
 
