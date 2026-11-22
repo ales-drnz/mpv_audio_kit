@@ -421,8 +421,12 @@ class MediaSessionController {
   CoverArt? _downloadedArtwork(String uri) {
     if (uri == _fetchedArtUri) return _fetchedArt;
     final loader = _artworkLoader!;
-    final caFile = _stateSnapshot().settings.tlsCaFile;
-    final kept = loader.cached(uri, caFile);
+    final settings = _stateSnapshot().settings;
+    final caFiles = [
+      for (final f in [settings.tlsCaFile, settings.tlsExtraCaFile])
+        if (f.isNotEmpty) f,
+    ];
+    final kept = loader.cached(uri, caFiles);
     if (kept != null) {
       // The load of the track skipped past is not worth finishing.
       if (_pendingArtUri != null) loader.cancel();
@@ -441,7 +445,7 @@ class MediaSessionController {
       }
       _artAttempts++;
       unawaited(
-        loader.load(uri, caFile).then((cover) {
+        loader.load(uri, caFiles).then((cover) {
           if (_disposed || uri != _pendingArtUri) return;
           _pendingArtUri = null;
           _fetchedArtUri = uri;

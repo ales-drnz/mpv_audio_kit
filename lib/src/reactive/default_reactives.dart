@@ -185,6 +185,10 @@ class DefaultPropertyReactives {
   /// Path to a custom CA bundle for TLS verification (`tls-ca-file`).
   final ReactiveProperty<String> tlsCaFile = ReactiveProperty<String>('');
 
+  /// Path to a PEM file trusted on top of the roots (`ca_extra_file` of
+  /// `stream-lavf-o`).
+  final ReactiveProperty<String> tlsExtraCaFile = ReactiveProperty<String>('');
+
   /// HLS variant-selection policy (`hls-bitrate`).
   final ReactiveProperty<HlsBitrate> hlsBitrate = ReactiveProperty<HlsBitrate>(
     HlsBitrate.max,

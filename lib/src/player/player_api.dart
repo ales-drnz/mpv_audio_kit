@@ -401,6 +401,10 @@ abstract interface class PlayerApi {
   /// Sets the path to a custom CA bundle for TLS verification.
   Future<void> setTlsCaFile(String path);
 
+  /// Trusts the certificates of the PEM file at [path] on top of the roots
+  /// in use, `''` for none. See [Player.setTlsExtraCaFile].
+  Future<void> setTlsExtraCaFile(String path);
+
   /// Sets the HLS variant-selection policy for adaptive streams.
   Future<void> setHlsBitrate(HlsBitrate hlsBitrate);
 

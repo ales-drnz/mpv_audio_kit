@@ -1481,12 +1481,12 @@ void main() {
         addTearDown(rig.dispose);
         addTearDown(ch.close);
 
-        final caFiles = <String>[];
+        final caFiles = <List<String>>[];
         final controller = await _buildController(
           rig: rig,
           channel: ch,
-          artworkFetcher: (_, caFile) async {
-            caFiles.add(caFile);
+          artworkFetcher: (_, files) async {
+            caFiles.add(files);
             return null;
           },
         );
@@ -1505,11 +1505,14 @@ void main() {
           settings: PlayerSettings(
             mediaSession: MediaSession(),
             tlsCaFile: '/etc/ssl/home-ca.pem',
+            tlsExtraCaFile: '/etc/ssl/nas.pem',
           ),
         );
         rig.metadata.add(const {'title': 'Song'});
         await _settle();
-        expect(caFiles, ['/etc/ssl/home-ca.pem']);
+        expect(caFiles, [
+          ['/etc/ssl/home-ca.pem', '/etc/ssl/nas.pem'],
+        ]);
       },
     );
 

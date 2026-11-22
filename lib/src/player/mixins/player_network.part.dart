@@ -177,6 +177,47 @@ mixin _NetworkModule on _PlayerBase {
     );
   }
 
+  /// Trusts the certificates of the PEM file at [path] on top of the roots
+  /// in use: the built-in ones, or those of [setTlsCaFile]. `''` trusts
+  /// nothing more. Where [setTlsCaFile] replaces the roots, this adds to
+  /// them, so a home server with a self-signed certificate (the
+  /// certificate itself, whose host name still has to match) or a private
+  /// CA plays, and every other `https://` source is verified as before.
+  /// Read when the certificate is verified ([setTlsVerify]), from the next
+  /// load on. The waveform, the loudness scan and the covers the media
+  /// session downloads trust it too.
+  ///
+  /// It is FFmpeg's `ca_extra_file`, set in `stream-lavf-o`: a global
+  /// `stream-lavf-o` the app writes itself replaces it. Throws
+  /// [ArgumentError] for a path with a comma, CR, LF or NUL, which the
+  /// option list cannot hold.
+  Future<void> setTlsExtraCaFile(String path) async {
+    if (_kForbiddenInLavfValue.hasMatch(path)) {
+      throw ArgumentError.value(
+        path,
+        'path',
+        'must not contain CR, LF, NUL, or comma',
+      );
+    }
+    await _gate();
+    await _calls.commandChecked([
+      'change-list',
+      'stream-lavf-o',
+      if (path.isEmpty) ...[
+        'remove',
+        'ca_extra_file',
+      ] else ...[
+        'add',
+        'ca_extra_file=$path',
+      ],
+    ]);
+    _updateField(
+      (s) => s.copyWith(tlsExtraCaFile: path),
+      _reactives.tlsExtraCaFile,
+      path,
+    );
+  }
+
   /// Sets the HLS variant-selection policy for adaptive streams.
   ///
   /// Chooses which audio rendition mpv picks from an HLS master playlist
@@ -272,3 +313,6 @@ mixin _NetworkModule on _PlayerBase {
     );
   }
 }
+
+/// What an entry of the comma-separated `stream-lavf-o` list cannot hold.
+final RegExp _kForbiddenInLavfValue = RegExp(r'[\r\n,\x00]');

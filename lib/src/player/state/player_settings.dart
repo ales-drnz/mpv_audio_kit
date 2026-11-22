@@ -123,6 +123,13 @@ final class PlayerSettings with _$PlayerSettings {
   /// (e.g. a corporate trust root).
   final String tlsCaFile;
 
+  /// Absolute filesystem path to a PEM file of certificates trusted on top
+  /// of the roots in use, or empty string for none. Set with
+  /// [Player.setTlsExtraCaFile]: for a home server with a self-signed
+  /// certificate or a private CA, while public servers are verified as
+  /// before.
+  final String tlsExtraCaFile;
+
   /// HLS variant-selection policy (`hls-bitrate`). Default [HlsBitrate.max]
   /// mirrors mpv. Set via [Player.setHlsBitrate].
   final HlsBitrate hlsBitrate;
@@ -210,6 +217,7 @@ final class PlayerSettings with _$PlayerSettings {
     this.networkTimeout = const Duration(seconds: 60),
     this.tlsVerify = true,
     this.tlsCaFile = '',
+    this.tlsExtraCaFile = '',
     this.hlsBitrate = HlsBitrate.max,
     this.cookies = false,
     this.httpProxy = '',

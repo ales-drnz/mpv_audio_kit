@@ -40,7 +40,7 @@ class ArtworkLoader {
     Duration timeLimit = const Duration(seconds: 60),
     int capacity = 4,
   }) : this(
-         (url, caFile, _) => fetch(url, caFile),
+         (url, caFiles, _) => fetch(url, caFiles),
          timeLimit: timeLimit,
          capacity: capacity,
        );
@@ -73,22 +73,23 @@ class ArtworkLoader {
   final Map<String, CoverArt> _kept = <String, CoverArt>{};
   ArtworkCancel? _inFlight;
 
-  static String _key(String url, String caFile) => '$caFile\n$url';
+  static String _key(String url, List<String> caFiles) =>
+      '${caFiles.join('\n')}\n$url';
 
-  /// The kept cover of [url] as loaded with [caFile], or `null`.
-  CoverArt? cached(String url, String caFile) {
-    final key = _key(url, caFile);
+  /// The kept cover of [url] as loaded with [caFiles], or `null`.
+  CoverArt? cached(String url, List<String> caFiles) {
+    final key = _key(url, caFiles);
     final cover = _kept.remove(key);
     if (cover != null) _kept[key] = cover;
     return cover;
   }
 
-  /// The cover of [url], from the kept ones or loaded with [caFile];
+  /// The cover of [url], from the kept ones or loaded with [caFiles];
   /// `null` when the load fails, runs past [timeLimit], or is cancelled by
   /// [cancel] or by the next [load]. Never completes with an error.
-  Future<CoverArt?> load(String url, String caFile) {
+  Future<CoverArt?> load(String url, List<String> caFiles) {
     cancel();
-    final kept = cached(url, caFile);
+    final kept = cached(url, caFiles);
     if (kept != null) return Future<CoverArt?>.value(kept);
 
     final token = ArtworkCancel();
@@ -104,8 +105,8 @@ class ArtworkLoader {
 
     unawaited(token.whenCancelled.then((_) => finish(null)));
     unawaited(
-      Future<CoverArt?>.sync(() => _fetch(url, caFile, token)).then((cover) {
-        if (cover != null && !token.isCancelled) _keep(url, caFile, cover);
+      Future<CoverArt?>.sync(() => _fetch(url, caFiles, token)).then((cover) {
+        if (cover != null && !token.isCancelled) _keep(url, caFiles, cover);
         finish(token.isCancelled ? null : cover);
       }, onError: (Object _) => finish(null)),
     );
@@ -118,8 +119,8 @@ class ArtworkLoader {
     _inFlight = null;
   }
 
-  void _keep(String url, String caFile, CoverArt cover) {
-    final key = _key(url, caFile);
+  void _keep(String url, List<String> caFiles, CoverArt cover) {
+    final key = _key(url, caFiles);
     _kept.remove(key);
     _kept[key] = cover;
     int bytes() => _kept.values.fold(0, (sum, c) => sum + c.bytes.length);

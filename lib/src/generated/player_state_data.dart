@@ -98,6 +98,7 @@ mixin _$PlayerState {
     Duration? networkTimeout,
     bool? tlsVerify,
     String? tlsCaFile,
+    String? tlsExtraCaFile,
     HlsBitrate? hlsBitrate,
     bool? cookies,
     String? httpProxy,
@@ -272,6 +273,7 @@ mixin _$PlayerState {
             networkTimeout == null &&
             tlsVerify == null &&
             tlsCaFile == null &&
+            tlsExtraCaFile == null &&
             hlsBitrate == null &&
             cookies == null &&
             httpProxy == null &&
@@ -310,6 +312,7 @@ mixin _$PlayerState {
             networkTimeout: networkTimeout,
             tlsVerify: tlsVerify,
             tlsCaFile: tlsCaFile,
+            tlsExtraCaFile: tlsExtraCaFile,
             hlsBitrate: hlsBitrate,
             cookies: cookies,
             httpProxy: httpProxy,
