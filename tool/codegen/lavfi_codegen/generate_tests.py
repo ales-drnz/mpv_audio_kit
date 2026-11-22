@@ -1317,8 +1317,8 @@ def _emit_af_command_coverage(
     lines.append("            reason: '${c.filter}: enabled stage must carry its "
                  "chain label',);")
     lines.append("        for (final u in c.updates) {")
-    lines.append("          final next = u.apply(player.state.audioEffects);")
-    lines.append("          expect(audioEffectsDiff(player.state.audioEffects, next),")
+    lines.append("          final next = u.apply(player.state.settings.audioEffects);")
+    lines.append("          expect(audioEffectsDiff(player.state.settings.audioEffects, next),")
     lines.append("              allOf(isNotNull, isNotEmpty),")
     lines.append("              reason: '${c.filter} ${u.label}: not sent as a live "
                  "update',);")

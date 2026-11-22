@@ -1,3 +1,60 @@
+# Migrating to 0.8.0
+
+0.8.0 runs on libmpv-r26, as 0.7.2 and 0.7.3 do. It removes what 0.7.0
+deprecated and changes a few signatures and defaults. Most apps change
+only the reads of the state.
+
+## TLS certificates are verified
+
+`tls-verify` is on by default, as in mpv 0.42 and FFmpeg 9: an `https://`
+source must present a certificate a trusted root signed. 0.7 kept it off.
+A home server with a self-signed certificate (a Jellyfin or a NAS) now
+fails to open, with a certificate error on `player.stream.log`. Covers,
+the waveform and the loudness scan of that server fail the same way.
+
+- Keep verification and trust the server: pass `setTlsCaFile` a PEM
+  bundle with its certificate. The file replaces the built-in roots, so
+  it must also hold the roots of the other servers the app plays from.
+- Or turn verification off, as 0.7 had it:
+  `Player(configuration: const PlayerConfiguration(tlsVerify: false))`,
+  or `setTlsVerify(false)` later.
+
+## The flat fields of PlayerState are gone
+
+Each value is read from its group: `state.position` is
+`state.playback.position`. The analyzer flags every read left. The
+streams of `player.stream` do not change, and `copyWith` still takes
+every field by its name.
+
+| Group | Its fields, `state.<field>` before 0.8.0 |
+| --- | --- |
+| `playback` | `playlist`, `playing`, `playWhenReady`, `completed`, `position`, `duration`, `seeking`, `seekable`, `partiallySeekable`, `percentPos`, `timeRemaining`, `playtimeRemaining`, `eofReached`, `audioPts`, `currentChapter`, `loop`, `shuffle`, `abLoopA`, `abLoopB`, `abLoopCount`, `remainingAbLoops` |
+| `network` | `buffering`, `buffer`, `bufferingPercentage`, `bufferDuration`, `demuxerCacheState`, `pausedForCache`, `demuxerViaNetwork`, `demuxerIdle`, `cacheSpeed`, `cacheBufferingState`, `readError`, `skippedSegments` |
+| `file` | `metadata`, `chapterMetadata`, `chapters`, `tracks`, `currentAudioTrack`, `audioParams`, `audioBitrate`, `coverArt`, `mediaTitle`, `fileFormat`, `fileSize`, `path`, `filename`, `streamPath`, `streamOpenFilename`, `playlistPath`, `currentDemuxer`, `demuxerStartTime` |
+| `output` | `audioOutParams`, `audioDevice`, `audioDevices`, `audioOutputState`, `currentAo`, `systemVolume`, `systemMute` |
+| `settings` | `volume`, `mute`, `volumeMax`, `volumeGain`, `volumeGainMin`, `volumeGainMax`, `rate`, `pitch`, `pitchCorrection`, `audioDelay`, `gapless`, `replayGain`, `audioEffects`, `spectrum`, `coverArtAuto`, `prefetchPlaylist`, `cache`, `demuxer`, `networkTimeout`, `tlsVerify`, `tlsCaFile`, `hlsBitrate`, `cookies`, `httpProxy`, `audioExclusive`, `audioMediaRole`, `audioBuffer`, `audioStreamSilence`, `audioNullUntimed`, `audioSpdif`, `audioSampleRate`, `audioFormat`, `audioChannels`, `audioClientName`, `audioDriver`, `mediaSession` |
+| `versions` | `mpvVersion`, `ffmpegVersion` |
+
+`dart fix` cannot rewrite these reads: a data-driven fix does not turn a
+getter into a chain of two.
+
+## Other changes
+
+| 0.7 | 0.8.0 |
+| --- | --- |
+| `openPcmStream(format)` plays at once | follows `PlayerConfiguration.autoPlay` (off by default): pass `play: true` |
+| `setMediaSession` throws `StateError` | throws `MediaSessionException`, a `PlayerException` whose `reason` is `notRootIsolate`, `otherPlayer` or `otherEngine` |
+| `setVolume` above 1000, `setVolumeGain`, `setVolumeGainMin`, `setVolumeGainMax` and `setVolumeMax` out of range throw `MpvCommandException` | throw `RangeError` before anything is written |
+| `setAbLoopCount(-1)` throws `ArgumentError` | throws `RangeError` (a subtype: `on ArgumentError` still catches it) |
+| `setAudioBuffer`, `setNetworkTimeout`, `setAudioSampleRate` take any value | throw `RangeError` outside 0 to 10 s, below 0, and outside 0 to 768000 |
+| `class CoverArt`, `FftFrame`, `Loudness`, `LoudnessScan`, `MediaSession`, `MpvHookEvent`, `MpvLogEntry`, `PcmFrame`, `PlayerConfiguration`, `BandProcessor` | `final class`: they cannot be extended or implemented outside the package |
+| `class Player`, `class PlayerStream` | `interface class`: a fake still implements them, nothing extends them |
+
+A `switch` over `PlayerException` that lists every case needs a
+`MediaSessionException` case. An `on PlayerException` no longer catches
+the out-of-range values above: they are programming errors, checked before
+the call reaches libmpv.
+
 # Migrating to 0.7.0
 
 0.7.0 runs on libmpv-r24, which the build hook bundles, and on no other

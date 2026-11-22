@@ -56,7 +56,7 @@ The package is an audio player for Flutter apps that play a media library, from 
 
 ```yaml
 dependencies:
-  mpv_audio_kit: ^0.7.3
+  mpv_audio_kit: ^0.8.0
 ```
 
 The build downloads the libmpv binary for each native target and checks its SHA-256, so the first build needs network access. On the web the module ships with the package.
@@ -226,9 +226,13 @@ Build with [flutter-tvos](https://fluttertv.dev). It installs no code asset, so 
 
 ### Tizen
 
+Experimental: tested on the Tizen emulator, not yet on a TV.
+
 Build with [flutter-tizen](https://github.com/flutter-tizen/flutter-tizen). The build hook bundles the Tizen libmpv for the TVs, and for the TV emulator when the app sets the user define `tizen: true`. See [Tizen](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Tizen-topic.html).
 
 ### webOS
+
+Experimental: tested under emulation of the webOS userland, not yet on a TV.
 
 Build with [flutter-webos](https://github.com/lg-flutter-webos/flutter-webos), for webOS 26 and later. It runs no build hook, so the package's `webos/CMakeLists.txt` bundles libmpv instead. See [webOS](https://pub.dev/documentation/mpv_audio_kit/latest/topics/webOS-topic.html).
 

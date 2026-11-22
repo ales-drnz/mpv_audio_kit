@@ -1654,7 +1654,7 @@ AudioParams: final class AudioParams
 BandProcessor.FftFrame? process(PcmFrame frame)
 BandProcessor.new  (this._settings)
 BandProcessor.void setSettings(SpectrumSettings next)
-BandProcessor: class BandProcessor
+BandProcessor: final class BandProcessor
 BandpassEffect.@override AudioFilter get filter
 BandpassEffect.@override String get filterName
 BandpassEffect.@override String toFilterString()
@@ -2137,7 +2137,7 @@ CoverArt.bool get isWebp
 CoverArt.final String mimeType
 CoverArt.final Uint8List bytes
 CoverArt.new const ({required this.bytes, required this.mimeType})
-CoverArt: class CoverArt
+CoverArt: final class CoverArt
 CrossfeedEffect.@override AudioFilter get filter
 CrossfeedEffect.@override String get filterName
 CrossfeedEffect.@override String toFilterString()
@@ -2509,7 +2509,7 @@ FftFrame.final double bandHighHz
 FftFrame.final double bandLowHz
 FftFrame.final int sampleRate
 FftFrame.new const ({required this.bins, required this.bands, required this.timestamp, required this.sampleRate, required this.bandLowHz, required this.bandHighHz})
-FftFrame: class FftFrame
+FftFrame: final class FftFrame
 FileState.@override bool operator ==(Object other)
 FileState.@override int get hashCode
 FileState.FileState copyWith({Map<String, String>? metadata, Map<String, String>? chapterMetadata, List<Chapter>? chapters, List<MpvTrack>? tracks, Object? currentAudioTrack = unset, AudioParams? audioParams, Object? audioBitrate = unset, Object? coverArt = unset, String? mediaTitle, String? fileFormat, int? fileSize, String? path, String? filename, String? streamPath, String? streamOpenFilename, String? playlistPath, String? currentDemuxer, Duration? demuxerStartTime})
@@ -2944,7 +2944,7 @@ Loudness.final double? momentary
 Loudness.final double? range
 Loudness.final double? shortTerm
 Loudness.new const ({this.momentary, this.shortTerm, this.integrated, this.range})
-Loudness: class Loudness
+Loudness: final class Loudness
 LoudnessScan.@override String toString()
 LoudnessScan.@override bool operator ==(Object other)
 LoudnessScan.@override int get hashCode
@@ -2956,7 +2956,7 @@ LoudnessScan.final double? samplePeak
 LoudnessScan.final double? truePeak
 LoudnessScan.final int? gatedBlockCount
 LoudnessScan.new const ({required this.state, this.integrated, this.range, this.samplePeak, this.truePeak, this.gatedBlockCount, this.progress})
-LoudnessScan: class LoudnessScan
+LoudnessScan: final class LoudnessScan
 LoudnessScanState.String get mpvValue
 LoudnessScanState.failed
 LoudnessScanState.idle
@@ -3220,7 +3220,7 @@ MediaSession.final String? title
 MediaSession.final bool autoApplyPlaylistNavigation
 MediaSession.final bool isFavorite
 MediaSession.new const ({this.title, this.artist, this.album, this.artwork = MediaSessionArtwork.embedded, this.duration, this.actions = const {MediaAction.play, MediaAction.pause, MediaAction.playPause, MediaAction.next, MediaAction.previous, MediaAction.seek}, this.isFavorite = false, this.interruptionPolicy = InterruptionPolicy.pauseAndResume, this.fastForwardInterval = const Duration(seconds: 15), this.rewindInterval = const Duration(seconds: 15), this.supportedPlaybackRates = const [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0], this.autoApplyPlaylistNavigation = true, this.appName, this.desktopEntry})
-MediaSession: class MediaSession
+MediaSession: final class MediaSession
 MediaSessionArtwork.new custom const factory (CoverArt cover)
 MediaSessionArtwork.new uri const factory (Uri uri)
 MediaSessionArtwork.static const MediaSessionArtwork embedded = MediaSessionArtworkEmbedded._()
@@ -3292,6 +3292,15 @@ MediaSessionCommandSetShuffle.final bool shuffle
 MediaSessionCommandSetShuffle: final class MediaSessionCommandSetShuffle extends MediaSessionCommand
 MediaSessionCommandStop.@override String toString()
 MediaSessionCommandStop: final class MediaSessionCommandStop extends MediaSessionCommand
+MediaSessionException.@override String toString()
+MediaSessionException.final MediaSessionRefusal reason
+MediaSessionException.final String message
+MediaSessionException.new const (this.reason, this.message)
+MediaSessionException: final class MediaSessionException extends PlayerException
+MediaSessionRefusal.notRootIsolate
+MediaSessionRefusal.otherEngine
+MediaSessionRefusal.otherPlayer
+MediaSessionRefusal: enum MediaSessionRefusal
 MpvAudioKit.@internal static bool get isInitialized
 MpvAudioKit.static Future<Set<Spdif>> passthroughCodecs()
 MpvAudioKit.static Stream<bool> get needsUserGestureStream
@@ -3356,13 +3365,13 @@ MpvHookEvent.@override String toString()
 MpvHookEvent.final Hook hook
 MpvHookEvent.final int id
 MpvHookEvent.new const (this.id, this.hook)
-MpvHookEvent: class MpvHookEvent
+MpvHookEvent: final class MpvHookEvent
 MpvLogEntry.@override String toString()
 MpvLogEntry.final LogLevel level
 MpvLogEntry.final String prefix
 MpvLogEntry.final String text
 MpvLogEntry.new const ({required this.prefix, required this.level, required this.text})
-MpvLogEntry: class MpvLogEntry
+MpvLogEntry: final class MpvLogEntry
 MpvPlaybackState.buffering
 MpvPlaybackState.completed
 MpvPlaybackState.idle
@@ -3473,7 +3482,7 @@ PcmFrame.final int channels
 PcmFrame.final int sampleRate
 PcmFrame.int get samplesPerChannel
 PcmFrame.new const ({required this.samples, required this.timestamp, required this.sampleRate, required this.channels})
-PcmFrame: class PcmFrame
+PcmFrame: final class PcmFrame
 PcmSource.@internal void addCutter(Future<void>? Function(PcmSource source) cut)
 PcmSource.@internal void endUnread()
 PcmSource.@override String toString()
@@ -3537,7 +3546,7 @@ Player.@visibleForTesting Future<void> get ready
 Player.@visibleForTesting void debugDispatchEvent(MpvIsolateEvent event)
 Player.@visibleForTesting void debugDispatchProperty(String name, dynamic raw)
 Player.Future<Object?> getRawPropertyNode(String name)
-Player.Future<PcmSource> openPcmStream(PcmFormat format, {bool play = true, Duration maxBuffered = const Duration(seconds: 30), bool lowLatency = false, Map<String, Object?>? extras})
+Player.Future<PcmSource> openPcmStream(PcmFormat format, {bool? play, Duration maxBuffered = const Duration(seconds: 30), bool lowLatency = false, Map<String, Object?>? extras})
 Player.Future<String?> getRawProperty(String name)
 Player.Future<bool> next({bool force = false})
 Player.Future<bool> nextPlaylist()
@@ -3625,9 +3634,9 @@ Player.new testInstrumented  ({super.configuration, required int super.wakeupCou
 Player.void setLogLevel(LogLevel level)
 Player.void setSpectrum(SpectrumSettings settings)
 Player.void updateSpectrum(SpectrumSettings Function(SpectrumSettings) mapper)
-Player: class Player extends _PlayerBase implements PlayerApi
+Player: interface class Player extends _PlayerBase implements PlayerApi
 PlayerApi.Future<Object?> getRawPropertyNode(String name)
-PlayerApi.Future<PcmSource> openPcmStream(PcmFormat format, {bool play = true, Duration maxBuffered = const Duration(seconds: 30), bool lowLatency = false, Map<String, Object?>? extras})
+PlayerApi.Future<PcmSource> openPcmStream(PcmFormat format, {bool? play, Duration maxBuffered = const Duration(seconds: 30), bool lowLatency = false, Map<String, Object?>? extras})
 PlayerApi.Future<String?> getRawProperty(String name)
 PlayerApi.Future<bool> next({bool force})
 PlayerApi.Future<bool> nextPlaylist()
@@ -3724,9 +3733,10 @@ PlayerConfiguration.final bool autoPlay
 PlayerConfiguration.final bool forceSeekable
 PlayerConfiguration.final bool normalizeDownmix
 PlayerConfiguration.final bool resumePlayback
+PlayerConfiguration.final bool tlsVerify
 PlayerConfiguration.final double initialVolume
-PlayerConfiguration.new const ({this.autoPlay = false, this.initialVolume = 100.0, this.logLevel = LogLevel.warn, this.resumePlayback = true, this.watchLaterDir, this.forceSeekable = false, this.hlsBitrate = HlsBitrate.max, this.normalizeDownmix = false, this.demuxerCacheDir})
-PlayerConfiguration: class PlayerConfiguration
+PlayerConfiguration.new const ({this.autoPlay = false, this.initialVolume = 100.0, this.logLevel = LogLevel.warn, this.resumePlayback = true, this.watchLaterDir, this.forceSeekable = false, this.hlsBitrate = HlsBitrate.max, this.normalizeDownmix = false, this.demuxerCacheDir, this.tlsVerify = true})
+PlayerConfiguration: final class PlayerConfiguration
 PlayerDisposedException.@override String toString()
 PlayerDisposedException.new const ()
 PlayerDisposedException: final class PlayerDisposedException extends PlayerException
@@ -3779,104 +3789,8 @@ PlayerSettings.final double volumeGainMax
 PlayerSettings.final double volumeGainMin
 PlayerSettings.final double volumeMax
 PlayerSettings.final int audioSampleRate
-PlayerSettings.new const ({this.volume = 100.0, this.mute = false, this.volumeMax = 130.0, this.volumeGain = 0.0, this.volumeGainMin = -96.0, this.volumeGainMax = 12.0, this.rate = 1.0, this.pitch = 1.0, this.pitchCorrection = true, this.audioDelay = Duration.zero, this.gapless = Gapless.weak, this.replayGain = const ReplayGainSettings(), this.audioEffects = const [], this.spectrum = SpectrumSettings.defaults, this.coverArtAuto = Cover.no, this.prefetchPlaylist = false, this.cache = const CacheSettings(), this.demuxer = const DemuxerSettings(), this.networkTimeout = const Duration(seconds: 60), this.tlsVerify = false, this.tlsCaFile = '', this.hlsBitrate = HlsBitrate.max, this.cookies = false, this.httpProxy = '', this.audioExclusive = false, this.audioMediaRole = false, this.audioBuffer = const Duration(milliseconds: 200), this.audioStreamSilence = false, this.audioNullUntimed = false, this.audioSpdif = const <Spdif>{}, this.audioSampleRate = 0, this.audioFormat = Format.auto, this.audioChannels = Channels.auto, this.audioClientName = 'mpv_audio_kit', this.audioDriver = '', this.mediaSession})
+PlayerSettings.new const ({this.volume = 100.0, this.mute = false, this.volumeMax = 130.0, this.volumeGain = 0.0, this.volumeGainMin = -96.0, this.volumeGainMax = 12.0, this.rate = 1.0, this.pitch = 1.0, this.pitchCorrection = true, this.audioDelay = Duration.zero, this.gapless = Gapless.weak, this.replayGain = const ReplayGainSettings(), this.audioEffects = const [], this.spectrum = SpectrumSettings.defaults, this.coverArtAuto = Cover.no, this.prefetchPlaylist = false, this.cache = const CacheSettings(), this.demuxer = const DemuxerSettings(), this.networkTimeout = const Duration(seconds: 60), this.tlsVerify = true, this.tlsCaFile = '', this.hlsBitrate = HlsBitrate.max, this.cookies = false, this.httpProxy = '', this.audioExclusive = false, this.audioMediaRole = false, this.audioBuffer = const Duration(milliseconds: 200), this.audioStreamSilence = false, this.audioNullUntimed = false, this.audioSpdif = const <Spdif>{}, this.audioSampleRate = 0, this.audioFormat = Format.auto, this.audioChannels = Channels.auto, this.audioClientName = 'mpv_audio_kit', this.audioDriver = '', this.mediaSession})
 PlayerSettings: final class PlayerSettings
-PlayerState.@Deprecated('Use file.audioBitrate; the flat fields go in 0.8.0.') double? get audioBitrate
-PlayerState.@Deprecated('Use file.audioParams; the flat fields go in 0.8.0.') AudioParams get audioParams
-PlayerState.@Deprecated('Use file.chapterMetadata; the flat fields go in 0.8.0.') Map<String, String> get chapterMetadata
-PlayerState.@Deprecated('Use file.chapters; the flat fields go in 0.8.0.') List<Chapter> get chapters
-PlayerState.@Deprecated('Use file.coverArt; the flat fields go in 0.8.0.') CoverArt? get coverArt
-PlayerState.@Deprecated('Use file.currentAudioTrack; the flat fields go in 0.8.0.') MpvTrack? get currentAudioTrack
-PlayerState.@Deprecated('Use file.currentDemuxer; the flat fields go in 0.8.0.') String get currentDemuxer
-PlayerState.@Deprecated('Use file.demuxerStartTime; the flat fields go in 0.8.0.') Duration get demuxerStartTime
-PlayerState.@Deprecated('Use file.fileFormat; the flat fields go in 0.8.0.') String get fileFormat
-PlayerState.@Deprecated('Use file.fileSize; the flat fields go in 0.8.0.') int get fileSize
-PlayerState.@Deprecated('Use file.filename; the flat fields go in 0.8.0.') String get filename
-PlayerState.@Deprecated('Use file.mediaTitle; the flat fields go in 0.8.0.') String get mediaTitle
-PlayerState.@Deprecated('Use file.metadata; the flat fields go in 0.8.0.') Map<String, String> get metadata
-PlayerState.@Deprecated('Use file.path; the flat fields go in 0.8.0.') String get path
-PlayerState.@Deprecated('Use file.playlistPath; the flat fields go in 0.8.0.') String get playlistPath
-PlayerState.@Deprecated('Use file.streamOpenFilename; the flat fields go in 0.8.0.') String get streamOpenFilename
-PlayerState.@Deprecated('Use file.streamPath; the flat fields go in 0.8.0.') String get streamPath
-PlayerState.@Deprecated('Use file.tracks; the flat fields go in 0.8.0.') List<MpvTrack> get tracks
-PlayerState.@Deprecated('Use network.buffer; the flat fields go in 0.8.0.') Duration get buffer
-PlayerState.@Deprecated('Use network.bufferDuration; the flat fields go in 0.8.0.') Duration get bufferDuration
-PlayerState.@Deprecated('Use network.buffering; the flat fields go in 0.8.0.') bool get buffering
-PlayerState.@Deprecated('Use network.bufferingPercentage; the flat fields go in 0.8.0.') double get bufferingPercentage
-PlayerState.@Deprecated('Use network.cacheBufferingState; the flat fields go in 0.8.0.') int get cacheBufferingState
-PlayerState.@Deprecated('Use network.cacheSpeed; the flat fields go in 0.8.0.') double get cacheSpeed
-PlayerState.@Deprecated('Use network.demuxerCacheState; the flat fields go in 0.8.0.') DemuxerCacheState get demuxerCacheState
-PlayerState.@Deprecated('Use network.demuxerIdle; the flat fields go in 0.8.0.') bool get demuxerIdle
-PlayerState.@Deprecated('Use network.demuxerViaNetwork; the flat fields go in 0.8.0.') bool get demuxerViaNetwork
-PlayerState.@Deprecated('Use network.pausedForCache; the flat fields go in 0.8.0.') bool get pausedForCache
-PlayerState.@Deprecated('Use network.readError; the flat fields go in 0.8.0.') bool? get readError
-PlayerState.@Deprecated('Use network.skippedSegments; the flat fields go in 0.8.0.') int? get skippedSegments
-PlayerState.@Deprecated('Use output.audioDevice; the flat fields go in 0.8.0.') Device get audioDevice
-PlayerState.@Deprecated('Use output.audioDevices; the flat fields go in 0.8.0.') List<Device> get audioDevices
-PlayerState.@Deprecated('Use output.audioOutParams; the flat fields go in 0.8.0.') AudioParams get audioOutParams
-PlayerState.@Deprecated('Use output.audioOutputState; the flat fields go in 0.8.0.') AudioOutputState get audioOutputState
-PlayerState.@Deprecated('Use output.currentAo; the flat fields go in 0.8.0.') String get currentAo
-PlayerState.@Deprecated('Use output.systemMute; the flat fields go in 0.8.0.') bool? get systemMute
-PlayerState.@Deprecated('Use output.systemVolume; the flat fields go in 0.8.0.') double? get systemVolume
-PlayerState.@Deprecated('Use playback.abLoopA; the flat fields go in 0.8.0.') Duration? get abLoopA
-PlayerState.@Deprecated('Use playback.abLoopB; the flat fields go in 0.8.0.') Duration? get abLoopB
-PlayerState.@Deprecated('Use playback.abLoopCount; the flat fields go in 0.8.0.') int? get abLoopCount
-PlayerState.@Deprecated('Use playback.audioPts; the flat fields go in 0.8.0.') Duration get audioPts
-PlayerState.@Deprecated('Use playback.completed; the flat fields go in 0.8.0.') bool get completed
-PlayerState.@Deprecated('Use playback.currentChapter; the flat fields go in 0.8.0.') int? get currentChapter
-PlayerState.@Deprecated('Use playback.duration; the flat fields go in 0.8.0.') Duration get duration
-PlayerState.@Deprecated('Use playback.eofReached; the flat fields go in 0.8.0.') bool get eofReached
-PlayerState.@Deprecated('Use playback.loop; the flat fields go in 0.8.0.') Loop get loop
-PlayerState.@Deprecated('Use playback.partiallySeekable; the flat fields go in 0.8.0.') bool get partiallySeekable
-PlayerState.@Deprecated('Use playback.percentPos; the flat fields go in 0.8.0.') double get percentPos
-PlayerState.@Deprecated('Use playback.playWhenReady; the flat fields go in 0.8.0.') bool get playWhenReady
-PlayerState.@Deprecated('Use playback.playing; the flat fields go in 0.8.0.') bool get playing
-PlayerState.@Deprecated('Use playback.playlist; the flat fields go in 0.8.0.') Playlist get playlist
-PlayerState.@Deprecated('Use playback.playtimeRemaining; the flat fields go in 0.8.0.') Duration get playtimeRemaining
-PlayerState.@Deprecated('Use playback.position; the flat fields go in 0.8.0.') Duration get position
-PlayerState.@Deprecated('Use playback.remainingAbLoops; the flat fields go in 0.8.0.') int? get remainingAbLoops
-PlayerState.@Deprecated('Use playback.seekable; the flat fields go in 0.8.0.') bool get seekable
-PlayerState.@Deprecated('Use playback.seeking; the flat fields go in 0.8.0.') bool get seeking
-PlayerState.@Deprecated('Use playback.shuffle; the flat fields go in 0.8.0.') bool get shuffle
-PlayerState.@Deprecated('Use playback.timeRemaining; the flat fields go in 0.8.0.') Duration get timeRemaining
-PlayerState.@Deprecated('Use settings.audioBuffer; the flat fields go in 0.8.0.') Duration get audioBuffer
-PlayerState.@Deprecated('Use settings.audioChannels; the flat fields go in 0.8.0.') Channels get audioChannels
-PlayerState.@Deprecated('Use settings.audioClientName; the flat fields go in 0.8.0.') String get audioClientName
-PlayerState.@Deprecated('Use settings.audioDelay; the flat fields go in 0.8.0.') Duration get audioDelay
-PlayerState.@Deprecated('Use settings.audioDriver; the flat fields go in 0.8.0.') String get audioDriver
-PlayerState.@Deprecated('Use settings.audioEffects; the flat fields go in 0.8.0.') List<AudioEffect> get audioEffects
-PlayerState.@Deprecated('Use settings.audioExclusive; the flat fields go in 0.8.0.') bool get audioExclusive
-PlayerState.@Deprecated('Use settings.audioFormat; the flat fields go in 0.8.0.') Format get audioFormat
-PlayerState.@Deprecated('Use settings.audioMediaRole; the flat fields go in 0.8.0.') bool get audioMediaRole
-PlayerState.@Deprecated('Use settings.audioNullUntimed; the flat fields go in 0.8.0.') bool get audioNullUntimed
-PlayerState.@Deprecated('Use settings.audioSampleRate; the flat fields go in 0.8.0.') int get audioSampleRate
-PlayerState.@Deprecated('Use settings.audioSpdif; the flat fields go in 0.8.0.') Set<Spdif> get audioSpdif
-PlayerState.@Deprecated('Use settings.audioStreamSilence; the flat fields go in 0.8.0.') bool get audioStreamSilence
-PlayerState.@Deprecated('Use settings.cache; the flat fields go in 0.8.0.') CacheSettings get cache
-PlayerState.@Deprecated('Use settings.cookies; the flat fields go in 0.8.0.') bool get cookies
-PlayerState.@Deprecated('Use settings.coverArtAuto; the flat fields go in 0.8.0.') Cover get coverArtAuto
-PlayerState.@Deprecated('Use settings.demuxer; the flat fields go in 0.8.0.') DemuxerSettings get demuxer
-PlayerState.@Deprecated('Use settings.gapless; the flat fields go in 0.8.0.') Gapless get gapless
-PlayerState.@Deprecated('Use settings.hlsBitrate; the flat fields go in 0.8.0.') HlsBitrate get hlsBitrate
-PlayerState.@Deprecated('Use settings.httpProxy; the flat fields go in 0.8.0.') String get httpProxy
-PlayerState.@Deprecated('Use settings.mediaSession; the flat fields go in 0.8.0.') MediaSession? get mediaSession
-PlayerState.@Deprecated('Use settings.mute; the flat fields go in 0.8.0.') bool get mute
-PlayerState.@Deprecated('Use settings.networkTimeout; the flat fields go in 0.8.0.') Duration get networkTimeout
-PlayerState.@Deprecated('Use settings.pitch; the flat fields go in 0.8.0.') double get pitch
-PlayerState.@Deprecated('Use settings.pitchCorrection; the flat fields go in 0.8.0.') bool get pitchCorrection
-PlayerState.@Deprecated('Use settings.prefetchPlaylist; the flat fields go in 0.8.0.') bool get prefetchPlaylist
-PlayerState.@Deprecated('Use settings.rate; the flat fields go in 0.8.0.') double get rate
-PlayerState.@Deprecated('Use settings.replayGain; the flat fields go in 0.8.0.') ReplayGainSettings get replayGain
-PlayerState.@Deprecated('Use settings.spectrum; the flat fields go in 0.8.0.') SpectrumSettings get spectrum
-PlayerState.@Deprecated('Use settings.tlsCaFile; the flat fields go in 0.8.0.') String get tlsCaFile
-PlayerState.@Deprecated('Use settings.tlsVerify; the flat fields go in 0.8.0.') bool get tlsVerify
-PlayerState.@Deprecated('Use settings.volume; the flat fields go in 0.8.0.') double get volume
-PlayerState.@Deprecated('Use settings.volumeGain; the flat fields go in 0.8.0.') double get volumeGain
-PlayerState.@Deprecated('Use settings.volumeGainMax; the flat fields go in 0.8.0.') double get volumeGainMax
-PlayerState.@Deprecated('Use settings.volumeGainMin; the flat fields go in 0.8.0.') double get volumeGainMin
-PlayerState.@Deprecated('Use settings.volumeMax; the flat fields go in 0.8.0.') double get volumeMax
-PlayerState.@Deprecated('Use versions.ffmpegVersion; the flat fields go in 0.8.0.') String get ffmpegVersion
-PlayerState.@Deprecated('Use versions.mpvVersion; the flat fields go in 0.8.0.') String get mpvVersion
 PlayerState.@override String toString()
 PlayerState.@override bool operator ==(Object other)
 PlayerState.@override int get hashCode
@@ -4001,7 +3915,7 @@ PlayerStream.final Stream<int?> currentChapter
 PlayerStream.final Stream<int?> remainingAbLoops
 PlayerStream.final Stream<void> seekCompleted
 PlayerStream.new fromInternals  ({required DefaultPropertyReactives reactives, required ReactiveProperty<bool> buffering, required ReactiveProperty<bool> completed, required ReactiveProperty<Playlist> playlist, required ReactiveProperty<Loop> loop, required ReactiveProperty<List<Device>> audioDevices, required ReactiveProperty<Map<String, String>> metadata, required ReactiveProperty<double> bufferingPercentage, required ReactiveProperty<DemuxerCacheState> demuxerCacheState, required ReactiveProperty<List<AudioEffect>> audioEffects, required ReactiveProperty<MediaSession?> mediaSession, required this.endFile, required this.error, required this.log, required this.internalLog, required this.hook, required this.seekCompleted, required this.coverArt, required this.fft, required this.pcm, required this.spectrum, required this.waveform, required this.loudnessMeter, required this.loudnessScan, required Stream<PcmFrame> Function(AudioFilter filter, {int instance, required TapSide side}) tap, required this.mediaSessionCommands})
-PlayerStream: class PlayerStream
+PlayerStream: interface class PlayerStream
 Playlist.@override String toString()
 Playlist.@override bool operator ==(Object other)
 Playlist.@override int get hashCode

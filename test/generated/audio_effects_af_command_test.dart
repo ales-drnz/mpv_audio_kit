@@ -2107,9 +2107,9 @@ void main() {
             reason: '${c.filter}: enabled stage must carry its chain label',
           );
           for (final u in c.updates) {
-            final next = u.apply(player.state.audioEffects);
+            final next = u.apply(player.state.settings.audioEffects);
             expect(
-              audioEffectsDiff(player.state.audioEffects, next),
+              audioEffectsDiff(player.state.settings.audioEffects, next),
               allOf(isNotNull, isNotEmpty),
               reason: '${c.filter} ${u.label}: not sent as a live update',
             );
