@@ -1,9 +1,9 @@
 ## [0.8.0]
 
-Breaking: the cleanup 0.7.0 announced, on the same libmpv-r26. See MIGRATION.md.
+The cleanup 0.7.0 announced, on the same libmpv-r26. See MIGRATION.md.
 
 ### All platforms
-**Changed**
+**Breaking**
 - TLS certificates are verified by default, as in mpv and FFmpeg: a server with a self-signed certificate fails to open. `PlayerConfiguration.tlsVerify` sets it before the first load, and `setTlsCaFile` can trust such a server.
 - The 96 flat fields of `PlayerState`, deprecated since 0.7.0, are gone: read each one from its group.
 - `openPcmStream` follows `PlayerConfiguration.autoPlay` when `play` is null, as `open` does. It played at once.
