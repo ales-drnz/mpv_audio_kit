@@ -34,7 +34,7 @@ mixin _MediaSessionModule
   /// holds per isolate, and so per Flutter engine: the players of two
   /// engines do not see each other's. Across engines the native side
   /// refuses the second enable, which [MediaSessionChannel] throws as the
-  /// same [StateError].
+  /// same [MediaSessionException].
   /// SMTC (Windows) and MPNowPlayingInfoCenter (Apple) are
   /// single-instance per process: enabling on a second [Player]
   /// would silently steal the first one's lockscreen entry. Linux
@@ -49,14 +49,14 @@ mixin _MediaSessionModule
 
   /// Publishes the [Player] to the OS media session, or removes it when
   /// [session] is `null`. Only one [Player] per process can have an
-  /// active session: a non-null [session] on a second [Player] throws
-  /// [StateError], also from another Flutter engine of the process
+  /// active session: a non-null [session] on a second [Player] throws a
+  /// [MediaSessionException], also from another Flutter engine of the process
   /// (add-to-app, a second window): the native side, one per process,
   /// refuses that enable and the state goes back to `null`.
   ///
   /// The session needs the root isolate, the one the OS sends its commands
-  /// to: a non-null [session] on a [Player] of another isolate throws
-  /// [StateError].
+  /// to: a non-null [session] on a [Player] of another isolate throws a
+  /// [MediaSessionException].
   Future<void> setMediaSession(MediaSession? session) async {
     _checkNotDisposed();
 
@@ -65,7 +65,8 @@ mixin _MediaSessionModule
     //    anywhere, as there is nothing to undo. A web page runs one
     //    isolate, and has no root isolate token to ask.
     if (session != null && !kIsWeb && RootIsolateToken.instance == null) {
-      throw StateError(
+      throw const MediaSessionException(
+        MediaSessionRefusal.notRootIsolate,
         'setMediaSession needs the root isolate: the OS media session '
         'sends its commands only there. Publish from a Player created in '
         'the root isolate.',
@@ -76,7 +77,8 @@ mixin _MediaSessionModule
     if (session != null) {
       final owner = _sessionOwner;
       if (owner != null && !identical(owner, this)) {
-        throw StateError(
+        throw const MediaSessionException(
+          MediaSessionRefusal.otherPlayer,
           'Another Player instance already owns the OS media session. '
           'SMTC (Windows) and MPNowPlayingInfoCenter (Apple) are '
           'single-instance per process, so only one Player can publish '

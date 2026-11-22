@@ -6,7 +6,7 @@
 // A second Flutter engine of the process asks for the OS media session
 // while another engine owns it. The native side, one per process, answers
 // the enable with the error already_owned (Android, iOS, macOS, Windows,
-// Linux). setMediaSession then throws StateError, as for a second Player
+// Linux). setMediaSession then throws MediaSessionException, as for a second Player
 // of the same engine, and leaves the state off. Before, the channel
 // swallowed the error and the Player believed it was on the lock screen.
 //
@@ -68,17 +68,26 @@ void main() {
       shuffle: false,
     );
 
-    test('an enable refused as already_owned throws StateError', () async {
-      _mockNative([], _refuseEnable);
-      await expectLater(
-        MediaSessionChannel().enable(
-          session: const MediaSession(),
-          metadata: metadata,
-          playback: playback,
-        ),
-        throwsStateError,
-      );
-    });
+    test(
+      'an enable refused as already_owned throws MediaSessionException',
+      () async {
+        _mockNative([], _refuseEnable);
+        await expectLater(
+          MediaSessionChannel().enable(
+            session: const MediaSession(),
+            metadata: metadata,
+            playback: playback,
+          ),
+          throwsA(
+            isA<MediaSessionException>().having(
+              (e) => e.reason,
+              'reason',
+              MediaSessionRefusal.otherEngine,
+            ),
+          ),
+        );
+      },
+    );
 
     test('only enable throws for already_owned: an update or a disable '
         'nobody awaits swallows it', () async {
@@ -118,25 +127,56 @@ void main() {
     tearDown(() => player.dispose());
 
     test(
-      'setMediaSession throws StateError and leaves the session off',
+      'setMediaSession throws MediaSessionException and leaves the session off',
       () async {
         final calls = <String>[];
         _mockNative(calls, _refuseEnable);
 
         await expectLater(
           player.setMediaSession(const MediaSession(title: 'Second engine')),
-          throwsStateError,
+          throwsA(
+            isA<MediaSessionException>().having(
+              (e) => e.reason,
+              'reason',
+              MediaSessionRefusal.otherEngine,
+            ),
+          ),
         );
         expect(player.state.settings.mediaSession, isNull);
         expect(calls, contains('enable'));
       },
     );
 
+    test('a second Player of the isolate is refused as otherPlayer', () async {
+      _mockNative([], (call) async => null);
+      await player.setMediaSession(const MediaSession(title: 'First'));
+      final second = await buildPlayer();
+      addTearDown(second.dispose);
+      await expectLater(
+        second.setMediaSession(const MediaSession(title: 'Second')),
+        throwsA(
+          isA<MediaSessionException>().having(
+            (e) => e.reason,
+            'reason',
+            MediaSessionRefusal.otherPlayer,
+          ),
+        ),
+      );
+      expect(player.state.settings.mediaSession?.title, 'First');
+      await player.setMediaSession(null);
+    });
+
     test('the refused Player can publish once the session is free', () async {
       _mockNative([], _refuseEnable);
       await expectLater(
         player.setMediaSession(const MediaSession()),
-        throwsStateError,
+        throwsA(
+          isA<MediaSessionException>().having(
+            (e) => e.reason,
+            'reason',
+            MediaSessionRefusal.otherEngine,
+          ),
+        ),
       );
 
       // The owner engine disabled: the next enable is accepted.

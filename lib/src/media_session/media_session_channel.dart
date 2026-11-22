@@ -7,6 +7,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import '../events/player_exception.dart';
 import '../models/cover_art.dart';
 import '../models/media_session.dart';
 import '../types/enums/loop.dart';
@@ -204,7 +205,7 @@ class MediaSessionPlaybackSnapshot {
 /// swallow [MissingPluginException] and [PlatformException] so an unwired
 /// platform is a no-op, not a crash; Dart-side state stays correct. The
 /// one exception is an `enable` refused because another Flutter engine of
-/// the process owns the session: it throws [StateError]. Only `enable`
+/// the process owns the session: it throws a [MediaSessionException]. Only `enable`
 /// does: an update or a `disable` is sent without anyone awaiting it.
 ///
 /// The event channel has no such net: Flutter reports a listen on a
@@ -302,7 +303,8 @@ class MediaSessionChannel {
       return false;
     } on PlatformException catch (e) {
       if (throwsAlreadyOwned && e.code == _alreadyOwned) {
-        throw StateError(
+        throw const MediaSessionException(
+          MediaSessionRefusal.otherEngine,
           'Another Flutter engine of this process owns the OS media '
           'session. It is one per process: it stays with the engine that '
           'enabled it until that engine sets it to null, disposes its '

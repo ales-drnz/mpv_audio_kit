@@ -24,29 +24,33 @@ const _commandsControl = MethodChannel('mpv_audio_kit/media_session/commands');
 
 void main() {
   runtimeSuite(() {
-    test('setMediaSession from another isolate throws a StateError and '
-        'leaves no session', () async {
-      // The flutter test isolate is a root isolate: the guard lets it in.
-      expect(RootIsolateToken.instance, isNotNull);
+    test(
+      'setMediaSession from another isolate throws a MediaSessionException and '
+      'leaves no session',
+      () async {
+        // The flutter test isolate is a root isolate: the guard lets it in.
+        expect(RootIsolateToken.instance, isNotNull);
 
-      final outcome = await Isolate.run(() async {
-        MpvAudioKit.ensureInitialized(hotRestartCleanup: false);
-        final player = Player(
-          configuration: const PlayerConfiguration(logLevel: LogLevel.off),
-        );
-        try {
-          await player.setMediaSession(const MediaSession());
-          return 'no error';
-        } on StateError {
-          // The session is still free: a null is allowed anywhere.
-          await player.setMediaSession(null);
-          return 'StateError, mediaSession ${player.state.settings.mediaSession}';
-        } finally {
-          await player.dispose();
-        }
-      });
-      expect(outcome, 'StateError, mediaSession null');
-    }, timeout: const Timeout(Duration(seconds: 45)));
+        final outcome = await Isolate.run(() async {
+          MpvAudioKit.ensureInitialized(hotRestartCleanup: false);
+          final player = Player(
+            configuration: const PlayerConfiguration(logLevel: LogLevel.off),
+          );
+          try {
+            await player.setMediaSession(const MediaSession());
+            return 'no error';
+          } on MediaSessionException catch (e) {
+            // The session is still free: a null is allowed anywhere.
+            await player.setMediaSession(null);
+            return '${e.reason.name}, mediaSession ${player.state.settings.mediaSession}';
+          } finally {
+            await player.dispose();
+          }
+        });
+        expect(outcome, 'notRootIsolate, mediaSession null');
+      },
+      timeout: const Timeout(Duration(seconds: 45)),
+    );
 
     test(
       'a failed create leaves no owner, no state and no controller',

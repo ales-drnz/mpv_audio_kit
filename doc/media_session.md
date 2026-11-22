@@ -19,7 +19,7 @@ await player.setMediaSession(const MediaSession()); // title, artist, album and 
 await player.setMediaSession(null);                 // remove
 ```
 
-One `Player` per process owns the session, and it must live in the root isolate. A second player throws `StateError`, even from another Flutter engine in the same process. The owner keeps the session until it passes `null` or is disposed.
+One `Player` per process owns the session, and it must live in the root isolate. A second player throws `MediaSessionException`, even from another Flutter engine in the same process: its `reason` says which case it is. The owner keeps the session until it passes `null` or is disposed.
 
 ## Metadata
 
