@@ -71,8 +71,15 @@ mixin _NetworkModule on _PlayerBase {
   /// for high-latency wireless outputs (Bluetooth, network speakers);
   /// decrease for live monitoring or low-latency listening. During a live
   /// [PcmSource] entry opened with `lowLatency`, a new value holds only
-  /// until that entry ends.
+  /// until that entry ends. Throws [RangeError] outside 0 to 10 seconds.
   Future<void> setAudioBuffer(Duration size) async {
+    if (size.isNegative || size > const Duration(seconds: 10)) {
+      throw RangeError.value(
+        size.inMicroseconds,
+        'size',
+        'microseconds, must be in [0, 10 s]',
+      );
+    }
     await _write(
       'audio-buffer',
       durationToSeconds(size).toStringAsFixed(6),
@@ -110,7 +117,16 @@ mixin _NetworkModule on _PlayerBase {
   /// For `smb2://` sources, with [Duration.zero] the connection gets 30
   /// seconds, with no limit on the reads after it, and a stop, a track
   /// change or a dispose interrupts a connect or a read at once.
+  ///
+  /// Throws [RangeError] for a negative [timeout].
   Future<void> setNetworkTimeout(Duration timeout) async {
+    if (timeout.isNegative) {
+      throw RangeError.value(
+        timeout.inMicroseconds,
+        'timeout',
+        'microseconds, must not be negative',
+      );
+    }
     if (timeout > _kMaxNetworkTimeout) timeout = _kMaxNetworkTimeout;
     // mpv's `network-timeout` accepts a fractional second value (e.g.
     // "0.5"). Truncating with `inSeconds` would collapse any sub-second

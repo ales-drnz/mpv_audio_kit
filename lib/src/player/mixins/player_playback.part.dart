@@ -401,11 +401,9 @@ mixin _PlaybackModule on _PlayerBase, _PropertiesModule {
   /// with 3 the section is heard 4 times. Pass `null` for infinite looping
   /// (mpv's `inf`); `0` turns the A-B loop off even with both points set.
   /// Unlike the points, the count stays for the next files. Mirrors mpv's
-  /// `--ab-loop-count` option.
+  /// `--ab-loop-count` option. Throws [RangeError] for a negative count.
   Future<void> setAbLoopCount(int? count) async {
-    if (count != null && count < 0) {
-      throw ArgumentError.value(count, 'count', 'must be null (= inf) or >= 0');
-    }
+    if (count != null) RangeError.checkNotNegative(count, 'count');
     await _write(
       'ab-loop-count',
       count == null ? 'inf' : count.toString(),

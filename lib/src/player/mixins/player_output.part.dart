@@ -106,7 +106,11 @@ mixin _OutputModule on _PlayerBase, _PropertiesModule {
   /// [StateError]: the page's output stays at the rate before, and so do
   /// this player's `audio-samplerate` and [PlayerSettings.audioSampleRate],
   /// unless another call set a rate since.
+  ///
+  /// Throws [RangeError] outside 0 to 768000, mpv's range (`0` leaves the
+  /// rate to the file).
   Future<void> setAudioSampleRate(int rate) async {
+    RangeError.checkValueInInterval(rate, 0, 768000, 'rate');
     await _gate();
     // Taken before the write: the observer of audio-samplerate may report
     // the new rate before the browser refuses it.

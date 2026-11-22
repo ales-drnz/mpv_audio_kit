@@ -238,7 +238,7 @@ void main() {
         // null / non-negative int are valid; negative values are an error
         // because mpv's `--ab-loop-count` accepts only `inf` (encoded as
         // null) or `M_RANGE(0, INT_MAX)`.
-        expect(() => player.setAbLoopCount(-1), throwsArgumentError);
+        expect(() => player.setAbLoopCount(-1), throwsRangeError);
       });
     });
   });
