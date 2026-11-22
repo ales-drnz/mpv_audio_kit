@@ -104,7 +104,7 @@ It applies to that entry only. Leave it `null` for servers that do not throttle,
 ```dart
 await player.setNetworkTimeout(const Duration(seconds: 10)); // default 60 s
 
-await player.setTlsVerify(true);                     // off by default
+await player.setTlsVerify(false);                    // on by default
 await player.setTlsCaFile('/path/to/company-ca.pem'); // '' for the built-in roots
 
 await player.setHttpProxy('http://proxy.example:8080'); // '' clears it
@@ -113,7 +113,7 @@ await player.setCookies(true);                          // off by default
 
 - `Duration.zero` uses FFmpeg's default timeout for each protocol. For `smb2://` it gives the connection 30 s and no limit on the reads.
 - The longest timeout is about 36 minutes, and a longer one is capped there.
-- TLS verification is off by default, so a server with a self-signed certificate plays. A later release turns it on by default.
+- TLS verification is on by default, as in mpv and FFmpeg. A server with a self-signed certificate fails to open. Pass `setTlsCaFile` a bundle with its certificate, or set `PlayerConfiguration(tlsVerify: false)`. Covers, the waveform and the loudness scan follow the same settings.
 - TLS verification uses the CA roots built into libmpv. A CA file replaces them.
 - The proxy and cookies take effect from the next load. `https://` sources go through the proxy with `CONNECT`.
 

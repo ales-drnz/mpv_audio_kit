@@ -67,6 +67,15 @@ final class PlayerConfiguration {
   /// path (e.g. `getTemporaryDirectory()`) when spilling the cache to disk.
   final String? demuxerCacheDir;
 
+  /// Whether `https://` sources must present a certificate a trusted root
+  /// signed (mpv's `--tls-verify`), set before the first load. Default
+  /// `true`, as mpv and FFmpeg have it. A home server with a self-signed
+  /// certificate fails to open then: pass [Player.setTlsCaFile] a bundle
+  /// with its certificate (the file replaces the built-in roots, so it also
+  /// needs those of the other servers the app plays from), or turn
+  /// verification off here or with [Player.setTlsVerify].
+  final bool tlsVerify;
+
   /// Creates a configuration; every field defaults to its documented value.
   const PlayerConfiguration({
     this.autoPlay = false,
@@ -78,5 +87,6 @@ final class PlayerConfiguration {
     this.hlsBitrate = HlsBitrate.max,
     this.normalizeDownmix = false,
     this.demuxerCacheDir,
+    this.tlsVerify = true,
   });
 }

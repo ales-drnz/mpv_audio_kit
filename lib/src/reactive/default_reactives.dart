@@ -178,7 +178,7 @@ class DefaultPropertyReactives {
 
   /// Whether the server certificate is verified for TLS streams
   /// (`tls-verify`).
-  final ReactiveProperty<bool> tlsVerify = ReactiveProperty<bool>(false);
+  final ReactiveProperty<bool> tlsVerify = ReactiveProperty<bool>(true);
 
   /// Path to a custom CA bundle for TLS verification (`tls-ca-file`).
   final ReactiveProperty<String> tlsCaFile = ReactiveProperty<String>('');
