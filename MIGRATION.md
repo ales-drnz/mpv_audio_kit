@@ -9,8 +9,9 @@ only the reads of the state.
 `tls-verify` is on by default, as in mpv 0.42 and FFmpeg 9: an `https://`
 source must present a certificate a trusted root signed. 0.7 kept it off.
 A home server with a self-signed certificate (a Jellyfin or a NAS) now
-fails to open, with a certificate error on `player.stream.log`. Covers,
-the waveform and the loudness scan of that server fail the same way.
+fails to open, with a certificate error on `player.stream.log`. The
+waveform and the loudness scan of that server fail the same way. The
+covers the media session downloads verified before 0.8.0 too.
 
 - Keep verification and trust the server: pass `setTlsCaFile` a PEM
   bundle with its certificate. The file replaces the built-in roots, so

@@ -26,9 +26,8 @@ const Duration _timeout = Duration(seconds: 15);
 const int _maxRedirects = 5;
 
 /// Default [ArtworkFetcher] where [downloadsArtworkOn] holds. It always
-/// verifies the certificate, whatever the player's `tls-verify`: that
-/// option is off by default in mpv, and a cover URL often carries the
-/// server's credentials. A [caFile] adds to the system roots, so a
+/// verifies the certificate, whatever the player's `tls-verify`: a cover
+/// URL often carries the server's credentials. A [caFile] adds to the system roots, so a
 /// self-hosted server with its own CA shows its covers. Redirects are
 /// followed by hand, so one from `https` to plain `http` is refused before
 /// anything is sent over it. A response that announces more than 20 MB is
