@@ -1,7 +1,8 @@
 name: Devices
 
 # test_app's integration tests on the Android emulators (API 24, 29 and 34,
-# and the Android TV image of API 36) with their emulated audio device, and
+# the Android TV image of API 36 and the Wear OS image of API 34) with their
+# emulated audio device, and
 # on the iOS simulator. ci.yml builds the Android and iOS apps but runs
 # nothing on a device; libmpv-scripts' check of the kit runs this same
 # matrix for a libmpv Build, never for a branch of the kit. The steps, the
@@ -23,7 +24,7 @@ name: Devices
 # hand, on any branch, with the libmpv-scripts Build to try. A branch named
 # wip/<something>-devices runs it too, at a push that changes one of the
 # paths below: GitHub starts a workflow by hand only once it is on the
-# default branch. A run takes up to two and a half hours: five jobs, four
+# default branch. A run takes up to two and a half hours: six jobs, five
 # of them Android emulators of up to 130 minutes each.
 on:
   push:
@@ -220,7 +221,7 @@ jobs:
           if-no-files-found: ignore
 
   android-emu:
-    name: Android emulator API ${{ matrix.api }}${{ matrix.target == 'android-tv' && ' TV' || '' }}
+    name: Android emulator API ${{ matrix.api }}${{ matrix.target == 'android-tv' && ' TV' || matrix.target == 'android-wear' && ' Wear' || '' }}
     needs: plan
     runs-on: ubuntu-24.04
     # Six files and the two ways of the keys, each of at most three 8 minute
@@ -237,6 +238,9 @@ jobs:
           # A TV profile: with the default phone screen the SystemUI of the
           # TV image crashes in a loop and takes the tests down with it.
           - {api: 36, target: android-tv, profile: tv_1080p}
+          # Wear OS runs the Android build: a round watch screen, with the
+          # emulated audio device as the output (no Bluetooth headset).
+          - {api: 34, target: android-wear, profile: wearos_small_round}
     defaults:
       run:
         shell: bash
@@ -288,7 +292,7 @@ jobs:
           # which consumes frames at real time even with no host sound card.
           emulator-options: -no-window -gpu swiftshader_indirect -no-boot-anim -camera-back none
           disable-animations: true
-          script: bash ../scripts/ci/android_emulator.sh ${{ matrix.api }}
+          script: bash ../scripts/ci/android_emulator.sh ${{ matrix.api }}${{ matrix.target == 'android-wear' && '-wear' || '' }}
           working-directory: test_app
       # The Android TV image without the emulator runner: right after the
       # boot its adbd goes away for a moment, and the runner's own adb calls
@@ -346,7 +350,7 @@ jobs:
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
-          name: android-emu-${{ matrix.api }}${{ matrix.target == 'android-tv' && '-tv' || '' }}
+          name: android-emu-${{ matrix.api }}${{ matrix.target == 'android-tv' && '-tv' || matrix.target == 'android-wear' && '-wear' || '' }}
           path: test_app/emu-logs
           if-no-files-found: ignore
 
@@ -411,7 +415,8 @@ jobs:
           # read, so the run is not green. The names follow the matrix of
           # android-emu and the upload of ios-integration.
           expected = ['android-emu-24', 'android-emu-29', 'android-emu-34',
-                      'android-emu-36-tv', 'ios-integration-*']
+                      'android-emu-36-tv', 'android-emu-34-wear',
+                      'ios-integration-*']
           absent = [name for name in expected
                     if not glob.glob(f'device-logs/{name}/summary*.txt')]
           if absent:
