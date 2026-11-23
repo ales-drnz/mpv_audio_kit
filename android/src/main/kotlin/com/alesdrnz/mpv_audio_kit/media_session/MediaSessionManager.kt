@@ -234,7 +234,7 @@ internal object MediaSessionManager {
                     val playback = a["playback"] as Map<*, *>
                     val ownedBefore = engines.mayUpdate(engine)
                     if (!engines.tryEnable(engine)) {
-                        // Dart throws a StateError and leaves its state off.
+                        // Dart throws a MediaSessionException and leaves its state off.
                         result.error(
                             "already_owned",
                             "Another Flutter engine of this process owns the media session.",
