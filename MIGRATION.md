@@ -12,11 +12,15 @@ source must present a certificate a trusted root signed. 0.7 kept it off.
 A home server with a self-signed certificate (a Jellyfin or a NAS) now
 fails to open, with a certificate error on `player.stream.log`. The
 waveform and the loudness scan of that server fail the same way. The
-covers the media session downloads were verified before 0.8.0 too.
+covers of the media session were verified before 0.8.0 too. `http://`
+sources, local files and SMB are not affected.
 
-- Keep verification and trust the server: pass `setTlsCaFile` a PEM
-  bundle with its certificate. The file replaces the built-in roots, so
-  it must also hold the roots of the other servers the app plays from.
+- Keep verification and trust the server: pass `setTlsExtraCaFile` a PEM
+  file with its certificate, or with the CA that signed it. The file is
+  trusted on top of the built-in roots, so every other server opens as
+  before.
+- Or trust only your own servers: `setTlsCaFile` replaces the built-in
+  roots with its file, and a server its file does not vouch for fails.
 - Or turn verification off, as 0.7 had it:
   `Player(configuration: const PlayerConfiguration(tlsVerify: false))`,
   or `setTlsVerify(false)` later.

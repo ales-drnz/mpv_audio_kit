@@ -11,7 +11,7 @@
 
 ### All platforms
 **Breaking**
-- TLS certificates are verified by default, as in mpv and FFmpeg: a server with a self-signed certificate fails to open. `PlayerConfiguration.tlsVerify` sets it before the first load. `setTlsCaFile` can trust such a server, with a file that replaces the built-in roots.
+- TLS certificates are verified by default, as in mpv and FFmpeg: a server with a self-signed certificate fails to open. `setTlsExtraCaFile` trusts such a server on top of the built-in roots, and `PlayerConfiguration.tlsVerify` turns verification off before the first load. `http://` sources, local files and SMB are not affected.
 - The 96 flat fields of `PlayerState`, deprecated since 0.7.0, are gone: read each one from its group.
 - `openPcmStream` follows `PlayerConfiguration.autoPlay` when `play` is null, as `open` does. It played at once.
 - `setMediaSession` throws `MediaSessionException`, a `PlayerException` with a `reason`, where it threw `StateError`.
@@ -23,7 +23,7 @@
 - `stop(keepPlaylist: true)` unloads the file and keeps the playlist. The index stays on the entry that stopped, `next` and `previous` move it with nothing loaded, and `play` starts it from its beginning.
 - `state.playbackState`, the value `stream.playbackState` emitted last.
 - `initialized` completes once the player has started, or with the `PlayerInitException` of a start that failed.
-- `setTlsExtraCaFile` trusts the certificates of a file on top of the roots in use, for a home server with a self-signed certificate or a private CA, while every other server is verified as before. The covers the media session downloads trust it too.
+- `setTlsExtraCaFile` trusts the certificates of a file on top of the roots in use, for a home server with a self-signed certificate or a private CA, while every other server is verified as before. The covers of the media session trust it too.
 
 **Fixed**
 - The next and previous buttons of the OS follow a change of the queue at once. They followed it only at the next play, pause or seek.
@@ -31,7 +31,7 @@
 
 **Docs**
 - A Wear OS topic: the manifest, the Bluetooth output, and what is left to the app. The CI runs the Android integration tests on the Wear OS emulator.
-- The README lists every platform and links the Platforms topic and the topics of each TV, of Wear OS and of HarmonyOS.
+- The README and the description on pub.dev list every platform. The README links the Platforms topic and the topics of each TV, of Wear OS and of HarmonyOS.
 
 ### HarmonyOS
 **Added**
