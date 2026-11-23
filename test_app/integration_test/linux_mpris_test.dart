@@ -210,8 +210,13 @@ void main() {
       await bus.call('Play');
       await eventually(bus.playbackStatus, (s) => s == 'Playing');
 
+      // The session's Stop clears the queue: nothing for Play to start.
       await bus.call('Stop');
       await eventually(bus.playbackStatus, (s) => s == 'Stopped');
+      await eventually(
+        () => bus.property(MprisBus.playerIface, 'CanPlay'),
+        (v) => v == false,
+      );
     }, skip: !Platform.isLinux);
 
     testWidgets('SetPosition and Seek from the bus move the player', (_) async {

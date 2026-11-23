@@ -208,6 +208,8 @@ class MediaSessionController {
     // MPRIS `LoopStatus` and `Shuffle`, MediaSession actions).
     _subscriptions.add(_inputs.loop.listen((_) => _markPlayback()));
     _subscriptions.add(_inputs.shuffle.listen((_) => _markPlayback()));
+    // The queue drives next, previous, and Play while stopped.
+    _subscriptions.add(_inputs.playlist.listen((_) => _markPlayback()));
 
     // Metadata signals: drive `updateMetadata`.
     _subscriptions.add(_inputs.duration.listen((_) => _markMetadata()));

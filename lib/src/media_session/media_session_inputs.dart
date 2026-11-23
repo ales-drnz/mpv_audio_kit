@@ -8,6 +8,7 @@ import 'package:meta/meta.dart';
 
 import '../models/cover_art.dart';
 import '../models/media_session.dart';
+import '../models/playlist.dart';
 import '../player/player_stream.dart';
 import '../types/enums/loop.dart';
 
@@ -75,6 +76,10 @@ class MediaSessionInputs {
   /// a `title` tag).
   final Stream<String> mediaTitle;
 
+  /// The playlist: its length and index give the next and previous
+  /// buttons, and whether a stopped session has something to play.
+  final Stream<Playlist> playlist;
+
   /// The current [MediaSession] config (override + capability bits),
   /// `null` when the OS session is disabled.
   final Stream<MediaSession?> mediaSession;
@@ -92,6 +97,7 @@ class MediaSessionInputs {
     required this.metadata,
     required this.coverArt,
     required this.mediaTitle,
+    required this.playlist,
     required this.mediaSession,
   });
 }

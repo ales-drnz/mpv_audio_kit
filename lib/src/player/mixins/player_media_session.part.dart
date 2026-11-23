@@ -198,6 +198,7 @@ mixin _MediaSessionModule
           metadata: _streams.metadata.changes,
           coverArt: _streams.coverArt.stream,
           mediaTitle: _reactives.mediaTitle.changes,
+          playlist: _streams.playlist.changes,
           mediaSession: _streams.mediaSession.changes,
         ),
         onCommand: _handleSessionCommand,

@@ -379,11 +379,12 @@ GVariant* MprisServer::PlayerPropertyValue(const char* property) {
   }
   // CanPlay/CanPause require real content, not just an enabled session, so a
   // pre-load shell doesn't advertise actionable transport. And the action.
-  // Stopped or at the end, the title is gone but Play starts the queue
-  // again (a kept stop, the last entry from its start), when it has one.
+  // Stopped or at the end, the title shown is gone and the one kept may be
+  // stale: Play starts the queue again (a kept stop, the last entry from its
+  // start) exactly when it has entries.
   if (!strcmp(property, "CanPlay")) {
     return g_variant_new_boolean(
-        enabled_ && (has_title_ || (completed_ && queued_)) && CanPlayAction());
+        enabled_ && (completed_ ? queued_ : has_title_) && CanPlayAction());
   }
   if (!strcmp(property, "CanPause")) {
     return g_variant_new_boolean(enabled_ && has_title_ && CanPauseAction());

@@ -356,6 +356,7 @@ void main() {
             metadata: never.stream.cast(),
             coverArt: never.stream.cast(),
             mediaTitle: never.stream.cast(),
+            playlist: never.stream.cast(),
             mediaSession: never.stream.cast(),
           ),
           onCommand: (_) {},

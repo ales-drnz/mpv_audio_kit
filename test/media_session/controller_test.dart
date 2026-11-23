@@ -133,6 +133,7 @@ class _Rig {
   final metadata = StreamController<Map<String, String>>.broadcast();
   final coverArt = StreamController<CoverArt?>.broadcast();
   final mediaTitle = StreamController<String>.broadcast();
+  final playlist = StreamController<Playlist>.broadcast();
   final mediaSession = StreamController<MediaSession?>.broadcast();
 
   PlayerState state = const PlayerState(
@@ -152,6 +153,7 @@ class _Rig {
     metadata: metadata.stream,
     coverArt: coverArt.stream,
     mediaTitle: mediaTitle.stream,
+    playlist: playlist.stream,
     mediaSession: mediaSession.stream,
   );
 
@@ -168,6 +170,7 @@ class _Rig {
     await metadata.close();
     await coverArt.close();
     await mediaTitle.close();
+    await playlist.close();
     await mediaSession.close();
   }
 }
@@ -588,6 +591,35 @@ void main() {
         );
       },
     );
+
+    test('a playlist change pushes the playback: next, previous and the '
+        'queue a stopped session can play', () async {
+      final rig = _Rig();
+      final ch = _RecordingChannel();
+      addTearDown(rig.dispose);
+      addTearDown(ch.close);
+      rig.state = const PlayerState(
+        playback: PlaybackState(
+          playlist: Playlist([Media('a'), Media('b')]),
+        ),
+        settings: PlayerSettings(mediaSession: MediaSession()),
+      );
+      final controller = await _buildController(rig: rig, channel: ch);
+      addTearDown(controller.dispose);
+      ch.calls.clear();
+
+      rig.state = const PlayerState(
+        settings: PlayerSettings(mediaSession: MediaSession()),
+      );
+      rig.playlist.add(Playlist.empty);
+      await _settle();
+
+      final pushes = ch.callsOfType('updatePlayback');
+      expect(pushes, isNotEmpty, reason: 'the playlist change is pushed');
+      final last =
+          pushes.last.args['snapshot']! as MediaSessionPlaybackSnapshot;
+      expect(last.queued, isFalse);
+    });
 
     test(
       'metadata signals in one turn coalesce into one updateMetadata',
