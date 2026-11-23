@@ -92,7 +92,10 @@ mixin _PlaybackModule on _PlayerBase, _PropertiesModule {
     if (idle && _transport.loadsInFlight == 0 && _transport.owns(intent)) {
       // After stop(keepPlaylist: true) the entry that stopped starts.
       if (await _resumeKeptStop(intent)) return;
-      _transport.writeIntent(false);
+      // The resume read the core: a call since may own the intent now.
+      if (_transport.owns(intent) && _transport.loadsInFlight == 0) {
+        _transport.writeIntent(false);
+      }
     }
   }
 
@@ -167,9 +170,11 @@ mixin _PlaybackModule on _PlayerBase, _PropertiesModule {
   /// (not [play]) to start a new track. With [keepPlaylist] the entries
   /// stay and `state.playback.playlist.index` stays on the entry that
   /// stopped, with no file loaded: [play] starts that entry from its
-  /// beginning, [jump] starts another. Removed before the [play], the
-  /// entry leaves nothing to start. A live PCM entry stays without its source, as after a
-  /// skip (see [PcmSource]).
+  /// beginning, [jump] starts another, and [Player.next] and
+  /// [Player.previous] move to the entry after or before it without
+  /// loading it (wrapping around with [Loop.playlist]). Removed before the
+  /// [play], the entry leaves nothing to start. A live PCM entry stays
+  /// without its source, as after a skip (see [PcmSource]).
   ///
   /// The media session shows the stop where the platform has a stopped
   /// state: MPRIS reports `Stopped` on Linux.
@@ -191,6 +196,30 @@ mixin _PlaybackModule on _PlayerBase, _PropertiesModule {
     if (index < 0) return false;
     await _calls.commandChecked(['playlist-play-index', '$index']);
     if (_transport.wantsPlay(intent)) _transport.writeIntent(true);
+    return true;
+  }
+
+  /// After stop(keepPlaylist: true), moves the entry that stopped by
+  /// [delta] with no file loaded, wrapping around with [Loop.playlist]:
+  /// whether it moved, or `null` when no kept stop holds the core.
+  Future<bool?> _moveKeptStop(int delta) async {
+    final id = _entries.stopped;
+    if (id == null || _transport.loadsInFlight != 0) return null;
+    if (_entries.hiddenAt != null) return null;
+    if (await _readString('idle-active') != 'yes') return null;
+    final node = await _readPlaylist();
+    if (node == null || _entries.stopped != id) return null;
+    final at = node.indexWhere((e) => e is Map && e['id'] == id);
+    if (at < 0) return null;
+    var to = at + delta;
+    if (to < 0 || to >= node.length) {
+      if (_state.playback.loop != Loop.playlist) return false;
+      to %= node.length;
+    }
+    final entry = node[to];
+    if (entry is! Map || entry['id'] is! int) return false;
+    _entries.stopped = entry['id'] as int;
+    _updatePlaylistFromNode(node);
     return true;
   }
 
@@ -218,6 +247,9 @@ mixin _PlaybackModule on _PlayerBase, _PropertiesModule {
     }
     await _calls.commandChecked(['stop', if (keepPlaylist) 'keep-playlist']);
     _entries.stopped = stoppedId;
+    // Kept entries: mpv would play one its own playlist commands start
+    // (a raw playlist-next) over the intent, which is off.
+    if (keepPlaylist) await _calls.prop('pause', 'yes');
     // The app's stop and the session's own Stop: the OS shows it stopped
     // until the next load or play.
     _mediaSessionController?.stopped();
@@ -403,7 +435,10 @@ mixin _PlaybackModule on _PlayerBase, _PropertiesModule {
   /// Unlike the points, the count stays for the next files. Mirrors mpv's
   /// `--ab-loop-count` option. Throws [RangeError] for a negative count.
   Future<void> setAbLoopCount(int? count) async {
-    if (count != null) RangeError.checkNotNegative(count, 'count');
+    // mpv keeps the count in a C int.
+    if (count != null) {
+      RangeError.checkValueInInterval(count, 0, 2147483647, 'count');
+    }
     await _write(
       'ab-loop-count',
       count == null ? 'inf' : count.toString(),

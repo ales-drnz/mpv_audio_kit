@@ -254,10 +254,17 @@ abstract class _PlayerBase {
   /// reject the property write at the FFI boundary. Catching it on the
   /// wrapper side gives the caller a precise [ArgumentError] naming the
   /// parameter, instead of an opaque [MpvCommandException] from libmpv.
-  /// Throws [RangeError] unless [value] is finite and within
-  /// `[min, max]`, the range mpv accepts for the option behind it.
+  /// Throws [ArgumentError] for NaN, and [RangeError] for a value outside
+  /// `[min, max]`, the range mpv accepts for the option behind it, an
+  /// infinite one included.
   void _checkRange(double value, double min, double max, String paramName) {
-    _checkFinite(value, paramName);
+    if (value.isNaN) {
+      throw ArgumentError.value(
+        value,
+        paramName,
+        'Expected a number (got NaN)',
+      );
+    }
     if (value < min || value > max) {
       throw RangeError.value(
         value,

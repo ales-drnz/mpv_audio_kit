@@ -49,6 +49,7 @@ Playlist parsePlaylistNode({
   Map<int, Media> mediaByEntry = const {},
   required Playlist previous,
   int? skip,
+  int? heldId,
 }) {
   // Defensive: a non-list payload means mpv emitted something unexpected
   // for `playlist`. Preserve the previous value rather than clobber the
@@ -61,6 +62,7 @@ Playlist parsePlaylistNode({
   final entries = _without(raw, skip);
   final medias = <Media>[];
   var currentIndex = -1;
+  var heldIndex = -1;
   for (var i = 0; i < entries.length; i++) {
     final entry = entries[i];
     if (entry is! Map) {
@@ -75,10 +77,15 @@ Playlist parsePlaylistNode({
           Media(filename),
     );
     if (entry['current'] == true) currentIndex = i;
+    // A kept stop: mpv has no current entry, the state keeps the one that
+    // stopped, found by its id so a duplicate before it is not taken.
+    if (currentIndex < 0 && heldId != null && id == heldId) heldIndex = i;
   }
   final int idx;
   if (currentIndex >= 0) {
     idx = currentIndex;
+  } else if (heldIndex >= 0) {
+    idx = heldIndex;
   } else if (medias.isEmpty) {
     // Documented empty-playlist value (matches [Playlist.empty]).
     idx = 0;

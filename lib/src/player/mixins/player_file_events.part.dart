@@ -209,6 +209,7 @@ mixin _FileEventsModule on _PlayerBase, _PropertiesModule {
           mediaByEntry: _entries.media,
           previous: _state.playback.playlist,
           skip: hidden,
+          heldId: _entries.stopped,
         );
         _entries.hiddenAt = hidden;
         // A loadfile reply that comes after this read parses it again.

@@ -130,5 +130,83 @@ void main() {
       expect(player.state.playback.playWhenReady, isFalse);
       expect(await player.getRawProperty('idle-active'), 'yes');
     }, timeout: t);
+    Future<void> idle(Player player) => waitUntil(
+      () async => await player.getRawProperty('idle-active') == 'yes',
+    );
+
+    test('next() and previous() move the entry that stopped, nothing '
+        'loads, and play() starts where they left it', () async {
+      final player = await playingSecondOfThree();
+      await player.stop(keepPlaylist: true);
+      await idle(player);
+      expect(await player.getRawProperty('pause'), 'yes');
+
+      expect(await player.next(), isTrue);
+      expect(player.state.playback.playlist.index, 2);
+      expect(await player.next(), isFalse, reason: 'no entry after the last');
+      expect(player.state.playback.playlist.index, 2);
+      expect(await player.previous(), isTrue);
+      expect(await player.previous(), isTrue);
+      expect(player.state.playback.playlist.index, 0);
+      expect(await player.previous(), isFalse, reason: 'none before the first');
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      expect(await player.getRawProperty('idle-active'), 'yes');
+      expect(player.state.playback.playWhenReady, isFalse);
+
+      await player.play();
+      await waitUntil(
+        () =>
+            player.state.playback.playing &&
+            player.state.playback.playlist.index == 0,
+      );
+      expect(player.state.playback.playlist.current?.extras, isNull);
+    }, timeout: t);
+
+    test('with Loop.playlist they wrap around', () async {
+      final player = await playingSecondOfThree();
+      await player.setLoop(Loop.playlist);
+      await player.stop(keepPlaylist: true);
+      await idle(player);
+      expect(await player.next(), isTrue);
+      expect(await player.next(), isTrue);
+      expect(player.state.playback.playlist.index, 0);
+      expect(await player.previous(), isTrue);
+      expect(player.state.playback.playlist.index, 2);
+      expect(await player.getRawProperty('idle-active'), 'yes');
+    }, timeout: t);
+
+    test('a duplicate before the entry that stopped does not take its '
+        'index', () async {
+      final player = await buildPlayer();
+      addTearDown(player.dispose);
+      final a = Media(longFixture);
+      await player.openAll([a, a, Media(fixturePath)], index: 1, play: true);
+      await waitUntil(
+        () =>
+            player.state.playback.playing &&
+            player.state.playback.playlist.index == 1,
+      );
+      await player.stop(keepPlaylist: true);
+      await idle(player);
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      expect(player.state.playback.playlist.index, 1);
+      await player.play();
+      await waitUntil(() => player.state.playback.playing);
+      expect(player.state.playback.playlist.index, 1);
+      expect(await player.getRawProperty('playlist-pos'), '1');
+    }, timeout: t);
+
+    test('a file started and gone since leaves nothing to resume', () async {
+      final player = await playingSecondOfThree();
+      await player.stop(keepPlaylist: true);
+      await idle(player);
+      await player.jump(2);
+      await waitUntil(() => player.state.playback.playlist.index == 2);
+      await player.remove(2);
+      await idle(player);
+      await player.play();
+      expect(player.state.playback.playWhenReady, isFalse);
+      expect(await player.getRawProperty('idle-active'), 'yes');
+    }, timeout: t);
   });
 }

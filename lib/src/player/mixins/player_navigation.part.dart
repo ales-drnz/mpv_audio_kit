@@ -5,13 +5,19 @@ part of '../player.dart';
 
 /// Playlist navigation (next, previous, jump) and the repeat, shuffle and
 /// prefetch modes.
-mixin _NavigationModule on _PlayerBase, _QueueModule {
+mixin _NavigationModule on _PlayerBase, _QueueModule, _PlaybackModule {
   /// Skips to the next track and returns `true`, or `false` when there is
   /// none. With [force] `true`, advancing past the last entry stops
   /// playback (mpv's `force` flag); the default (`weak`) does nothing when
-  /// the last entry is already playing.
+  /// the last entry is already playing. After `stop(keepPlaylist: true)`
+  /// it moves the entry that stopped, with no file loaded (see
+  /// [Player.stop]).
   Future<bool> next({bool force = false}) async {
     await _gate();
+    if (_entries.stopped != null) {
+      final moved = await _moveKeptStop(1);
+      if (moved != null) return moved;
+    }
     // Execute in-flight transport writes (e.g. an un-awaited seek) before
     // the track change, so they apply to the OLD entry; see
     // [CoreCalls.settleWrites].
@@ -25,6 +31,10 @@ mixin _NavigationModule on _PlayerBase, _QueueModule {
   /// already playing.
   Future<bool> previous({bool force = false}) async {
     await _gate();
+    if (_entries.stopped != null) {
+      final moved = await _moveKeptStop(-1);
+      if (moved != null) return moved;
+    }
     // See [next]: in-flight transport writes apply to the old entry.
     await _calls.settleWrites();
     return _calls.navigate(['playlist-prev', force ? 'force' : 'weak']);
