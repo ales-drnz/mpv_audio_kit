@@ -408,6 +408,10 @@ abstract interface class PlayerApi {
   /// verification, `''` for those roots. See [Player.setTlsCaFile].
   Future<void> setTlsCaFile(String path);
 
+  /// Trusts the certificates of the PEM file at [path] on top of the roots
+  /// in use, `''` for none. See [Player.setTlsExtraCaFile].
+  Future<void> setTlsExtraCaFile(String path);
+
   /// Sets the HLS variant-selection policy for adaptive streams.
   Future<void> setHlsBitrate(HlsBitrate hlsBitrate);
 

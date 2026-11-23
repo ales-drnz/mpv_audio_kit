@@ -283,6 +283,9 @@ class _ApiProbe implements PlayerApi {
   Future<void> setTlsCaFile(String path) => _record('setTlsCaFile');
 
   @override
+  Future<void> setTlsExtraCaFile(String path) => _record('setTlsExtraCaFile');
+
+  @override
   Future<void> setHlsBitrate(HlsBitrate hlsBitrate) => _record('setHlsBitrate');
 
   @override

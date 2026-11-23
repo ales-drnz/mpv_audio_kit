@@ -147,24 +147,37 @@ void main() {
     });
 
     test("loads when the player's CA bundle trusts it", () async {
-      final art = await downloadArtwork(cover, caPath);
+      final art = await downloadArtwork(cover, [caPath]);
       expect(art?.bytes, [9, 8, 7]);
     });
 
+    test('loads when its CA is the second of the bundles', () async {
+      // The extra bundle (ca_extra_file) after a tls-ca-file that does not
+      // hold it: each adds to the roots.
+      final other =
+          '${Directory.current.path}/test/fixtures/tls/self_signed_cert.pem';
+      final art = await downloadArtwork(cover, [other, caPath]);
+      expect(art?.bytes, [9, 8, 7]);
+      expect(await downloadArtwork(cover, [other]), isNull);
+    });
+
     test('a redirect from https to plain http is refused', () async {
-      final art = await downloadArtwork(cover.resolve('/to-http'), caPath);
+      final art = await downloadArtwork(cover.resolve('/to-http'), [caPath]);
       expect(art, isNull);
     });
 
     test('a redirect that stays on https is followed', () async {
-      final art = await downloadArtwork(cover.resolve('/to-https'), caPath);
+      final art = await downloadArtwork(cover.resolve('/to-https'), [caPath]);
       expect(art?.bytes, [9, 8, 7]);
     });
 
     // Against this server the system roots refuse too, so the case
     // proves nothing on its own: the one below does.
     test('is refused when the CA bundle cannot be read', () async {
-      expect(await downloadArtwork(cover, '/nonexistent/ca.pem'), isNull);
+      expect(
+        await downloadArtwork(cover, const ['/nonexistent/ca.pem']),
+        isNull,
+      );
     });
   });
 
@@ -174,7 +187,7 @@ void main() {
   test('an unreadable CA bundle refuses even a plain http cover', () async {
     const path = '/cover?ca=unreadable';
     expect(
-      await downloadArtwork(base.resolve(path), '/nonexistent/ca.pem'),
+      await downloadArtwork(base.resolve(path), const ['/nonexistent/ca.pem']),
       isNull,
     );
     expect(served, isNot(contains(path)), reason: 'nothing is requested');

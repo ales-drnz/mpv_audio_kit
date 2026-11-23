@@ -424,6 +424,7 @@ abstract class _PlayerBase {
         _reactives.audioDevice.close(),
         _reactives.audioEffects.close(),
         _reactives.tlsCaFile.close(),
+        _reactives.tlsExtraCaFile.close(),
         _reactives.spectrum.close(),
         // Set by the duration specs, outside their own cells.
         _reactives.durationEstimated.close(),

@@ -31,6 +31,7 @@ mixin _$PlayerSettings {
     Duration? networkTimeout,
     bool? tlsVerify,
     String? tlsCaFile,
+    String? tlsExtraCaFile,
     HlsBitrate? hlsBitrate,
     bool? cookies,
     String? httpProxy,
@@ -68,6 +69,7 @@ mixin _$PlayerSettings {
     networkTimeout: networkTimeout ?? _self.networkTimeout,
     tlsVerify: tlsVerify ?? _self.tlsVerify,
     tlsCaFile: tlsCaFile ?? _self.tlsCaFile,
+    tlsExtraCaFile: tlsExtraCaFile ?? _self.tlsExtraCaFile,
     hlsBitrate: hlsBitrate ?? _self.hlsBitrate,
     cookies: cookies ?? _self.cookies,
     httpProxy: httpProxy ?? _self.httpProxy,
@@ -112,6 +114,7 @@ mixin _$PlayerSettings {
           other.networkTimeout == _self.networkTimeout &&
           other.tlsVerify == _self.tlsVerify &&
           other.tlsCaFile == _self.tlsCaFile &&
+          other.tlsExtraCaFile == _self.tlsExtraCaFile &&
           other.hlsBitrate == _self.hlsBitrate &&
           other.cookies == _self.cookies &&
           other.httpProxy == _self.httpProxy &&
@@ -151,6 +154,7 @@ mixin _$PlayerSettings {
     _self.networkTimeout,
     _self.tlsVerify,
     _self.tlsCaFile,
+    _self.tlsExtraCaFile,
     _self.hlsBitrate,
     _self.cookies,
     _self.httpProxy,

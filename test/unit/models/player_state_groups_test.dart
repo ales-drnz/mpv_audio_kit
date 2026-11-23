@@ -14,7 +14,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
 /// The fields added in the groups after 0.6, with no flat getter.
-const _groupOnly = {'durationEstimated'};
+const _groupOnly = {'durationEstimated', 'tlsExtraCaFile'};
 
 /// The fields of each group, from its library, those of 0.6 only.
 Map<String, List<String>> _groupFields() {

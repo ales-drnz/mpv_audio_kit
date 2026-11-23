@@ -107,7 +107,9 @@ void main() {
     // The stand-in never settles: the abort of its signal is what shows.
     // The browser's own fetch rejects on it, which ends the download.
     final cancel = ArtworkCancel();
-    unawaited(loadArtwork('https://example.invalid/cover.png', '', cancel));
+    unawaited(
+      loadArtwork('https://example.invalid/cover.png', const [], cancel),
+    );
     await Future<void>.delayed(Duration.zero);
     expect(_aborted(inits.single), isFalse);
     cancel.cancel();
@@ -119,7 +121,7 @@ void main() {
     final inits = _replaceFetch(() => _Promise(((JSAny a, JSAny b) {}).toJS));
     final cancel = ArtworkCancel()..cancel();
     expect(
-      await loadArtwork('https://example.invalid/cover.png', '', cancel),
+      await loadArtwork('https://example.invalid/cover.png', const [], cancel),
       isNull,
     );
     expect(inits, isEmpty);

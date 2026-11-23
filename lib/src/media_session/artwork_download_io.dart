@@ -26,9 +26,10 @@ const Duration _timeout = Duration(seconds: 15);
 const int _maxRedirects = 5;
 
 /// Default [ArtworkFetcher] where [downloadsArtworkOn] holds. It always
-/// verifies the certificate, whatever the player's `tls-verify`: a cover URL
-/// often carries the server's credentials. A [caFile] adds to the system roots,
-/// so a self-hosted server with its own CA shows its covers. Redirects are
+/// verifies the certificate, whatever the player's `tls-verify`: a cover
+/// URL often carries the server's credentials. Each of [caFiles] adds to
+/// the system roots, so a self-hosted server with its own CA or a
+/// self-signed certificate shows its covers. Redirects are
 /// followed by hand, so one from `https` to plain `http` is refused before
 /// anything is sent over it. A response that announces more than 20 MB is
 /// dropped before its body is read.
@@ -44,7 +45,7 @@ const int _maxRedirects = 5;
 @internal
 Future<CoverArt?> downloadArtwork(
   Uri uri, [
-  String caFile = '',
+  List<String> caFiles = const [],
   ArtworkCancel? cancel,
 ]) async {
   if (cancel?.isCancelled ?? false) return null;
@@ -52,12 +53,15 @@ Future<CoverArt?> downloadArtwork(
   if (uri.scheme != 'http' && uri.scheme != 'https') return null;
   HttpClient? client;
   try {
-    client = caFile.isEmpty
-        ? HttpClient()
-        : HttpClient(
-            context: SecurityContext(withTrustedRoots: true)
-              ..setTrustedCertificates(caFile),
-          );
+    if (caFiles.isEmpty) {
+      client = HttpClient();
+    } else {
+      final context = SecurityContext(withTrustedRoots: true);
+      for (final file in caFiles) {
+        context.setTrustedCertificates(file);
+      }
+      client = HttpClient(context: context);
+    }
     client.connectionTimeout = _timeout;
     final connection = client;
     // What awaits the connection then fails, and the catch ends the load.
@@ -139,7 +143,7 @@ Future<CoverArt?> _readArtworkFile(Uri uri) async {
 @internal
 Future<CoverArt?> loadArtwork(
   String url, [
-  String caFile = '',
+  List<String> caFiles = const [],
   ArtworkCancel? cancel,
 ]) async {
   switch (artworkScheme(url)) {
@@ -151,7 +155,7 @@ Future<CoverArt?> loadArtwork(
           : null;
   }
   final uri = Uri.tryParse(url);
-  return uri == null ? null : downloadArtwork(uri, caFile, cancel);
+  return uri == null ? null : downloadArtwork(uri, caFiles, cancel);
 }
 
 /// A provider that never answers gives up like an HTTP server does.

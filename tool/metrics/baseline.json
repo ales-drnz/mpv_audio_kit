@@ -1,6 +1,6 @@
 {
-  "loc": 17510,
-  "test_per_lib_permille": 2549,
+  "loc": 17560,
+  "test_per_lib_permille": 2550,
   "complexity_over_15": 3,
   "complexity_over_10": 37,
   "player_base_fields": 28,
@@ -19,7 +19,7 @@
     "lib/src/internals/event_properties.dart|_PropertyForwarder._forwardValue": 13,
     "lib/src/internals/event_properties.dart|_PropertyForwarder.waitSeconds": 12,
     "lib/src/internals/hook_download.dart|download": 11,
-    "lib/src/media_session/artwork_download_io.dart|downloadArtwork": 11,
+    "lib/src/media_session/artwork_download_io.dart|downloadArtwork": 12,
     "lib/src/media_session/artwork_download_web.dart|downloadArtwork": 14,
     "lib/src/media_session/media_session_channel.dart|MediaSessionMetadataSnapshot.==": 12,
     "lib/src/media_session/media_session_snapshots.dart|metadataSnapshot": 14,
