@@ -28,7 +28,8 @@ mixin _NavigationModule on _PlayerBase, _QueueModule, _PlaybackModule {
   /// Skips to the previous track and returns `true`, or `false` when there
   /// is none. With [force] `true`, going back past the first entry stops
   /// playback; the default (`weak`) does nothing when the first entry is
-  /// already playing.
+  /// already playing. After `stop(keepPlaylist: true)` it moves the entry
+  /// that stopped, with no file loaded (see [Player.stop]).
   Future<bool> previous({bool force = false}) async {
     await _gate();
     if (_entries.stopped != null) {
@@ -44,11 +45,13 @@ mixin _NavigationModule on _PlayerBase, _QueueModule, _PlaybackModule {
   /// from the current one, for navigating across concatenated playlists
   /// (e.g. several internet-radio `.m3u` lists appended into one queue).
   /// Returns `false`, doing nothing, when no later entry comes from a
-  /// different playlist.
+  /// different playlist, or when no entry is current (after
+  /// `stop(keepPlaylist: true)`).
   Future<bool> nextPlaylist() async {
     await _gate();
     // See [next]: in-flight transport writes apply to the old entry.
     await _calls.settleWrites();
+    if (!await _hasCurrentEntry()) return false;
     return _calls.navigate(['playlist-next-playlist']);
   }
 
@@ -59,8 +62,16 @@ mixin _NavigationModule on _PlayerBase, _QueueModule, _PlaybackModule {
     await _gate();
     // See [next]: in-flight transport writes apply to the old entry.
     await _calls.settleWrites();
+    if (!await _hasCurrentEntry()) return false;
     return _calls.navigate(['playlist-prev-playlist']);
   }
+
+  /// Whether mpv has a current entry. Without one (idle after
+  /// `stop(keepPlaylist: true)`, or entries never started) mpv 0.42's
+  /// `playlist-next-playlist` and `playlist-prev-playlist` read the source
+  /// playlist of that missing entry and end the process.
+  Future<bool> _hasCurrentEntry() async =>
+      await _readString('playlist-pos') != '-1';
 
   /// Jumps to the track at [index] in the playlist and starts playback.
   ///

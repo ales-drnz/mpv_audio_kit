@@ -138,7 +138,8 @@ class MprisServer {
   // playback
   bool playing_ = false;        // intent axis (drives PlaybackStatus Playing/Paused)
   bool actual_playing_ = false; // actual output — gates position extrapolation
-  bool completed_ = false;      // eof-reached → PlaybackStatus=Stopped, empty Metadata
+  bool completed_ = false;      // eof-reached or stopped → PlaybackStatus=Stopped, empty Metadata
+  bool queued_ = false;         // the playlist has entries: CanPlay while stopped
   int64_t position_ms_ = 0;
   double rate_ = 1.0;
   bool seekable_ = false;

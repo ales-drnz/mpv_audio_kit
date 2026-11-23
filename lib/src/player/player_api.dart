@@ -112,8 +112,9 @@ abstract interface class PlayerApi {
   /// Starts or resumes playback (sets the play-pause intent to play).
   /// Idempotent while playing. Once the queue has ended
   /// ([PlaybackState.completed]) it starts the last track again from its
-  /// beginning; with nothing loaded, or at the end of a source that cannot
-  /// seek back, the intent stays off.
+  /// beginning; after `stop(keepPlaylist: true)` it starts the entry that
+  /// stopped from its beginning; with nothing loaded, or at the end of a
+  /// source that cannot seek back, the intent stays off.
   Future<void> play();
 
   /// Pauses playback, preserving the playhead position. Idempotent.
@@ -121,8 +122,9 @@ abstract interface class PlayerApi {
 
   /// Stops playback and unloads the current file. The playlist is cleared
   /// and the next track must be loaded with [open], unless [keepPlaylist]
-  /// keeps the entries: the playlist index stays on the entry that stopped
-  /// and [play] starts it from its beginning.
+  /// keeps the entries: the playlist index stays on the entry that
+  /// stopped, [next] and [previous] move it with nothing loaded, and [play]
+  /// starts it from its beginning.
   Future<void> stop({bool keepPlaylist = false});
 
   /// Seeks within the current file. With [relative] `false` [position] is
@@ -183,12 +185,16 @@ abstract interface class PlayerApi {
 
   /// Advances to the next playlist entry and returns `true`, or `false`
   /// when there is none. With [force] true, advancing past the last entry
-  /// stops playback; the default does nothing at the end.
+  /// stops playback; the default does nothing at the end. After
+  /// `stop(keepPlaylist: true)` it moves the entry that stopped, with
+  /// nothing loaded.
   Future<bool> next({bool force});
 
   /// Returns to the previous playlist entry and returns `true`, or `false`
   /// when there is none. With [force] true, going back past the first
-  /// entry stops playback; the default does nothing at the start.
+  /// entry stops playback; the default does nothing at the start. After
+  /// `stop(keepPlaylist: true)` it moves the entry that stopped, with
+  /// nothing loaded.
   Future<bool> previous({bool force});
 
   /// Jumps to the next entry from a different source playlist

@@ -88,6 +88,7 @@ void main() {
       'shuffle',
       'completed',
       'stopped',
+      'queued',
       'seek',
       'actualPlaying',
       'buffering',
@@ -138,6 +139,7 @@ void main() {
       for (final key in [
         'completed',
         'stopped',
+        'queued',
         'actualPlaying',
         'buffering',
         'seek',

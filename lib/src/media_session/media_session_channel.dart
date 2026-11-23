@@ -130,6 +130,15 @@ class MediaSessionPlaybackSnapshot {
   /// | Android, Apple, Windows, Web | not read |
   final bool stopped;
 
+  /// The playlist has entries: stopped or at the end, Play has something
+  /// to start.
+  ///
+  /// | Platform | What it does with `queued` |
+  /// | :--- | :--- |
+  /// | Linux | MPRIS `CanPlay` while stopped or at the end, with no title |
+  /// | Android, Apple, Windows, Web | not read |
+  final bool queued;
+
   /// This snapshot originates from a seek landing (PLAYBACK_RESTART), as
   /// opposed to a plain play, pause or rate change. Linux MPRIS uses it to emit
   /// the `Seeked` signal deterministically, even for a sub-second scrub that
@@ -190,6 +199,7 @@ class MediaSessionPlaybackSnapshot {
     required this.shuffle,
     this.completed = false,
     this.stopped = false,
+    this.queued = false,
     this.seek = false,
     this.actualPlaying = false,
     this.buffering = false,
@@ -381,6 +391,7 @@ class MediaSessionChannel {
         'shuffle': p.shuffle,
         'completed': p.completed,
         'stopped': p.stopped,
+        'queued': p.queued,
         'seek': p.seek,
         'actualPlaying': p.actualPlaying,
         'buffering': p.buffering,

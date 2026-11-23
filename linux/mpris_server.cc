@@ -380,10 +380,10 @@ GVariant* MprisServer::PlayerPropertyValue(const char* property) {
   // CanPlay/CanPause require real content, not just an enabled session, so a
   // pre-load shell doesn't advertise actionable transport. And the action.
   // Stopped or at the end, the title is gone but Play starts the queue
-  // again (a kept stop, the last entry from its start).
+  // again (a kept stop, the last entry from its start), when it has one.
   if (!strcmp(property, "CanPlay")) {
-    return g_variant_new_boolean(enabled_ && (has_title_ || completed_) &&
-                                 CanPlayAction());
+    return g_variant_new_boolean(
+        enabled_ && (has_title_ || (completed_ && queued_)) && CanPlayAction());
   }
   if (!strcmp(property, "CanPause")) {
     return g_variant_new_boolean(enabled_ && has_title_ && CanPauseAction());
@@ -830,6 +830,7 @@ void MprisServer::Enable(FlValue* config, FlValue* metadata, FlValue* playback) 
   // A stop shows as the end of content does: Stopped, empty Metadata.
   completed_ = FlBool(playback, "completed", false) ||
                FlBool(playback, "stopped", false);
+  queued_ = FlBool(playback, "queued", false);
   int64_t pos = 0;
   if (FlInt(playback, "positionMs", &pos)) position_ms_ = pos;
   rate_ = FlDouble(playback, "rate", 1.0);
@@ -970,6 +971,7 @@ void MprisServer::UpdatePlayback(FlValue* playback) {
   bool is_seek = FlBool(playback, "seek", false);
 
   const bool was_completed = completed_;
+  const bool was_queued = queued_;
   const bool was_next = has_next_;
   const bool was_prev = has_prev_;
   const bool was_playing = playing_;
@@ -982,6 +984,7 @@ void MprisServer::UpdatePlayback(FlValue* playback) {
   // A stop shows as the end of content does: Stopped, empty Metadata.
   completed_ = FlBool(playback, "completed", false) ||
                FlBool(playback, "stopped", false);
+  queued_ = FlBool(playback, "queued", false);
   if (have_pos) position_ms_ = new_pos_ms;
   rate_ = FlDouble(playback, "rate", 1.0);
   seekable_ = FlBool(playback, "seekable", false);
@@ -1006,8 +1009,8 @@ void MprisServer::UpdatePlayback(FlValue* playback) {
     if (has_prev_ != was_prev) MarkChanged("CanGoPrevious");
     // A completed transition flips Metadata visibility (full ↔ empty),
     // and CanPlay with it when there is no title.
-    if (completed_ != was_completed) {
-      MarkChanged("Metadata");
+    if (completed_ != was_completed) MarkChanged("Metadata");
+    if (completed_ != was_completed || queued_ != was_queued) {
       MarkChanged("CanPlay");
     }
     if (is_seek && have_pos && connection_) {
@@ -1047,6 +1050,7 @@ void MprisServer::Disable() {
   playing_ = false;
   actual_playing_ = false;
   completed_ = false;
+  queued_ = false;
   position_ms_ = 0;
   rate_ = 1.0;
   seekable_ = false;

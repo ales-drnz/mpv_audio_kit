@@ -198,6 +198,7 @@ MediaSessionPlaybackSnapshot playbackSnapshot(
     // so the completed transition is carried on that same snapshot.
     completed: state.playback.completed,
     stopped: stopped,
+    queued: pl.items.isNotEmpty,
     seek: seek,
     // Actual output + buffering, for extrapolation gating and the loading
     // state. Independent of the intent axis the button binds to.

@@ -5,6 +5,7 @@
 @TestOn('mac-os || linux || windows')
 library;
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -207,6 +208,38 @@ void main() {
       await player.play();
       expect(player.state.playback.playWhenReady, isFalse);
       expect(await player.getRawProperty('idle-active'), 'yes');
+    }, timeout: t);
+    test('nextPlaylist() and previousPlaylist() after a kept stop return '
+        'false, and the player lives on', () async {
+      // mpv 0.42 reads the source playlist of a missing current entry there.
+      final player = await playingSecondOfThree();
+      await player.stop(keepPlaylist: true);
+      await idle(player);
+      expect(await player.previousPlaylist(), isFalse);
+      expect(await player.nextPlaylist(), isFalse);
+      expect(await player.getRawProperty('playlist-count'), '3');
+      expect(player.state.playback.playlist.index, 1);
+    }, timeout: t);
+
+    test('the entry gone, next() and previous() load nothing', () async {
+      final player = await playingSecondOfThree();
+      await player.stop(keepPlaylist: true);
+      await idle(player);
+      await player.remove(1);
+      await waitUntil(() => player.state.playback.playlist.items.length == 2);
+      expect(await player.previous(), isFalse);
+      expect(await player.next(), isFalse);
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      expect(await player.getRawProperty('idle-active'), 'yes');
+    }, timeout: t);
+
+    test('an open() right after the stop plays, and nothing is kept', () async {
+      final player = await playingSecondOfThree();
+      unawaited(player.stop(keepPlaylist: true));
+      await player.open(Media(fixturePath), play: true);
+      await waitUntil(() => player.state.playback.playing);
+      expect(player.state.playback.playWhenReady, isTrue);
+      expect(await player.getRawProperty('pause'), 'no');
     }, timeout: t);
   });
 }

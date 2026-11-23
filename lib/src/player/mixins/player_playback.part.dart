@@ -191,21 +191,23 @@ mixin _PlaybackModule on _PlayerBase, _PropertiesModule {
   /// Starts the entry a kept stop left, for the [play] that claimed
   /// [intent] on an idle core and has written the unpause. Whether it did.
   Future<bool> _resumeKeptStop(int intent) async {
-    final id = _entries.stopped;
-    if (id == null || _entries.hiddenAt != null) return false;
+    if (_entries.stopped == null || _entries.hiddenAt != null) return false;
     final node = await _readPlaylist() ?? const <Object?>[];
-    final index = node.indexWhere((e) => e is Map && e['id'] == id);
     // A pause() called since keeps the entry for the next play().
     if (!_transport.owns(intent)) return false;
+    // Read after the await: a next() or previous() since moved it.
+    final id = _entries.stopped;
     _entries.stopped = null;
-    if (index < 0) return false;
+    final index = node.indexWhere((e) => e is Map && e['id'] == id);
+    if (id == null || index < 0) return false;
     await _calls.commandChecked(['playlist-play-index', '$index']);
     if (_transport.wantsPlay(intent)) _transport.writeIntent(true);
     return true;
   }
 
-  /// The playlist and the position in it of the entry a kept stop holds,
-  /// while the core is idle on it; `null` otherwise.
+  /// The playlist and the position in it of the entry a kept stop holds
+  /// (-1 when it left the playlist), while the core is idle; `null`
+  /// otherwise.
   Future<(List<Object?>, int)?> _keptStopEntry() async {
     final id = _entries.stopped;
     if (id == null || _transport.loadsInFlight != 0) return null;
@@ -213,8 +215,7 @@ mixin _PlaybackModule on _PlayerBase, _PropertiesModule {
     if (await _readString('idle-active') != 'yes') return null;
     final node = await _readPlaylist();
     if (node == null || _entries.stopped != id) return null;
-    final at = node.indexWhere((e) => e is Map && e['id'] == id);
-    return at < 0 ? null : (node, at);
+    return (node, node.indexWhere((e) => e is Map && e['id'] == id));
   }
 
   /// After stop(keepPlaylist: true), moves the entry that stopped by
@@ -224,6 +225,12 @@ mixin _PlaybackModule on _PlayerBase, _PropertiesModule {
     final kept = await _keptStopEntry();
     if (kept == null) return null;
     final (node, at) = kept;
+    if (at < 0) {
+      // The entry left the playlist: nothing to move from, and mpv, with
+      // no current entry, would load the last or the first.
+      _entries.stopped = null;
+      return false;
+    }
     var to = at + delta;
     if (to < 0 || to >= node.length) {
       if (_state.playback.loop != Loop.playlist) return false;
@@ -232,7 +239,9 @@ mixin _PlaybackModule on _PlayerBase, _PropertiesModule {
     final entry = node[to];
     if (entry is! Map || entry['id'] is! int) return false;
     _entries.stopped = entry['id'] as int;
-    _updatePlaylistFromNode(node);
+    // A fresh read: a remove or a move since may have changed the list.
+    final fresh = await _readPlaylist();
+    if (fresh != null) _updatePlaylistFromNode(fresh);
     return true;
   }
 
@@ -246,7 +255,8 @@ mixin _PlaybackModule on _PlayerBase, _PropertiesModule {
     await _gate();
     // Stop unloads the file; intent returns to "not playing" so the OS
     // button settles on play. mpv may not emit `pause` here, so set it.
-    _transport.claimIntent(false);
+    final intent = _transport.claimIntent(false);
+    final starts = _entries.starts;
     // Execute in-flight transport writes first; see [CoreCalls.settleWrites].
     await _calls.settleWrites();
     int? stoppedId;
@@ -259,13 +269,20 @@ mixin _PlaybackModule on _PlayerBase, _PropertiesModule {
       }
     }
     await _calls.commandChecked(['stop', if (keepPlaylist) 'keep-playlist']);
-    _entries.stopped = stoppedId;
+    // A load called meanwhile, or the file it started, has the last word:
+    // no entry to start again, no stopped state over its playback.
+    if (_entries.starts == starts && _transport.loadsInFlight == 0) {
+      _entries.stopped = stoppedId;
+      // The app's stop and the session's own Stop: the OS shows it stopped
+      // until the next load.
+      _mediaSessionController?.stopped();
+    }
     // Kept entries: mpv would play one its own playlist commands start
-    // (a raw playlist-next) over the intent, which is off.
-    if (keepPlaylist) await _calls.prop('pause', 'yes');
-    // The app's stop and the session's own Stop: the OS shows it stopped
-    // until the next load or play.
-    _mediaSessionController?.stopped();
+    // (a raw playlist-next) over the intent, which is off. Not over the
+    // pause write of a call that claimed the intent since.
+    if (keepPlaylist && _transport.owns(intent)) {
+      await _calls.prop('pause', 'yes');
+    }
     // mpv clears its playlist on stop but reports the change only when a
     // file was playing. Idle (after a failed load) it stays silent, so the
     // state would keep the old entries and the live sources they hold.
