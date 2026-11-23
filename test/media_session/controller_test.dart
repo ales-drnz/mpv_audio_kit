@@ -599,9 +599,7 @@ void main() {
       addTearDown(rig.dispose);
       addTearDown(ch.close);
       rig.state = const PlayerState(
-        playback: PlaybackState(
-          playlist: Playlist([Media('a'), Media('b')]),
-        ),
+        playback: PlaybackState(playlist: Playlist([Media('a'), Media('b')])),
         settings: PlayerSettings(mediaSession: MediaSession()),
       );
       final controller = await _buildController(rig: rig, channel: ch);

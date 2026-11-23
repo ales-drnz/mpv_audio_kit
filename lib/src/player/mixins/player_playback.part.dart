@@ -245,6 +245,16 @@ mixin _PlaybackModule on _PlayerBase, _PropertiesModule {
     return true;
   }
 
+  /// mpv's id of the current entry, or `null` when there is none.
+  Future<int?> _currentEntryId() async {
+    for (final entry in await _readPlaylist() ?? const <Object?>[]) {
+      if (entry is Map && entry['current'] == true && entry['id'] is int) {
+        return entry['id'] as int;
+      }
+    }
+    return null;
+  }
+
   /// [stop] for a command of the media session (see [_pause]).
   Future<void> _stop({bool keepPlaylist = false}) async {
     _checkNotDisposed();
@@ -259,15 +269,7 @@ mixin _PlaybackModule on _PlayerBase, _PropertiesModule {
     final starts = _entries.starts;
     // Execute in-flight transport writes first; see [CoreCalls.settleWrites].
     await _calls.settleWrites();
-    int? stoppedId;
-    if (keepPlaylist) {
-      final node = await _readPlaylist();
-      for (final entry in node ?? const <Object?>[]) {
-        if (entry is Map && entry['current'] == true && entry['id'] is int) {
-          stoppedId = entry['id'] as int;
-        }
-      }
-    }
+    final stoppedId = keepPlaylist ? await _currentEntryId() : null;
     await _calls.commandChecked(['stop', if (keepPlaylist) 'keep-playlist']);
     // A load called meanwhile, or the file it started, has the last word:
     // no entry to start again, no stopped state over its playback.
