@@ -18,7 +18,7 @@
 
 ## Made for your media library
 
-The package is an audio player for Flutter apps that play a media library, from a server or from the device. It runs mpv and FFmpeg behind a typed Dart API, on Android, iOS, macOS, Windows, Linux and the web, and on Android TV, tvOS, Wear OS, Tizen, webOS and HarmonyOS.
+The package is an audio player for Flutter apps that play a media library, from a server or from the device. It runs mpv and FFmpeg behind a typed Dart API, on Android, iOS, macOS, Windows, Linux, the web, Android TV, tvOS, Wear OS, Tizen, webOS and HarmonyOS.
 
 <table>
 <tr>
