@@ -197,7 +197,7 @@ def _android(d, cx, y):
 
 def _macos(d, cx, y):
     c = d.c
-    w, h = 156, 116
+    w, h = 140, 116
     x = cx - w / 2
     y0 = y + 21
     d.rect(x, y0, w, h, c['line'], r=8, op=0.10, stroke=c['line'], sw=2)
@@ -213,7 +213,7 @@ def _macos(d, cx, y):
 
 def _windows(d, cx, y):
     c = d.c
-    w, h = 156, 116
+    w, h = 140, 116
     x = cx - w / 2
     y0 = y + 21
     d.rect(x, y0, w, h, c['line'], r=6, op=0.10, stroke=c['line'], sw=2)
@@ -226,7 +226,7 @@ def _windows(d, cx, y):
 
 def _linux(d, cx, y):
     c = d.c
-    w, h = 156, 116
+    w, h = 140, 116
     x = cx - w / 2
     y0 = y + 21
     d.rect(x, y0, w, h, c['line'], r=6, op=0.10, stroke=c['line'], sw=2)
@@ -236,6 +236,18 @@ def _linux(d, cx, y):
     d.rect(cx - 56, y0 + 22, 112, 88, c['line'], r=9, op=0.3)
     d.now_playing(cx - 50, y0 + 28, 100, 56, prog=True, s=0.9)
     d.rect(cx - 50, y0 + 89, 100, 14, c['neutral'], r=5, op=0.6)
+
+
+def _ohos(d, cx, y):
+    c = d.c
+    x = _phone(d, cx, y)
+    # the control center of the System UI: two rows of toggles, then the
+    # media controls the AVSession feeds
+    for row in range(2):
+        for i in range(4):
+            d.add(f'<circle cx="{x + 18 + i * 17}" cy="{y + 30 + row * 16}" r="5.5" fill="{c["line"]}" fill-opacity="0.45"/>')
+    d.now_playing(x + 6, y + 62, 74, 62, prog=True, s=0.84)
+    d.rect(cx - 17, y + 148, 34, 3.5, c['line'], r=1.75, op=0.85)
 
 
 def media(t):
@@ -259,16 +271,16 @@ def media(t):
     d.text(MS - 26, yb - 17, 'updates', anchor='end')
     d.text(MS + 26, yb - 33, 'EventChannel', anchor='start', mono=True, color='label')
     d.text(MS + 26, yb - 17, 'OS commands', anchor='start')
-    xs = [100 + i * 190 for i in range(5)]
+    xs = [84 + i * 158 for i in range(6)]
     d.add(f'<path d="M{xs[0]},{yb} H{xs[-1]}" fill="none" stroke="{c["line"]}" stroke-width="1.7"/>')
     for x in (MS - 16, MS + 16):
         d.add(f'<circle cx="{x}" cy="{yb}" r="2.6" fill="{c["line"]}"/>')
     gy = 206
-    for x, top in zip(xs, (0, 21, 0, 21, 21)):
+    for x, top in zip(xs, (0, 21, 0, 0, 21, 21)):
         d.arrow(f'M{x},{yb} L{x},{gy + top - 6}', kind='sec', both=True)
     surfaces = [(_ios, 'iOS', 'lock screen'), (_macos, 'macOS', 'Control Center'),
-                (_android, 'Android', 'media notification'), (_windows, 'Windows', 'SMTC media flyout'),
-                (_linux, 'Linux', 'MPRIS, panel applet')]
+                (_android, 'Android', 'media notification'), (_ohos, 'HarmonyOS', 'AVSession, control center'),
+                (_windows, 'Windows', 'SMTC media flyout'), (_linux, 'Linux', 'MPRIS, panel applet')]
     for x, (fn, os_, sub) in zip(xs, surfaces):
         fn(d, x, gy)
         d.heading(x, gy + 186, os_, sub=sub, anchor='middle')
