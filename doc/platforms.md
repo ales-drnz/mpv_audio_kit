@@ -63,7 +63,13 @@ What each platform has. Android TV and Wear OS run the Android build, and tvOS a
 
 See the [Web](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Web-topic.html) topic.
 
-## Where this comes from
+## Where libmpv comes from
+
+Each Flutter toolchain gets the libmpv of the release the package pins in its own way:
+
+<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/libmpv_bundling.png" width="100%" alt="How each Flutter toolchain gets its libmpv: the build hook, the web assets, SwiftPM or CMake">
+
+## Where the rows come from
 
 - The drivers and `smb2://` are those the libmpv build of each target enables. The web build has no SMB client.
 - A device list comes from the driver. A driver without one leaves the choice to the system.

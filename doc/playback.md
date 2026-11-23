@@ -166,6 +166,8 @@ player.state.playback.playWhenReady ? await player.pause() : await player.play()
 
 `stop()` unloads the file and clears the playlist. `stop(keepPlaylist: true)` keeps it, with the index on the entry that stopped: `next()` and `previous()` move that index with nothing loaded, and `play()` starts the entry from its beginning.
 
+<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/stop_keep_playlist.png" width="100%" alt="stop() clears the playlist; stop(keepPlaylist: true) keeps it, next moves the index with nothing loaded, and play starts the entry from its beginning">
+
 `playWhenReady` holds what the user asked for. See the [State and streams](https://pub.dev/documentation/mpv_audio_kit/latest/topics/State%20and%20streams-topic.html) topic for the other flags.
 
 <img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/play_when_ready.png" width="100%" alt="playWhenReady stays true through a load, a seek and a network stall, while playing waits">
