@@ -27,6 +27,9 @@ flat="$(sed -nE 's/^  final [^;]+ ([a-zA-Z]+);$/\1/p' lib/src/player/state/*.dar
 deprecated="$(grep -rnE "\[PlayerState\.($flat)\]" lib --include='*.dart' | grep -v '/generated/' || true)"
 [[ -z "$deprecated" ]] || { echo "references to the flat fields:"; echo "$deprecated"; }
 flat_docs="$(grep -rnE "^[[:space:]]*///.*\bstate\.($flat)\b" lib --include='*.dart' || true)"
+# The topics and the README too, whose examples nothing compiles: all but
+# the sentence that says the flat fields are gone.
+flat_docs+="$(grep -nE "\bstate\.($flat)\b" doc/*.md README.md | grep -v 'are gone since 0.8.0' || true)"
 [[ -z "$flat_docs" ]] || { echo "doc comments that read the flat fields:"; echo "$flat_docs"; }
 empty=""
 while read -r topic; do

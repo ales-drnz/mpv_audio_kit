@@ -6,18 +6,18 @@ part of '../player.dart';
 /// Transport setters: play, pause, stop, seek, chapter navigation,
 /// and the A-B loop controls.
 mixin _PlaybackModule on _PlayerBase, _PropertiesModule {
-  /// Starts or resumes playback. Idempotent: a no-op when already
-  /// playing, including the last moments of the queue while the output
-  /// buffer still plays. Once the queue has ended ([PlaybackState.completed])
-  /// it starts the last track again from its beginning; a source that
-  /// cannot seek back there (a live stream, a closed [PcmSource]) stays at
-  /// its end and the intent stays off. With nothing loaded (before any
-  /// open, after [stop]) there is nothing to resume and the intent stays
-  /// off too; after `stop(keepPlaylist: true)` it starts the entry that
-  /// stopped from its beginning, as [jump] does. The future completes once mpv has taken the unpause; the
-  /// playback itself is observable via [PlayerStream.playing]. A [pause],
-  /// [stop] or load called after it has the last word: then it writes
-  /// nothing.
+  /// Starts or resumes playback. Idempotent: a no-op when already playing,
+  /// including the last moments of the queue while the output buffer still
+  /// plays. Once the queue has ended ([PlaybackState.completed]) it starts the
+  /// last track again from its beginning; a source that cannot seek back there
+  /// (a live stream, a closed [PcmSource]) stays at its end and the intent
+  /// stays off. With nothing loaded (before any open, after [stop]) there is
+  /// nothing to resume and the intent stays off too; after
+  /// `stop(keepPlaylist: true)` it starts the entry that stopped from its
+  /// beginning, as [jump] does. The future completes once mpv has taken the
+  /// unpause; the playback itself is observable via [PlayerStream.playing].
+  /// A [pause], [stop] or load called after it has the last word: then it
+  /// writes nothing.
   ///
   /// On the web it also resumes the page's audio output when the
   /// browser's autoplay policy holds it (see
@@ -90,12 +90,7 @@ mixin _PlaybackModule on _PlayerBase, _PropertiesModule {
     var idle = _transport.loadsInFlight == 0;
     if (idle) idle = await _readString('idle-active') == 'yes';
     if (idle && _transport.loadsInFlight == 0 && _transport.owns(intent)) {
-      // After stop(keepPlaylist: true) the entry that stopped starts.
-      if (await _resumeKeptStop(intent)) return;
-      // The resume read the core: a call since may own the intent now.
-      if (_transport.owns(intent) && _transport.loadsInFlight == 0) {
-        _transport.writeIntent(false);
-      }
+      await _playOnIdle(intent);
     }
   }
 
@@ -183,6 +178,16 @@ mixin _PlaybackModule on _PlayerBase, _PropertiesModule {
     return _stop(keepPlaylist: keepPlaylist);
   }
 
+  /// [play] on an idle core: after stop(keepPlaylist: true) the entry that
+  /// stopped starts; with nothing to start the intent goes back off.
+  Future<void> _playOnIdle(int intent) async {
+    if (await _resumeKeptStop(intent)) return;
+    // The resume read the core: a call since may own the intent now.
+    if (_transport.owns(intent) && _transport.loadsInFlight == 0) {
+      _transport.writeIntent(false);
+    }
+  }
+
   /// Starts the entry a kept stop left, for the [play] that claimed
   /// [intent] on an idle core and has written the unpause. Whether it did.
   Future<bool> _resumeKeptStop(int intent) async {
@@ -199,10 +204,9 @@ mixin _PlaybackModule on _PlayerBase, _PropertiesModule {
     return true;
   }
 
-  /// After stop(keepPlaylist: true), moves the entry that stopped by
-  /// [delta] with no file loaded, wrapping around with [Loop.playlist]:
-  /// whether it moved, or `null` when no kept stop holds the core.
-  Future<bool?> _moveKeptStop(int delta) async {
+  /// The playlist and the position in it of the entry a kept stop holds,
+  /// while the core is idle on it; `null` otherwise.
+  Future<(List<Object?>, int)?> _keptStopEntry() async {
     final id = _entries.stopped;
     if (id == null || _transport.loadsInFlight != 0) return null;
     if (_entries.hiddenAt != null) return null;
@@ -210,7 +214,16 @@ mixin _PlaybackModule on _PlayerBase, _PropertiesModule {
     final node = await _readPlaylist();
     if (node == null || _entries.stopped != id) return null;
     final at = node.indexWhere((e) => e is Map && e['id'] == id);
-    if (at < 0) return null;
+    return at < 0 ? null : (node, at);
+  }
+
+  /// After stop(keepPlaylist: true), moves the entry that stopped by
+  /// [delta] with no file loaded, wrapping around with [Loop.playlist]:
+  /// whether it moved, or `null` when no kept stop holds the core.
+  Future<bool?> _moveKeptStop(int delta) async {
+    final kept = await _keptStopEntry();
+    if (kept == null) return null;
+    final (node, at) = kept;
     var to = at + delta;
     if (to < 0 || to >= node.length) {
       if (_state.playback.loop != Loop.playlist) return false;

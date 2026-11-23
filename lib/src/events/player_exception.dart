@@ -2,7 +2,8 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-/// Every exception a [Player] method throws when libmpv or a source fails.
+/// Every exception a [Player] method throws when libmpv, a source or the
+/// OS media session fails or refuses.
 /// Switch on it to handle each case:
 ///
 /// ```dart

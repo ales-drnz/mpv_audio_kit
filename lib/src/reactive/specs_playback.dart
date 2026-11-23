@@ -47,10 +47,10 @@ List<MpvPropertySpec<Object?>> _playbackSpecs(
     parse: _toDuration,
     reduce: (v, s) => s.copyWith(buffer: v),
   ),
-  // `state.playing = !core-idle`: `pause` stays `no` from idle into the
-  // first file. A file that starts in the playloop iteration the last
-  // one ended reports no `core-idle` change, so the event isolate also
-  // reads it at every PLAYBACK_RESTART.
+  // `state.playback.playing = !core-idle`: `pause` stays `no` from idle into
+  // the first file. A file that starts in the playloop iteration the last one
+  // ended reports no `core-idle` change, so the event isolate also reads it at
+  // every PLAYBACK_RESTART.
   MpvPropertySpec<bool>.flag(
     name: 'core-idle',
     reactive: r.playing,

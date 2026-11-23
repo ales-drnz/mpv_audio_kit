@@ -68,7 +68,7 @@ mixin _FileEventsModule on _PlayerBase, _PropertiesModule {
       :coverData,
       :coverMime,
     ) = loaded;
-    // `state.playing` is driven by the `core-idle` observer; here we
+    // `state.playback.playing` is driven by the `core-idle` observer; here we
     // only clear buffering and apply the load payload. `completed`
     // was cleared at START_FILE, and the end-of-content read that
     // follows this event settles it: a short entry can already be
@@ -93,15 +93,14 @@ mixin _FileEventsModule on _PlayerBase, _PropertiesModule {
     if (chapterList != null) {
       _dispatchProperty('chapter-list', chapterList);
     }
-    // The new entry reaches the state snapshot before the cover,
-    // waveform and loudness resets below, so a listener pairing them
-    // with `state.playlist` or `state.path` sees the new track. The
-    // `playlist` and `path` streams still emit with the observed
-    // changes that follow this event, as before.
-    // The same file loaded again (a playlist of one entry with
-    // loop-playlist) keeps its analysis. Against the path of the last
-    // FILE_LOADED, not the state's: the event isolate sends the new
-    // `path` ahead of this event.
+    // The new entry reaches the state snapshot before the cover, waveform and
+    // loudness resets below, so a listener pairing them with
+    // `state.playback.playlist` or `state.file.path` sees the new track. The
+    // `playlist` and `path` streams still emit with the observed changes that
+    // follow this event, as before. The same file loaded again (a playlist of
+    // one entry with loop-playlist) keeps its analysis. Against the path of the
+    // last FILE_LOADED, not the state's: the event isolate sends the new `path`
+    // ahead of this event.
     final samePath = path != null && path == _analysisPath;
     _analysisPath = path;
     _applyLoadedEntry(path, playlist);

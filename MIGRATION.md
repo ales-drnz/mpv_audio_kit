@@ -1,6 +1,6 @@
 # Migrating to 0.8.0
 
-0.8.0 runs on libmpv-r26, as 0.7.2 and 0.7.3 do. It removes what 0.7.0
+0.8.0 runs on libmpv-r26, as 0.7.2 does. It removes what 0.7.0
 deprecated and changes a few signatures and defaults. Most apps change
 only the reads of the state.
 
@@ -11,7 +11,7 @@ source must present a certificate a trusted root signed. 0.7 kept it off.
 A home server with a self-signed certificate (a Jellyfin or a NAS) now
 fails to open, with a certificate error on `player.stream.log`. The
 waveform and the loudness scan of that server fail the same way. The
-covers the media session downloads verified before 0.8.0 too.
+covers the media session downloads were verified before 0.8.0 too.
 
 - Keep verification and trust the server: pass `setTlsCaFile` a PEM
   bundle with its certificate. The file replaces the built-in roots, so
@@ -47,15 +47,17 @@ getter into a chain of two.
 | `setMediaSession` throws `StateError` | throws `MediaSessionException`, a `PlayerException` whose `reason` is `notRootIsolate`, `otherPlayer` or `otherEngine` |
 | `setVolume` above 1000, `setVolumeGain`, `setVolumeGainMin`, `setVolumeGainMax` and `setVolumeMax` out of range throw `MpvCommandException` | throw `RangeError` before anything is written |
 | `setAbLoopCount(-1)` throws `ArgumentError` | throws `RangeError` (a subtype: `on ArgumentError` still catches it) |
-| `setAudioBuffer`, `setNetworkTimeout`, `setAudioSampleRate` take any value | throw `RangeError` outside 0 to 10 s, below 0, and outside 0 to 768000 |
+| `setAudioBuffer`, `setNetworkTimeout` and `setAudioSampleRate` out of mpv's range throw `MpvCommandException` | throw `RangeError` before anything is written: outside 0 to 10 s, below 0, and outside 0 to 768000 |
 | `class CoverArt`, `FftFrame`, `Loudness`, `LoudnessScan`, `MediaSession`, `MpvHookEvent`, `MpvLogEntry`, `PcmFrame`, `PlayerConfiguration`, `BandProcessor` | `final class`: they cannot be extended or implemented outside the package |
 | `class Player`, `class PlayerStream` | `interface class`: a fake still implements them, nothing extends them |
-| A fake that implements `PlayerApi` or `Player` overrides `stop()` | overrides `stop({bool keepPlaylist = false})`, and implements `initialized` unless it has a `noSuchMethod` |
+| A fake that implements `PlayerApi` or `Player` overrides `stop()` and `openPcmStream(format, {bool play = true, ...})` | overrides `stop({bool keepPlaylist = false})` and `openPcmStream(format, {bool? play, ...})`, and implements `initialized` unless it has a `noSuchMethod` |
 
 A `switch` over `PlayerException` that lists every case needs a
 `MediaSessionException` case. An `on PlayerException` no longer catches
 the out-of-range values above: they are programming errors, checked before
-the call reaches libmpv.
+the call reaches libmpv. NaN still throws `ArgumentError`. The settings
+objects (`setReplayGain`, `setCache`, `setDemuxer`) still leave their ranges
+to mpv, which refuses a value with `MpvCommandException`.
 
 # Migrating to 0.7.0
 

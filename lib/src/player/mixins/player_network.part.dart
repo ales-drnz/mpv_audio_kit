@@ -143,8 +143,10 @@ mixin _NetworkModule on _PlayerBase {
   /// Whether to verify TLS (SSL) certificates for network streams.
   ///
   /// On by default ([PlayerConfiguration.tlsVerify]). For a home server
-  /// with a self-signed certificate, [setTlsCaFile] with a bundle that holds
-  /// its certificate keeps verification on (see [PlayerConfiguration.tlsVerify]).
+  /// with a self-signed certificate, [setTlsCaFile] with a bundle that
+  /// holds its certificate keeps verification on. That file replaces the
+  /// built-in roots, so it also holds those of the other servers the app
+  /// plays from.
   Future<void> setTlsVerify(bool enable) async {
     await _write(
       'tls-verify',

@@ -61,8 +61,9 @@ Playlist parsePlaylistNode({
   // [retainedEntryAt].
   final entries = _without(raw, skip);
   final medias = <Media>[];
-  var currentIndex = -1;
-  var heldIndex = -1;
+  // mpv's current entry, or during a kept stop (no current entry) the one
+  // that stopped, found by its id so a duplicate before it is not taken.
+  var currentIndex = _indexOfId(entries, heldId);
   for (var i = 0; i < entries.length; i++) {
     final entry = entries[i];
     if (entry is! Map) {
@@ -77,15 +78,10 @@ Playlist parsePlaylistNode({
           Media(filename),
     );
     if (entry['current'] == true) currentIndex = i;
-    // A kept stop: mpv has no current entry, the state keeps the one that
-    // stopped, found by its id so a duplicate before it is not taken.
-    if (currentIndex < 0 && heldId != null && id == heldId) heldIndex = i;
   }
   final int idx;
   if (currentIndex >= 0) {
     idx = currentIndex;
-  } else if (heldIndex >= 0) {
-    idx = heldIndex;
   } else if (medias.isEmpty) {
     // Documented empty-playlist value (matches [Playlist.empty]).
     idx = 0;
@@ -115,6 +111,10 @@ Playlist parsePlaylistNode({
   }
   return Playlist(List.unmodifiable(medias), index: idx);
 }
+
+/// The position of the entry [id] in [entries], or -1.
+int _indexOfId(List<Object?> entries, int? id) =>
+    id == null ? -1 : entries.indexWhere((e) => e is Map && e['id'] == id);
 
 /// [raw] without its entry at [skip], when there is one.
 List<Object?> _without(List<Object?> raw, int? skip) =>

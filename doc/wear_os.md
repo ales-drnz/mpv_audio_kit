@@ -22,20 +22,11 @@ Google Play asks for 64-bit code in every Wear OS app: the package ships arm64-v
 
 Google's rules for media on a watch: play only to a suitable output, a Bluetooth headset or speaker, never to the watch's own speaker; pause when that output goes away; and when none is connected, open the output switcher or the Bluetooth settings instead of showing an error.
 
-The package does not apply them. Its media session reflects the player and does not play the audio, so the suppression Media3 gives a player of its own (`setSuppressPlaybackOnUnsuitableOutput`) does not reach it, and libmpv plays to whatever output Android routes to, the speaker included. The app checks the outputs before it plays, with `AudioManager.getDevices(GET_DEVICES_OUTPUTS)` through a platform channel of its own, and pauses from an `AudioDeviceCallback` when the headset is removed:
-
-```dart
-// Called by the app's own AudioDeviceCallback channel.
-Future<void> onHeadsetRemoved() => player.pause();
-```
+With the media session on, the package pauses when the Bluetooth output goes away, as for headphones unplugged on a phone. The rest belongs to the app. The media session reflects the player and does not play the audio, so the suppression Media3 gives a player of its own (`setSuppressPlaybackOnUnsuitableOutput`) does not reach it, and libmpv plays to whatever output Android routes to, the speaker included. Before it plays, the app checks the outputs with `AudioManager.getDevices(GET_DEVICES_OUTPUTS)` through a platform channel of its own, and opens the output switcher when none is suitable.
 
 ## While it plays
 
-A long playback shows an ongoing activity on the watch face, as Google's quality rules ask: the app ties one (`androidx.wear:wear-ongoing`) to the notification of the media session.
-
-```dart
-await player.setMediaSession(const MediaSession());
-```
+Google's quality rules ask a long playback to show an ongoing activity on the watch face (`androidx.wear:wear-ongoing`). The package does not add one to the notification of its media session, which the app cannot reach: an app that wants it posts a notification of its own with the ongoing activity.
 
 Storage and battery are small on a watch. The disk cache does not persist (see [Network and cache](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Network%20and%20cache-topic.html)), so for listening away from the phone the app downloads the files and plays them from disk. The spectrum, the taps and the analyses decode or compute on top of playback: leave them off unless a screen shows them.
 

@@ -398,7 +398,8 @@ abstract interface class PlayerApi {
   /// Enables or disables TLS server-certificate verification.
   Future<void> setTlsVerify(bool enable);
 
-  /// Sets the path to a custom CA bundle for TLS verification.
+  /// Sets the path to a CA bundle that replaces the built-in roots for TLS
+  /// verification, `''` for those roots. See [Player.setTlsCaFile].
   Future<void> setTlsCaFile(String path);
 
   /// Sets the HLS variant-selection policy for adaptive streams.
@@ -422,13 +423,12 @@ abstract interface class PlayerApi {
   /// Google Assistant, and the platform's audio-session lifecycle per
   /// [MediaSession.interruptionPolicy].
   ///
-  /// Pass `null` to disable the session and remove the entry from the
-  /// system. Only one [Player] per process can have an active session
-  /// at a time: calling this with a non-null [session] on a second
-  /// [Player] throws [StateError], also when that [Player] belongs to
-  /// another Flutter engine of the process. The session stays with the
-  /// first until it is set to `null`, its [Player] is disposed or its
-  /// engine is destroyed.
+  /// Pass `null` to disable the session and remove the entry from the system.
+  /// Only one [Player] per process can have an active session at a time:
+  /// calling this with a non-null [session] on a second [Player] throws a
+  /// [MediaSessionException], also when that [Player] belongs to another
+  /// Flutter engine of the process. The session stays with the first until it
+  /// is set to `null`, its [Player] is disposed or its engine is destroyed.
   ///
   /// Incoming OS commands (play-pause from the lockscreen, next track
   /// from a Bluetooth headset, …) are auto-applied to this [Player]

@@ -4,16 +4,16 @@ The cleanup 0.7.0 announced, on the same libmpv-r26. See MIGRATION.md.
 
 ### All platforms
 **Breaking**
-- TLS certificates are verified by default, as in mpv and FFmpeg: a server with a self-signed certificate fails to open. `PlayerConfiguration.tlsVerify` sets it before the first load, and `setTlsCaFile` can trust such a server.
+- TLS certificates are verified by default, as in mpv and FFmpeg: a server with a self-signed certificate fails to open. `PlayerConfiguration.tlsVerify` sets it before the first load. `setTlsCaFile` can trust such a server, with a file that replaces the built-in roots.
 - The 96 flat fields of `PlayerState`, deprecated since 0.7.0, are gone: read each one from its group.
 - `openPcmStream` follows `PlayerConfiguration.autoPlay` when `play` is null, as `open` does. It played at once.
 - `setMediaSession` throws `MediaSessionException`, a `PlayerException` with a `reason`, where it threw `StateError`.
 - The setters with a range throw `RangeError` before writing: `setVolume`, `setVolumeGain`, `setVolumeGainMin`, `setVolumeGainMax`, `setVolumeMax`, `setAbLoopCount`, `setAudioBuffer`, `setNetworkTimeout` and `setAudioSampleRate`.
 - The value classes are `final`, and `Player` and `PlayerStream` are `interface` classes: a fake still implements them.
-- `stop` takes `keepPlaylist`, so a class that implements `PlayerApi` and overrides `stop` adds the parameter.
+- A class that implements `PlayerApi` takes the new signatures: `stop` has `keepPlaylist`, `openPcmStream` a nullable `play`, and `initialized` is new.
 
 **Added**
-- `stop(keepPlaylist: true)` unloads the file and keeps the playlist. The index stays on the entry that stopped, and `play` starts it again from its beginning.
+- `stop(keepPlaylist: true)` unloads the file and keeps the playlist. The index stays on the entry that stopped, `next` and `previous` move it with nothing loaded, and `play` starts it from its beginning.
 - `state.playbackState`, the value `stream.playbackState` emitted last.
 - `initialized` completes once the player has started, or with the `PlayerInitException` of a start that failed.
 

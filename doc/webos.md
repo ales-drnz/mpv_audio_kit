@@ -1,3 +1,5 @@
+Experimental: tested under emulation of the webOS userland, not yet on a TV.
+
 LG webOS TVs, webOS 26 on, run the package through [flutter-webos](https://github.com/lg-flutter-webos/flutter-webos), LG's Flutter 3.38.10 for webOS. flutter-webos runs no build hook, so the package is an FFI plugin there: its `webos/CMakeLists.txt` downloads `libmpv_webos-armv7l.so` of the release the package pins, checks its SHA-256 and bundles it in the app's `lib/` as `libmpv_audio_kit_webos.so`. `MpvAudioKit.ensureInitialized` opens that file when no `libmpv` is given.
 
 ## Build

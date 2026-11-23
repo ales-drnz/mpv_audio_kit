@@ -54,6 +54,7 @@ enum PcmSourceState {
 /// final socket = await WebSocket.connect('wss://example.com/speech');
 /// final source = await player.openPcmStream(
 ///   const PcmFormat(sampleRate: 24000, channels: 1),
+///   play: true,
 /// );
 /// await source.addStream(socket.where((m) => m is List<int>).map(
 ///   (m) => m is Uint8List ? m : Uint8List.fromList(m as List<int>),

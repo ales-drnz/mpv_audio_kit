@@ -199,13 +199,13 @@ class MediaSessionPlaybackSnapshot {
   });
 }
 
-/// Two platform channels: a method channel (`mpv_audio_kit/media_session`,
-/// Dart → native: `enable`, `update*` and `disable`) and an event channel
+/// Two platform channels: a method channel (`mpv_audio_kit/media_session`, Dart
+/// → native: `enable`, `update*` and `disable`) and an event channel
 /// (`.../commands`, native → Dart: the OS remote commands). Method calls
 /// swallow [MissingPluginException] and [PlatformException] so an unwired
-/// platform is a no-op, not a crash; Dart-side state stays correct. The
-/// one exception is an `enable` refused because another Flutter engine of
-/// the process owns the session: it throws a [MediaSessionException]. Only `enable`
+/// platform is a no-op, not a crash; Dart-side state stays correct. The one
+/// exception is an `enable` refused because another Flutter engine of the
+/// process owns the session: it throws a [MediaSessionException]. Only `enable`
 /// does: an update or a `disable` is sent without anyone awaiting it.
 ///
 /// The event channel has no such net: Flutter reports a listen on a

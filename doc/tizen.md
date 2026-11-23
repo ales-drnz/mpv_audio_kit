@@ -1,3 +1,5 @@
+Experimental: tested on the Tizen emulator, not yet on a TV.
+
 Samsung Tizen TVs run the package through [flutter-tizen](https://github.com/flutter-tizen/flutter-tizen), which runs the build hook as a Linux build of the arch of the Tizen target. The hook bundles, as `libmpv_audio_kit.so`:
 
 | Target | Library | Runs on |

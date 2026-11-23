@@ -11,7 +11,7 @@ What each platform has. Android TV and Wear OS run the Android build, and tvOS a
 | Linux | `pipewire`, `pulse`, `alsa` | Those of each driver | All three |
 | Web | `webaudio` | None, the page's output | No |
 | Android TV | As Android | As Android | As Android, over HDMI |
-| Wear OS | As Android | None: the app picks a Bluetooth output | No |
+| Wear OS | As Android | None, the system routes: the app asks for a Bluetooth output | No |
 | tvOS | As iOS | As iOS | Not checked |
 | Tizen | `tizen` | None | No |
 | webOS | `alsa` | ALSA's devices | Not checked |
