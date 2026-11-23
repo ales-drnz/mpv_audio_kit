@@ -114,11 +114,14 @@ jobs:
             kit/test/fixtures/sine_5s.flac)"
           echo "HAP=$hap" >> "$GITHUB_ENV"
           unzip -l "$hap" | grep -E 'libs/.*\.so'
-          # The library the hook bundled is the one under test.
-          unzip -p "$hap" libs/x86_64/libmpv_audio_kit.so | sha256sum
-          sha256sum "$RUNNER_TEMP/libmpv/libmpv_ohos-x86_64.so"
-          test "$(unzip -p "$hap" libs/x86_64/libmpv_audio_kit.so | sha256sum | cut -d' ' -f1)" = \
-               "$(sha256sum < "$RUNNER_TEMP/libmpv/libmpv_ohos-x86_64.so" | cut -d' ' -f1)"
+          # The library the hook bundled is the one under test. hvigor strips
+          # it again (DoNativeStrip), so the code is compared, not the file.
+          llvm="$OHOS_BASE_SDK_HOME/26/native/llvm/bin"
+          unzip -p "$hap" libs/x86_64/libmpv_audio_kit.so > bundled.so
+          text() { "$llvm/llvm-objcopy" -O binary --only-section=.text "$1" text.bin && sha256sum < text.bin | cut -d' ' -f1; }
+          echo "bundled $(text bundled.so), under test $(text "$RUNNER_TEMP/libmpv/libmpv_ohos-x86_64.so")"
+          test "$(text bundled.so)" = "$(text "$RUNNER_TEMP/libmpv/libmpv_ohos-x86_64.so")"
+          "$llvm/llvm-readelf" -d bundled.so | grep -q 'libohaudio.so'
       - name: KVM for the runner's user
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
