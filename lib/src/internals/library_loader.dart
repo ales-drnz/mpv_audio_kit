@@ -221,9 +221,10 @@ void _disableMediaSession() {
   );
 }
 
-/// Sets `LC_NUMERIC=C` process-wide on Linux and macOS: mandated
+/// Sets `LC_NUMERIC=C` process-wide on Linux, OHOS and macOS: mandated
 /// by libmpv's API contract (`mpv/client.h`; mpv aborts loading
-/// otherwise).
+/// otherwise). OHOS is Flutter-OH, whose `Platform.operatingSystem` is
+/// `ohos`: neither Linux nor Android, with the musl libc of OpenHarmony.
 ///
 /// Process-wide is non-negotiable: mpv spawns its own threads at
 /// `mpv_create` time, and POSIX threads inherit `LC_GLOBAL_LOCALE`,
@@ -235,8 +236,11 @@ void _applyPlatformQuirks() {
   }
 
   try {
+    final ohos = Platform.operatingSystem == 'ohos';
     final DynamicLibrary libc = Platform.isLinux
         ? DynamicLibrary.open('libc.so.6')
+        : ohos
+        ? DynamicLibrary.open('libc.so')
         : DynamicLibrary.open('libSystem.B.dylib');
 
     final setlocale = libc
@@ -245,10 +249,11 @@ void _applyPlatformQuirks() {
           Pointer<Utf8> Function(int, Pointer<Utf8>)
         >('setlocale');
 
-    // The LC_NUMERIC constant is libc-specific: glibc (Linux) numbers
-    // it 1, the BSD layout (macOS and iOS) numbers it 4: there, 1 is
-    // LC_COLLATE, which would leave the numeric locale untouched.
-    final lcNumeric = Platform.isLinux ? 1 : 4;
+    // The LC_NUMERIC constant is libc-specific: glibc (Linux) and musl
+    // (OHOS) number it 1, the BSD layout (macOS and iOS) numbers it 4:
+    // there, 1 is LC_COLLATE, which would leave the numeric locale
+    // untouched.
+    final lcNumeric = Platform.isLinux || ohos ? 1 : 4;
     using((arena) {
       setlocale(lcNumeric, 'C'.toNativeUtf8(allocator: arena));
     });
