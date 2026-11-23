@@ -7,7 +7,7 @@
 - `playlist-prev-playlist` and `playlist-next-playlist` with no current entry fail. mpv 0.42.0 read the source playlist of the missing entry and the process ended.
 
 **HarmonyOS**
-- `libmpv_ohos-arm64-v8a.so` for the devices and `libmpv_ohos-x86_64.so` for the emulators, built with the OpenHarmony SDK, playing through `ohaudio`, an output over OHAudio.
+- `libmpv_ohos-arm64-v8a.so` for the devices and `libmpv_ohos-x86_64.so` for the emulators, built with the OpenHarmony SDK, playing through `ohaudio`, an output over OHAudio. They make only the calls of API 12 (HarmonyOS 5.0).
 
 ### All platforms
 **Breaking**
@@ -35,7 +35,7 @@
 
 ### HarmonyOS
 **Added**
-- OpenHarmony and HarmonyOS through Flutter-OH 3.41.9 or later. The build hook recognizes an OHOS build by the clang of the OpenHarmony SDK, or by the user define `ohos`, and bundles the OHOS libmpv. A HarmonyOS topic says what the app adds.
+- OpenHarmony and HarmonyOS through Flutter-OH 3.41.9 or later. The build hook recognizes an OHOS build by the clang of the OpenHarmony SDK, or by the user define `ohos`, which counts only for a Linux or OHOS target, and bundles the OHOS libmpv. A HarmonyOS topic says what the app adds to play in the background: an AVSession and a continuous task, in ArkTS.
 
 ### Linux
 **Fixed**

@@ -37,7 +37,8 @@
 // with the arch of the HAP: they take the libmpv_ohos assets, which are
 // built against the musl of the OHOS native SDK. A build is OHOS when the
 // target OS is ohos or when the C compiler Flutter-OH passes is the clang
-// of the OpenHarmony SDK; `ohos: true` or `ohos: false` says it outright.
+// of the OpenHarmony SDK; `ohos: true` or `ohos: false` says it outright,
+// for a linux or ohos target only.
 
 import 'dart:io';
 
@@ -94,15 +95,20 @@ bool _tizen(BuildInput input) => switch (input.userDefines['tizen']) {
 /// Whether the build is for OHOS: the ohos user define, true or false, or
 /// when it is not set, a target OS of ohos (a Flutter-OH that stops writing
 /// linux) or the SDK's clang as the C compiler. Anything else fails the
-/// build.
-bool _ohos(BuildInput input) => switch (input.userDefines['ohos']) {
-  true => true,
-  false => false,
-  null => _targetOSName(input) == 'ohos' || _ohosCompiler(input),
-  final other => throw ArgumentError(
-    'mpv_audio_kit: the ohos user define is true or false, not $other',
-  ),
-};
+/// build. The define counts only where Flutter-OH builds, a target OS of
+/// linux or ohos: an app that sets it builds for Android or Windows too.
+bool _ohos(BuildInput input) {
+  final define = switch (input.userDefines['ohos']) {
+    final bool value => value,
+    null => null,
+    final other => throw ArgumentError(
+      'mpv_audio_kit: the ohos user define is true or false, not $other',
+    ),
+  };
+  final os = _targetOSName(input);
+  if (os != 'linux' && os != 'ohos') return false;
+  return define ?? (os == 'ohos' || _ohosCompiler(input));
+}
 
 /// Whether the C compiler of the input is the clang of the OpenHarmony SDK,
 /// `<sdk>/<version>/openharmony/native/llvm/bin/clang`, which Flutter-OH

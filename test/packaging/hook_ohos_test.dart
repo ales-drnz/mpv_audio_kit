@@ -100,6 +100,7 @@ void main() {
       'libmpv_tizen-x86_64.so',
       'libmpv_linux-x86_64.so',
       'libmpv_linux-aarch64.so',
+      'libmpv_windows-x86_64.dll',
     ]) {
       File('${dir.path}/$name').writeAsStringSync(name);
     }
@@ -112,11 +113,16 @@ void main() {
     return tmp;
   }
 
-  void expectBundled(ProcessResult run, BuildOutput? output, String asset) {
+  void expectBundled(
+    ProcessResult run,
+    BuildOutput? output,
+    String asset, {
+    String as = 'libmpv_audio_kit.so',
+  }) {
     expect(run.exitCode, 0, reason: '${run.stdout}${run.stderr}');
     final code = output!.assets.code.single;
     expect(code.id, 'package:mpv_audio_kit/libmpv');
-    expect(code.file!.pathSegments.last, 'libmpv_audio_kit.so');
+    expect(code.file!.pathSegments.last, as);
     expect(File.fromUri(code.file!).readAsStringSync(), asset);
   }
 
@@ -230,21 +236,33 @@ void main() {
     expect('${run.stdout}${run.stderr}', contains('not both'));
   });
 
-  test(
-    'without the libmpv user define, OHOS names its unpinned asset',
-    () async {
-      // Until the OHOS assets are in a published release, their checksums
-      // are empty and a download is refused.
-      final tmp = await temp();
-      final (run, output) = await _runHook(
-        tmp,
-        Architecture.arm64,
-        cc: _ohosClang,
+  test('ohos: true leaves a build for another OS alone', () async {
+    // An app of Flutter-OH that sets the define in its pubspec builds for
+    // Windows, Android or the desktop too.
+    final tmp = await temp();
+    final (run, output) = await _runHook(
+      tmp,
+      Architecture.x64,
+      libmpvDir: assets(tmp),
+      defines: const {'ohos': true},
+      rawOS: 'windows',
+    );
+    expectBundled(
+      run,
+      output,
+      'libmpv_windows-x86_64.dll',
+      as: 'mpv_audio_kit.dll',
+    );
+  });
+
+  test('the OHOS assets are pinned, with a SHA-256 each', () {
+    final hook = File('hook/build.dart').readAsStringSync();
+    for (final asset in ['libmpv_ohos-arm64-v8a.so', 'libmpv_ohos-x86_64.so']) {
+      expect(
+        RegExp("'${RegExp.escape(asset)}':\\s*'([0-9a-f]{64})'").hasMatch(hook),
+        isTrue,
+        reason: '$asset has no SHA-256 in _sha256',
       );
-      final said = '${run.stdout}${run.stderr}';
-      expect(output, isNull);
-      expect(run.exitCode, isNot(0));
-      expect(said, contains('libmpv_ohos-arm64-v8a.so'));
-    },
-  );
+    }
+  });
 }
