@@ -222,7 +222,7 @@ Android TV, Fire TV and Google TV run the Android build. The app needs a leanbac
 
 ### Wear OS
 
-Experimental: not yet tested on a watch or its emulator.
+Experimental: tested on the Wear OS emulator, not yet on a watch.
 
 Wear OS watches run the Android build. Google's rules for media apps leave the output to the app: play to a Bluetooth headset, not the watch's speaker, and pause when it goes away. See [Wear OS](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Wear%20OS-topic.html) for the manifest and the output.
 

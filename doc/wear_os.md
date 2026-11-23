@@ -41,4 +41,4 @@ Storage and battery are small on a watch. The disk cache does not persist (see [
 
 ## Status
 
-Experimental: the package's CI does not run on a Wear OS emulator yet, and no watch has played it. The Android build it runs is the one the CI plays on phones from Android 7 and on the Android TV emulator.
+Experimental: no watch has played it yet. The package's CI runs its Android integration tests on the Wear OS emulator of API 34, with a round screen and the emulated audio device as the output: playback, pauses, the media session, the media keys and the recovery of a dead audio track.
