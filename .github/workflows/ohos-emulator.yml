@@ -4,9 +4,17 @@ name: OHOS emulator
 # no Huawei account: github.com/eclipse-oniro4openharmony/device_board_oniro),
 # with the libmpv_ohos-x86_64.so of the pinned release or of a libmpv-scripts
 # Build. An app built with Flutter-OH (gitcode CPF-Flutter/flutter_flutter)
-# and signed with OpenHarmony's debug keys plays test/fixtures/sine_5s.flac
-# as an asset and writes MAK_OHOS_RESULT to hilog; the emulator's sound card
-# writes a WAV file, and check_tone.py finds the 440 Hz sine in it.
+# and signed with OpenHarmony's debug keys plays .github/ohos/sine_5s_cover.flac
+# (test/fixtures/sine_5s.flac with the cover of sine_with_cover.flac) as an
+# asset and writes MAK_OHOS_RESULT to hilog; the emulator's sound card
+# writes a WAV file, and check_tone.py finds the 440 Hz sine in it. The app
+# then turns the media session on: the AVSession the system holds, its title
+# and its cover in the System UI and a command of the system that reaches
+# Dart.
+#
+# Not covered by this image: playback in the background. Its continuous task
+# service refuses every task (no text for its notification), and its System
+# UI pauses a new audio session as it swaps its media notifications.
 # .github/ohos/setup.sh sets the tools up at their pins, test_hap.sh builds
 # and signs the HAP.
 #
@@ -27,7 +35,7 @@ on:
       - 'lib/**'
       - 'pubspec.yaml'
       - 'scripts/ci/resolve_libmpv_run.sh'
-      - 'test/fixtures/sine_5s.flac'
+      - 'ohos/**'
       - '.github/ohos/**'
       - '.github/workflows/ohos-emulator.yml'
   workflow_dispatch:
@@ -111,7 +119,7 @@ jobs:
       - name: The HAP
         run: |
           hap="$(bash kit/.github/ohos/test_hap.sh "$RUNNER_TEMP/ohos" "$RUNNER_TEMP/libmpv" \
-            kit/test/fixtures/sine_5s.flac)"
+            kit/.github/ohos/sine_5s_cover.flac)"
           echo "HAP=$hap" >> "$GITHUB_ENV"
           unzip -l "$hap" | grep -E 'libs/.*\.so'
           # The library the hook bundled is the one under test. hvigor strips
@@ -182,10 +190,33 @@ jobs:
             grep -q MAK_OHOS_RESULT hilog.txt && break
             sleep 3
           done
+          # The media session, 2 s after the app turned it on: the one the
+          # AVSession service holds for the app.
+          sleep 2
+          h shell "hidumper -s AVSessionService -a '-show_session_info'" > session.txt 2>&1 || true
+          for i in $(seq 20); do
+            h shell "hilog -x" > hilog.txt 2>&1 || true
+            grep -q MAK_OHOS_SESSION hilog.txt && break
+            sleep 2
+          done
           grep -E "MAK_OHOS_|ohaudio" hilog.txt | tail -20
+          grep -E "bundle name|session type|session tag|is active" session.txt || true
           h shell "ls -l /data/log/faultlog/faultlogger/ | grep makohos" || true
           grep -q "MAK_OHOS_LIB os=ohos" hilog.txt
           grep -q "MAK_OHOS_RESULT PASS" hilog.txt
+          # An active AVSession of type audio, of the app, with the tag of
+          # the plugin, and its title and artist in the System UI.
+          grep -Eq "bundle name *: dev.mak.makohos" session.txt
+          grep -Eq "session tag *: mpv_audio_kit" session.txt
+          grep -Eq "session type *: audio" session.txt
+          grep -Eq "is active *: true" session.txt
+          grep -q '"musicTitle":"mpv_audio_kit on OHOS","musicAuthor":"makohos"' hilog.txt
+          grep -q "mediaImg show success: true" hilog.txt
+          # A command of the system reaches Dart: the System UI of OpenHarmony
+          # 7.0 on the Oniro emulator pauses a new audio session as it swaps
+          # its media notifications, and the pause arrives on
+          # stream.mediaSessionCommands and pauses the player.
+          grep -q "MAK_OHOS_SESSION commands=\[MediaSessionCommandPause\] playing=false" hilog.txt
       - name: What the sound card played
         run: python3 -I kit/.github/ohos/check_tone.py "$RUNNER_TEMP/emu/out.wav" "$(cat wav.start)"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -196,6 +227,7 @@ jobs:
             hilog.txt
             install.txt
             start.txt
+            session.txt
             ${{ runner.temp }}/emu/qemu.log
             ${{ runner.temp }}/emu/out.wav
           if-no-files-found: ignore

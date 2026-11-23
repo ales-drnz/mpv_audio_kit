@@ -109,7 +109,7 @@ class MediaSessionPlaybackSnapshot {
   final bool shuffle;
 
   /// End-of-content reached ([PlaybackState.completed]: `eof-reached` on the
-  /// last playlist entry with no loop on). Two native sides map it to a
+  /// last playlist entry with no loop on). Three native sides map it to a
   /// terminal state instead of leaving a finished track parked as "Paused
   /// at full length" on the OS surface:
   ///
@@ -117,6 +117,7 @@ class MediaSessionPlaybackSnapshot {
   /// | :--- | :--- |
   /// | Android | `STATE_ENDED` |
   /// | Linux | MPRIS `PlaybackStatus=Stopped` with empty `Metadata` |
+  /// | OHOS | AVSession `PLAYBACK_STATE_COMPLETED` |
   /// | Apple | not read: no "ended" state, the entry parks as paused |
   /// | Windows | not read: the SMTC entry stays `Paused` |
   /// | Web | not read: `playbackState` stays `paused` |
@@ -127,6 +128,7 @@ class MediaSessionPlaybackSnapshot {
   /// | Platform | What it does with `stopped` |
   /// | :--- | :--- |
   /// | Linux | MPRIS `PlaybackStatus=Stopped` with empty `Metadata` |
+  /// | OHOS | AVSession `PLAYBACK_STATE_STOP` |
   /// | Android, Apple, Windows, Web | not read |
   final bool stopped;
 
@@ -136,7 +138,7 @@ class MediaSessionPlaybackSnapshot {
   /// | Platform | What it does with `queued` |
   /// | :--- | :--- |
   /// | Linux | MPRIS `CanPlay` while stopped or at the end, with no title |
-  /// | Android, Apple, Windows, Web | not read |
+  /// | Android, Apple, Windows, Web, OHOS | not read |
   final bool queued;
 
   /// This snapshot originates from a seek landing (PLAYBACK_RESTART), as
@@ -162,6 +164,7 @@ class MediaSessionPlaybackSnapshot {
   /// | Apple | not read: the published rate follows [playing] |
   /// | Windows | not read: the SMTC timeline carries the pushed position |
   /// | Web | not read: `setPositionState` follows [playing] and [rate] |
+  /// | OHOS | not read: the AVSession position follows [rate] |
   final bool actualPlaying;
 
   /// Buffering or loading. Mapped to a loading state where the OS has one
@@ -171,6 +174,7 @@ class MediaSessionPlaybackSnapshot {
   /// | :--- | :--- |
   /// | Android | `STATE_BUFFERING` |
   /// | Windows | SMTC `PlaybackStatus` `Changing` |
+  /// | OHOS | AVSession `PLAYBACK_STATE_BUFFERING` |
   /// | Apple | not read |
   /// | Linux | not read: MPRIS has no such status |
   /// | Web | not read |
@@ -221,7 +225,8 @@ class MediaSessionPlaybackSnapshot {
 /// The event channel has no such net: Flutter reports a listen on a
 /// channel without a native side as a [FlutterError]. So [enable] says
 /// whether a native side answered, and the controller listens to
-/// [commandStream] only when one did (Tizen and webOS have none).
+/// [commandStream] only when one did (Tizen and webOS have none; OHOS has
+/// the AVSession of ohos/, under Flutter-OH).
 @internal
 class MediaSessionChannel {
   static const String _methodName = 'mpv_audio_kit/media_session';

@@ -239,7 +239,7 @@ Build with [flutter-webos](https://github.com/lg-flutter-webos/flutter-webos), f
 
 ### HarmonyOS
 
-Build with [Flutter-OH](https://gitcode.com/CPF-Flutter/flutter_flutter), 3.41.9 or later, for OpenHarmony and HarmonyOS. The build hook bundles the OHOS libmpv, which plays through OHAudio. See [HarmonyOS](https://pub.dev/documentation/mpv_audio_kit/latest/topics/HarmonyOS-topic.html).
+Build with [Flutter-OH](https://gitcode.com/CPF-Flutter/flutter_flutter), 3.41.9 or later, for OpenHarmony and HarmonyOS. The build hook bundles the OHOS libmpv, which plays through OHAudio, and the media session is an AVSession with the continuous task of audio playback, which keeps the app playing in the background. See [HarmonyOS](https://pub.dev/documentation/mpv_audio_kit/latest/topics/HarmonyOS-topic.html).
 
 ### macOS
 

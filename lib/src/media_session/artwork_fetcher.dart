@@ -36,7 +36,8 @@ bool downloadsArtworkOn(TargetPlatform platform) => switch (platform) {
   TargetPlatform.windows ||
   TargetPlatform.iOS ||
   TargetPlatform.macOS => true,
-  _ => false,
+  // Flutter-OH's TargetPlatform.ohos, which Flutter's enum lacks.
+  _ => platform.name == 'ohos',
 };
 
 /// Whether an artwork URL the fetcher could not load goes to the media

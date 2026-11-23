@@ -80,6 +80,11 @@ flutter:
         pluginClass: MpvAudioKitPlugin
         ffiPlugin: true
         sharedDarwinSource: true
+      # Flutter-OH (https://gitcode.com/CPF-Flutter/flutter_flutter) builds
+      # ohos/ as a HAR into the app: the media session (AVSession) and the
+      # continuous task of audio playback. Flutter itself skips the key.
+      ohos:
+        pluginClass: MpvAudioKitPlugin
       # flutter-tvos (https://fluttertv.dev) reads the plugin from
       # tvos/Package.swift, which also links libmpv: see there.
       tvos:

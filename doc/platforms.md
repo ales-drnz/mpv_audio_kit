@@ -38,12 +38,12 @@ What each platform has. Android TV and Wear OS run the Android build, and tvOS a
 | tvOS | Now Playing | Yes | Yes | Yes | Yes |
 | Tizen | None | Yes | Yes | Yes | Yes |
 | webOS | None | Yes | Yes | Yes | Yes |
-| HarmonyOS | None | Yes | Yes | Yes | Yes |
+| HarmonyOS | AVSession, with the continuous task of audio playback | Yes | Yes | Yes | Yes |
 
 - Analysis is the spectrum, the PCM stream, the taps, the waveform and the loudness scan and meter. While a track passes through, the spectrum, the PCM stream, the taps and the meter emit nothing.
 - Live PCM is `Player.openPcmStream`.
 - Embedded cover is `stream.coverArt`. The OS media session shows it where there is one.
-- On Tizen, webOS and HarmonyOS, `setMediaSession` keeps its value in the player's state and does nothing else.
+- On Tizen and webOS, `setMediaSession` keeps its value in the player's state and does nothing else.
 
 ## Sources
 
@@ -73,5 +73,5 @@ Each Flutter toolchain gets the libmpv of the release the package pins in its ow
 
 - The drivers and `smb2://` are those the libmpv build of each target enables. The web build has no SMB client.
 - A device list comes from the driver. A driver without one leaves the choice to the system.
-- The media session rows follow [Media session](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Media%20session-topic.html), [Tizen](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Tizen-topic.html) and [webOS](https://pub.dev/documentation/mpv_audio_kit/latest/topics/webOS-topic.html).
+- The media session rows follow [Media session](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Media%20session-topic.html), [Tizen](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Tizen-topic.html), [webOS](https://pub.dev/documentation/mpv_audio_kit/latest/topics/webOS-topic.html) and [HarmonyOS](https://pub.dev/documentation/mpv_audio_kit/latest/topics/HarmonyOS-topic.html).
 - "Not checked" means the driver's code does not settle it and no test plays it.

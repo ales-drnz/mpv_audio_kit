@@ -3,7 +3,7 @@
 # Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
 """What the Oniro emulator's sound card played while the app ran, as QEMU's
-wav audiodev wrote it: test/fixtures/sine_5s.flac is a 440 Hz sine. Passes
+wav audiodev wrote it: .github/ohos/sine_5s_cover.flac is a 440 Hz sine. Passes
 when at least 1.5 s of it is there (the app plays past 2 s, then disposes
 the player). The file is read in 50 ms windows, each a tone or silence; a
 tone's frequency is the period between the rising zero crossings of the

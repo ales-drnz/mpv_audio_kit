@@ -30,11 +30,28 @@ The output is `ohaudio`, a stream of OHAudio of the music usage: the system rout
 
 ## Media session and the background
 
-The package has no media session on OHOS: `setMediaSession` keeps its value in the player's state and does nothing else, and the package starts no background task. To play in the background, OpenHarmony and HarmonyOS want two things of the app, in ArkTS:
+`setMediaSession` publishes an AVSession of type `audio`: the System UI shows the title, the artist and the cover, and its controls reach `stream.mediaSessionCommands` and the player as on the other platforms. The actions of `MediaSession` decide which controls the system shows. The repeat and the shuffle are one loop mode on OHOS: its shuffle arrives as `setShuffle`, the others as `setRepeatMode`.
 
-- An AVSession of type `audio`, created when playback starts and kept alive, with its metadata and the play and pause commands registered. Without it the system mutes and freezes the audio when the app goes to the background.
-- A continuous task of type `audioPlayback`: the `ohos.permission.KEEP_BACKGROUND_RUNNING` permission, `backgroundModes: ["audioPlayback"]` on the ability, and `backgroundTaskManager.startBackgroundRunning`. The system stops the task when an interruption stops the audio. The app cancels it on a pause and asks for it again when playback resumes.
+While the player plays, the package also runs the continuous task of audio playback, which keeps the app playing in the background. Without the AVSession and that task, the system mutes and freezes the audio of an app in the background. The task stops on a pause, a stop or the end, and starts again on the next play. The app declares what the system asks for it, in its `module.json5`:
+
+```json5
+{
+  "module": {
+    "requestPermissions": [
+      { "name": "ohos.permission.KEEP_BACKGROUND_RUNNING" }
+    ],
+    "abilities": [
+      {
+        "name": "EntryAbility",
+        "backgroundModes": ["audioPlayback"]
+      }
+    ]
+  }
+}
+```
+
+Without them the system refuses the task, which the app's hilog reports under the `mpv_audio_kit` tag, and the session works in the foreground only.
 
 ## Tests
 
-The CI of libmpv-scripts plays the libraries on the Oniro emulator, OpenHarmony 7.0, x86_64 with KVM and arm64-v8a under emulation, on each release branch whose OHOS driver or build changes, and checks the tone the emulated sound card records. The CI of the package builds an x86_64 Flutter-OH app with the package, signed with the OpenHarmony debug keys, and plays a file in it on that emulator. No HarmonyOS device runs these tests.
+The CI of libmpv-scripts plays the libraries on the Oniro emulator, OpenHarmony 7.0, x86_64 with KVM and arm64-v8a under emulation, on each release branch whose OHOS driver or build changes, and checks the tone the emulated sound card records. The CI of the package builds an x86_64 Flutter-OH app with the package, signed with the OpenHarmony debug keys, and plays a file in it on that emulator. It then turns the media session on and checks the AVSession the system holds, its title in the System UI and a command of the system that reaches the player. Playback in the background does not run there: the continuous task service of that image refuses every task. No HarmonyOS device runs these tests.

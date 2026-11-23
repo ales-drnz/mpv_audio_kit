@@ -74,15 +74,27 @@ s = open(p).read().replace('"runtimeOS": "HarmonyOS"', '"runtimeOS": "OpenHarmon
 open(p, 'w').write(s)
 p = f'{app}/ohos/entry/src/main/module.json5'
 s = re.sub(r'"deviceTypes":\s*\[[^\]]*\]', '"deviceTypes": ["default"]', open(p).read())
+# What an app that plays in the background declares (doc/ohos.md): the
+# permission of the continuous task and its mode on the ability.
+s = s.replace('"abilities": [\n      {', '"abilities": [\n      {\n        "backgroundModes": ["audioPlayback"],', 1)
+if '"requestPermissions": [' in s:
+    s = s.replace('"requestPermissions": [', '"requestPermissions": [\n      {"name": "ohos.permission.KEEP_BACKGROUND_RUNNING"},', 1)
+else:
+    s = s.replace('"abilities": [', '"requestPermissions": [{"name": "ohos.permission.KEEP_BACKGROUND_RUNNING"}],\n    "abilities": [', 1)
 open(p, 'w').write(s)
 PY
 
 sed "s/@ASSET@/$asset/" > "$app/lib/main.dart" <<'DART'
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/widgets.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
+// Plays the asset: MAK_OHOS_RESULT says it plays through ohaudio. Then it
+// turns the media session on and, for 5 s, takes note of the commands the
+// system sends it: MAK_OHOS_SESSION. ohos-emulator.yml reads the session
+// the system holds (hidumper) and what its System UI shows.
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const ColoredBox(color: Color(0xFF000000)));
@@ -91,6 +103,7 @@ Future<void> main() async {
     print('MAK_OHOS_LIB os=${Platform.operatingSystem}');
     final player = Player();
     await player.ready;
+    await player.setLoop(Loop.file);
     await player.open(Media('asset://assets/@ASSET@'));
     await player.play();
     final at = await player.stream.position
@@ -100,6 +113,17 @@ Future<void> main() async {
     final ok = driver == 'ohaudio' && player.state.playback.playing;
     print('MAK_OHOS_RESULT ${ok ? 'PASS' : 'FAIL'} ao=$driver '
         'position=$at params=${player.state.output.audioOutParams}');
+    final commands = <String>[];
+    final sub = player.stream.mediaSessionCommands
+        .listen((c) => commands.add(c.runtimeType.toString()));
+    await player.setMediaSession(
+      const MediaSession(title: 'mpv_audio_kit on OHOS', artist: 'makohos'),
+    );
+    await Future<void>.delayed(const Duration(seconds: 5));
+    print('MAK_OHOS_SESSION commands=$commands '
+        'playing=${player.state.playback.playing}');
+    await sub.cancel();
+    await player.setMediaSession(null);
     await player.dispose();
   } catch (e, s) {
     print('MAK_OHOS_RESULT FAIL $e\n$s');
