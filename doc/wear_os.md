@@ -30,6 +30,6 @@ Google's quality rules ask a long playback to show an ongoing activity on the wa
 
 Storage and battery are small on a watch. The disk cache does not persist (see [Network and cache](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Network%20and%20cache-topic.html)), so for listening away from the phone the app downloads the files and plays them from disk. The spectrum, the taps and the analyses decode or compute on top of playback: leave them off unless a screen shows them.
 
-## Status
+## Tests
 
-Experimental: no watch has played it yet. The package's CI runs its Android integration tests on the Wear OS emulator of API 34, with a round screen and the emulated audio device as the output: playback, pauses, the media session, the media keys and the recovery of a dead audio track.
+The package's CI runs its Android integration tests on the Wear OS emulator of API 34, with a round screen and the emulated audio device as the output: playback, pauses, the media session, the media keys and the recovery of a dead audio track.

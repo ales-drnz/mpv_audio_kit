@@ -20,8 +20,7 @@
 - `nextPlaylist` and `previousPlaylist` return false when no entry is current. mpv 0.42 ended the process there.
 
 **Docs**
-- Tizen and webOS are marked experimental: they have not run on a TV yet.
-- A Wear OS topic: the manifest, the Bluetooth output, and what is left to the app. Wear OS is marked experimental: the CI runs the Android integration tests on the Wear OS emulator, no watch has played it yet.
+- A Wear OS topic: the manifest, the Bluetooth output, and what is left to the app. The CI runs the Android integration tests on the Wear OS emulator.
 - The README lists every platform and links the Platforms topic and the topics of each TV and of Wear OS.
 
 ### Linux

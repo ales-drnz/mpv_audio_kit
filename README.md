@@ -222,8 +222,6 @@ Android TV, Fire TV and Google TV run the Android build. The app needs a leanbac
 
 ### Wear OS
 
-Experimental: tested on the Wear OS emulator, not yet on a watch.
-
 Wear OS watches run the Android build. Google's rules for media apps want a Bluetooth headset, not the watch's speaker: the app checks the output before it plays, and with the media session on the package pauses when that output goes away. See [Wear OS](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Wear%20OS-topic.html) for the manifest and the output.
 
 ### tvOS
@@ -232,13 +230,9 @@ Build with [flutter-tvos](https://fluttertv.dev). It installs no code asset, so 
 
 ### Tizen
 
-Experimental: tested on the Tizen emulator, not yet on a TV.
-
 Build with [flutter-tizen](https://github.com/flutter-tizen/flutter-tizen). The build hook bundles the Tizen libmpv for the TVs, and for the TV emulator when the app sets the user define `tizen: true`. See [Tizen](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Tizen-topic.html).
 
 ### webOS
-
-Experimental: tested under emulation of the webOS userland, not yet on a TV.
 
 Build with [flutter-webos](https://github.com/lg-flutter-webos/flutter-webos), for webOS 26 and later. It runs no build hook, so the package's `webos/CMakeLists.txt` bundles libmpv instead. See [webOS](https://pub.dev/documentation/mpv_audio_kit/latest/topics/webOS-topic.html).
 
