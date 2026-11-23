@@ -195,7 +195,14 @@ void main() {
       await player.stream.playing
           .firstWhere((p) => p)
           .timeout(const Duration(seconds: 10));
-      await player.setMediaSession(session);
+      // Stop is not among the default actions: without it the bus's Stop
+      // is ignored.
+      await player.setMediaSession(
+        MediaSession(
+          appName: _appName,
+          actions: {...session.actions, MediaAction.stop},
+        ),
+      );
       await eventually(bus.playbackStatus, (s) => s == 'Playing');
 
       await player.stop(keepPlaylist: true);
