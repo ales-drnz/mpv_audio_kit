@@ -1,7 +1,5 @@
 ## [0.8.0]
 
-The cleanup 0.7.0 announced, on the same libmpv-r26. See MIGRATION.md.
-
 ### All platforms
 **Breaking**
 - TLS certificates are verified by default, as in mpv and FFmpeg: a server with a self-signed certificate fails to open. `PlayerConfiguration.tlsVerify` sets it before the first load. `setTlsCaFile` can trust such a server, with a file that replaces the built-in roots.
@@ -32,8 +30,6 @@ The cleanup 0.7.0 announced, on the same libmpv-r26. See MIGRATION.md.
 - While stopped or at the end, MPRIS offers Play when the queue has entries, and not when it is empty.
 
 ## [0.7.2] - 16-11-2026
-
-A new engine under the same API: mpv 0.42.0, FFmpeg 9.0.2 and OpenSSL 4.1.0. Decoding, network and what mpv reports can differ in places from 0.7.1, so try an app's own files and servers before updating.
 
 ### libmpv-r26
 **All platforms**
@@ -316,8 +312,6 @@ A new engine under the same API: mpv 0.42.0, FFmpeg 9.0.2 and OpenSSL 4.1.0. Dec
 
 ## [0.6.0] - 2-11-2026
 
-The web, and libmpv-r20. See [MIGRATION.md](MIGRATION.md) for the few changes an app may need.
-
 ### Contributions
 - [@2697a](https://github.com/2697a): asked for Flutter Web support ([#26](https://github.com/ales-drnz/mpv_audio_kit/issues/26)).
 - [@erikjara](https://github.com/erikjara): reported that the waveform of an HTTP stream served without byte ranges never filled from mpv's cache ([#29](https://github.com/ales-drnz/mpv_audio_kit/issues/29)).
@@ -511,8 +505,6 @@ The web, and libmpv-r20. See [MIGRATION.md](MIGRATION.md) for the few changes an
 - Updated libmpv to `libmpv-r17` across all platforms.
 
 ## [0.5.0] - 14-10-2026
-
-A revision of the whole package. See [MIGRATION.md](MIGRATION.md) for the changes to make in an app.
 
 ### Contributions
 - [@erikjara](https://github.com/erikjara): reported that the waveform analyzer downloaded a remote file a second time ([#22](https://github.com/ales-drnz/mpv_audio_kit/issues/22)).
@@ -944,8 +936,6 @@ A revision of the whole package. See [MIGRATION.md](MIGRATION.md) for the change
 - Updated libmpv to `libmpv-r6` across all platforms.
 
 ## [0.1.0] - 5-05-2026
-
-Major release. The Dart API has been redesigned for type safety, ergonomics, and atomic state mutations.
 
 ### Added
 - A new `AudioEffects` bundle covering equalizer, compressor, loudness, pitch, tempo, bass, treble, stereo width, headphone crossfeed, silence trim, and raw lavfi effects applied atomically through one setter.
