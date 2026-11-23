@@ -30,7 +30,7 @@ def architecture(t):
     EV = 350
     d.node(EV, yc[1], 230, 64, 'mpv_wait_event', 'blocks here, off the UI thread', sub2='clock values every 33 ms at most')
     # native
-    d.node(PL, yc[2], 250, 64, 'libmpv', 'mpv 0.41 and ffmpeg: demuxer,', sub2='playback and analysis threads')
+    d.node(PL, yc[2], 250, 64, 'libmpv', 'mpv 0.42 and FFmpeg: demuxer,', sub2='playback and analysis threads')
     d.node(MS, yc[2], 180, 64, 'Platform plugin', 'Kotlin, Swift, C++', role='neutral', mono=False)
     d.outline(MS, yc[2], 180, 64)
     # OS
@@ -154,8 +154,7 @@ def cache_feed(t):
     _head(d, PH, ya, 17)
     AE = 470
     d.rich(X0, yb - 20, [('analysis', 'strong'), ('  downloads the file again, from the start', 'text')])
-    d.rich(X0, yb + 34, [('with the same ', 'text'), ('tls-verify', 'code'), (', ', 'text'), ('tls-ca-file', 'code'),
-                         (', headers, user agent and cookies as playback', 'text')])
+    d.rich(X0, yb + 34, [('with the same TLS settings, CA files included, headers, user agent and cookies as playback', 'text')])
     _file_bar(d, X0, X1, yb, 22, [(X0, AE)])
     _head(d, AE - 6, yb, 17)
     d.text(d.w / 2, 580, 'Any one of these rules out the single pass:', color='label', weight=600)

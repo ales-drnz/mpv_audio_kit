@@ -101,7 +101,7 @@ def banner_svg():
          f'xlink:href="{uri}"/>',
          f'<rect x="{sx + .5}" y="{sy + .5}" width="{sw - 1}" height="{sh - 1:.1f}" rx="11.5" fill="none" '
          'stroke="#FFFFFF" stroke-opacity="0.16"/>',
-         lockup(64, H / 2, 96, 52, ['Audio engine for Flutter,', 'built on mpv and ffmpeg.'], 24, 28, 32),
+         lockup(64, H / 2, 96, 52, ['Audio engine for Flutter,', 'built on mpv and FFmpeg.'], 24, 28, 32),
          '</g>',
          f'<rect x="0.5" y="0.5" width="{W - 1}" height="{H - 1}" rx="{R - .5}" fill="none" stroke="{NAVY}" '
          'stroke-opacity="0.14"/>']
