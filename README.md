@@ -18,7 +18,7 @@
 
 ## Made for your media library
 
-The package is an audio player for Flutter apps that play a media library, from a server or from the device. It runs mpv and FFmpeg behind a typed Dart API, on Android, iOS, macOS, Windows, Linux and the web.
+The package is an audio player for Flutter apps that play a media library, from a server or from the device. It runs mpv and FFmpeg behind a typed Dart API, on Android, iOS, macOS, Windows, Linux and the web, and on Android TV, tvOS, Wear OS, Tizen and webOS.
 
 <table>
 <tr>
@@ -224,7 +224,7 @@ Android TV, Fire TV and Google TV run the Android build. The app needs a leanbac
 
 Experimental: tested on the Wear OS emulator, not yet on a watch.
 
-Wear OS watches run the Android build. Google's rules for media apps leave the output to the app: play to a Bluetooth headset, not the watch's speaker, and pause when it goes away. See [Wear OS](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Wear%20OS-topic.html) for the manifest and the output.
+Wear OS watches run the Android build. Google's rules for media apps want a Bluetooth headset, not the watch's speaker: the app checks the output before it plays, and with the media session on the package pauses when that output goes away. See [Wear OS](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Wear%20OS-topic.html) for the manifest and the output.
 
 ### tvOS
 
@@ -286,7 +286,9 @@ Inside a container the `alsa` driver cannot reach the sound card. Use `pipewire`
   - [Hooks and raw access](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Hooks%20and%20raw%20access-topic.html): the source resolver, mpv hooks and raw properties
   - [Visualizer and analysis](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Visualizer%20and%20analysis-topic.html): spectrum, PCM, waveform and loudness
   - [Media session](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Media%20session-topic.html): lock screen, notification and system controls
+  - [Platforms](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Platforms-topic.html): what each platform has, output, media session and features
   - [Web](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Web-topic.html): serving the page, autoplay and the browser's limits
+  - [Android TV](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Android%20TV-topic.html), [Wear OS](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Wear%20OS-topic.html), [Tizen](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Tizen-topic.html) and [webOS](https://pub.dev/documentation/mpv_audio_kit/latest/topics/webOS-topic.html): what each one needs on top
 - [Example app](example/) and [mpv_studio](https://github.com/ales-drnz/mpv_studio), a full player
 - [CHANGELOG](CHANGELOG.md) and [MIGRATION](MIGRATION.md)
 

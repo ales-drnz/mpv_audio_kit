@@ -17,13 +17,19 @@ The cleanup 0.7.0 announced, on the same libmpv-r26. See MIGRATION.md.
 - `state.playbackState`, the value `stream.playbackState` emitted last.
 - `initialized` completes once the player has started, or with the `PlayerInitException` of a start that failed.
 
+**Fixed**
+- The next and previous buttons of the OS follow a change of the queue at once. They followed it only at the next play, pause or seek.
+- `nextPlaylist` and `previousPlaylist` return false when no entry is current. mpv 0.42 ended the process there.
+
 **Docs**
 - Tizen and webOS are marked experimental: they have not run on a TV yet.
-- A Wear OS topic: the manifest, the Bluetooth output the app has to pick, and the ongoing activity. Wear OS is marked experimental: the CI runs the Android integration tests on the Wear OS emulator, no watch has played it yet.
+- A Wear OS topic: the manifest, the Bluetooth output, and what is left to the app. Wear OS is marked experimental: the CI runs the Android integration tests on the Wear OS emulator, no watch has played it yet.
+- The README lists every platform and links the Platforms topic and the topics of each TV and of Wear OS.
 
 ### Linux
 **Fixed**
 - MPRIS reports `Stopped`, with no metadata, after a stop of the app or of the desktop controls. It reported `Paused`.
+- While stopped or at the end, MPRIS offers Play when the queue has entries, and not when it is empty.
 
 ## [0.7.2] - 16-11-2026
 
