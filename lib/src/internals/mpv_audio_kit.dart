@@ -21,6 +21,7 @@ import 'passthrough_codecs.dart';
 /// {@category Wear OS}
 /// {@category Tizen}
 /// {@category webOS}
+/// {@category HarmonyOS}
 abstract final class MpvAudioKit {
   MpvAudioKit._();
 

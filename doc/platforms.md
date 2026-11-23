@@ -15,6 +15,7 @@ What each platform has. Android TV and Wear OS run the Android build, and tvOS a
 | tvOS | As iOS | As iOS | Not checked |
 | Tizen | `tizen` | None | No |
 | webOS | `alsa` | ALSA's devices | Not checked |
+| HarmonyOS | `ohaudio` | None, the system routes | No |
 
 - Each build also has the `null` output, which plays on when no device opens.
 - `auto`, the default, takes the first driver that opens, in the order of the table.
@@ -37,11 +38,12 @@ What each platform has. Android TV and Wear OS run the Android build, and tvOS a
 | tvOS | Now Playing | Yes | Yes | Yes | Yes |
 | Tizen | None | Yes | Yes | Yes | Yes |
 | webOS | None | Yes | Yes | Yes | Yes |
+| HarmonyOS | None | Yes | Yes | Yes | Yes |
 
 - Analysis is the spectrum, the PCM stream, the taps, the waveform and the loudness scan and meter. While a track passes through, the spectrum, the PCM stream, the taps and the meter emit nothing.
 - Live PCM is `Player.openPcmStream`.
 - Embedded cover is `stream.coverArt`. The OS media session shows it where there is one.
-- On Tizen and webOS, `setMediaSession` keeps its value in the player's state and does nothing else.
+- On Tizen, webOS and HarmonyOS, `setMediaSession` keeps its value in the player's state and does nothing else.
 
 ## Sources
 

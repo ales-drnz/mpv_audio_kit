@@ -1,5 +1,14 @@
 ## [0.8.0]
 
+### libmpv-r27
+**All platforms**
+- The libraries say `mpv v0.42.0+r27`, on the mpv 0.42.0 and FFmpeg 9.0.2 of r26.
+- FFmpeg's TLS option `ca_extra_file`: certificates trusted on top of the roots in use, where `ca_file` replaces them.
+- `playlist-prev-playlist` and `playlist-next-playlist` with no current entry fail. mpv 0.42.0 read the source playlist of the missing entry and the process ended.
+
+**HarmonyOS**
+- `libmpv_ohos-arm64-v8a.so` for the devices and `libmpv_ohos-x86_64.so` for the emulators, built with the OpenHarmony SDK, playing through `ohaudio`, an output over OHAudio.
+
 ### All platforms
 **Breaking**
 - TLS certificates are verified by default, as in mpv and FFmpeg: a server with a self-signed certificate fails to open. `PlayerConfiguration.tlsVerify` sets it before the first load. `setTlsCaFile` can trust such a server, with a file that replaces the built-in roots.
@@ -14,6 +23,7 @@
 - `stop(keepPlaylist: true)` unloads the file and keeps the playlist. The index stays on the entry that stopped, `next` and `previous` move it with nothing loaded, and `play` starts it from its beginning.
 - `state.playbackState`, the value `stream.playbackState` emitted last.
 - `initialized` completes once the player has started, or with the `PlayerInitException` of a start that failed.
+- `setTlsExtraCaFile` trusts the certificates of a file on top of the roots in use, for a home server with a self-signed certificate or a private CA, while every other server is verified as before. The covers the media session downloads trust it too.
 
 **Fixed**
 - The next and previous buttons of the OS follow a change of the queue at once. They followed it only at the next play, pause or seek.
@@ -21,7 +31,11 @@
 
 **Docs**
 - A Wear OS topic: the manifest, the Bluetooth output, and what is left to the app. The CI runs the Android integration tests on the Wear OS emulator.
-- The README lists every platform and links the Platforms topic and the topics of each TV and of Wear OS.
+- The README lists every platform and links the Platforms topic and the topics of each TV, of Wear OS and of HarmonyOS.
+
+### HarmonyOS
+**Added**
+- OpenHarmony and HarmonyOS through Flutter-OH 3.41.9 or later. The build hook recognizes an OHOS build by the clang of the OpenHarmony SDK, or by the user define `ohos`, and bundles the OHOS libmpv. A HarmonyOS topic says what the app adds.
 
 ### Linux
 **Fixed**

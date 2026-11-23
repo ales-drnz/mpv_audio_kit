@@ -32,6 +32,8 @@ dartdoc:
       markdown: doc/tizen.md
     "webOS":
       markdown: doc/webos.md
+    "HarmonyOS":
+      markdown: doc/ohos.md
   categoryOrder:
     - "Playback"
     - "Effects"
@@ -49,3 +51,4 @@ dartdoc:
     - "Wear OS"
     - "Tizen"
     - "webOS"
+    - "HarmonyOS"

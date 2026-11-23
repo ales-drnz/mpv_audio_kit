@@ -1,8 +1,9 @@
 # Migrating to 0.8.0
 
-0.8.0 runs on libmpv-r26, as 0.7.2 does. It removes what 0.7.0
-deprecated and changes a few signatures and defaults. Most apps change
-only the reads of the state.
+0.8.0 runs on libmpv-r27, which the build hook bundles, and on no other
+libmpv. An app that bundles its own needs a build of libmpv-scripts at
+libmpv-r27. 0.8.0 removes what 0.7.0 deprecated and changes a few
+signatures and defaults. Most apps change only the reads of the state.
 
 ## TLS certificates are verified
 

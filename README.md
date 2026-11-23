@@ -18,7 +18,7 @@
 
 ## Made for your media library
 
-The package is an audio player for Flutter apps that play a media library, from a server or from the device. It runs mpv and FFmpeg behind a typed Dart API, on Android, iOS, macOS, Windows, Linux and the web, and on Android TV, tvOS, Wear OS, Tizen and webOS.
+The package is an audio player for Flutter apps that play a media library, from a server or from the device. It runs mpv and FFmpeg behind a typed Dart API, on Android, iOS, macOS, Windows, Linux and the web, and on Android TV, tvOS, Wear OS, Tizen, webOS and HarmonyOS.
 
 <table>
 <tr>
@@ -69,6 +69,7 @@ The build downloads the libmpv binary for each native target and checks its SHA-
 | tvOS | 15.0 | arm64, simulator arm64 and x86_64 | 7.6 MB |
 | Tizen | 6.0 | armv7l, emulator x86_64 | 6.4 MB, 9.0 MB on the emulator |
 | webOS | 26 | armv7l | 6.2 MB |
+| HarmonyOS | API 12 (HarmonyOS 5.0) | arm64-v8a, emulator x86_64 | SIZE_OHOS |
 | Windows | 10 | arm64, x86_64 | 7.8 to 8.1 MB |
 | Linux | glibc 2.31 | aarch64, x86_64 | 8.7 to 8.9 MB |
 | Web | a cross-origin isolated page | wasm32 | 4.4 MB, 2.1 MB zipped |
@@ -236,6 +237,10 @@ Build with [flutter-tizen](https://github.com/flutter-tizen/flutter-tizen). The 
 
 Build with [flutter-webos](https://github.com/lg-flutter-webos/flutter-webos), for webOS 26 and later. It runs no build hook, so the package's `webos/CMakeLists.txt` bundles libmpv instead. See [webOS](https://pub.dev/documentation/mpv_audio_kit/latest/topics/webOS-topic.html).
 
+### HarmonyOS
+
+Build with [Flutter-OH](https://gitcode.com/CPF-Flutter/flutter_flutter), 3.41.9 or later, for OpenHarmony and HarmonyOS. The build hook bundles the OHOS libmpv, which plays through OHAudio. See [HarmonyOS](https://pub.dev/documentation/mpv_audio_kit/latest/topics/HarmonyOS-topic.html).
+
 ### macOS
 
 For network sources, add to `DebugProfile.entitlements` and `Release.entitlements`:
@@ -282,7 +287,7 @@ Inside a container the `alsa` driver cannot reach the sound card. Use `pipewire`
   - [Media session](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Media%20session-topic.html): lock screen, notification and system controls
   - [Platforms](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Platforms-topic.html): what each platform has, output, media session and features
   - [Web](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Web-topic.html): serving the page, autoplay and the browser's limits
-  - [Android TV](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Android%20TV-topic.html), [Wear OS](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Wear%20OS-topic.html), [Tizen](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Tizen-topic.html) and [webOS](https://pub.dev/documentation/mpv_audio_kit/latest/topics/webOS-topic.html): what each one needs on top
+  - [Android TV](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Android%20TV-topic.html), [Wear OS](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Wear%20OS-topic.html), [Tizen](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Tizen-topic.html), [webOS](https://pub.dev/documentation/mpv_audio_kit/latest/topics/webOS-topic.html) and [HarmonyOS](https://pub.dev/documentation/mpv_audio_kit/latest/topics/HarmonyOS-topic.html): what each one needs on top
 - [Example app](example/) and [mpv_studio](https://github.com/ales-drnz/mpv_studio), a full player
 - [CHANGELOG](CHANGELOG.md) and [MIGRATION](MIGRATION.md)
 
