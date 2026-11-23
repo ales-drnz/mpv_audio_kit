@@ -26,6 +26,8 @@ dartdoc:
       markdown: doc/web.md
     "Android TV":
       markdown: doc/android_tv.md
+    "Wear OS":
+      markdown: doc/wear_os.md
     "Tizen":
       markdown: doc/tizen.md
     "webOS":
@@ -44,5 +46,6 @@ dartdoc:
     - "Platforms"
     - "Web"
     - "Android TV"
+    - "Wear OS"
     - "Tizen"
     - "webOS"

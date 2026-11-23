@@ -220,6 +220,12 @@ For background playback, add the Background Modes capability in Signing & Capabi
 
 Android TV, Fire TV and Google TV run the Android build. The app needs a leanback entry and a banner in its manifest, and the media session for the keys of the remote. See [Android TV](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Android%20TV-topic.html) for the manifest and HDMI passthrough.
 
+### Wear OS
+
+Experimental: not yet tested on a watch or its emulator.
+
+Wear OS watches run the Android build. Google's rules for media apps leave the output to the app: play to a Bluetooth headset, not the watch's speaker, and pause when it goes away. See [Wear OS](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Wear%20OS-topic.html) for the manifest and the output.
+
 ### tvOS
 
 Build with [flutter-tvos](https://fluttertv.dev). It installs no code asset, so on tvOS the plugin's `tvos/Package.swift` links libmpv instead of the build hook: Swift Package Manager downloads `libmpv_tvos.xcframework.zip` of the release and checks its checksum.

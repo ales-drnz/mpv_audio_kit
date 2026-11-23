@@ -19,6 +19,7 @@ The cleanup 0.7.0 announced, on the same libmpv-r26. See MIGRATION.md.
 
 **Docs**
 - Tizen and webOS are marked experimental: they have not run on a TV yet.
+- A Wear OS topic: the manifest, the Bluetooth output the app has to pick, and the ongoing activity. Wear OS is marked experimental.
 
 ### Linux
 **Fixed**

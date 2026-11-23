@@ -1,4 +1,4 @@
-What each platform has. Android TV runs the Android build, and tvOS a build of the same sources as iOS, so their rows match those platforms except where they say otherwise.
+What each platform has. Android TV and Wear OS run the Android build, and tvOS a build of the same sources as iOS, so their rows match those platforms except where they say otherwise.
 
 ## Output
 
@@ -11,6 +11,7 @@ What each platform has. Android TV runs the Android build, and tvOS a build of t
 | Linux | `pipewire`, `pulse`, `alsa` | Those of each driver | All three |
 | Web | `webaudio` | None, the page's output | No |
 | Android TV | As Android | As Android | As Android, over HDMI |
+| Wear OS | As Android | None: the app picks a Bluetooth output | No |
 | tvOS | As iOS | As iOS | Not checked |
 | Tizen | `tizen` | None | No |
 | webOS | `alsa` | ALSA's devices | Not checked |
@@ -32,6 +33,7 @@ What each platform has. Android TV runs the Android build, and tvOS a build of t
 | Linux | MPRIS | Yes | Yes | Yes | Yes |
 | Web | `navigator.mediaSession` | No | Yes | Yes | Yes |
 | Android TV | As Android, for the remote's keys | Yes | Yes | Yes | Yes |
+| Wear OS | As Android | Yes | Yes | Yes | Yes |
 | tvOS | Now Playing | Yes | Yes | Yes | Yes |
 | Tizen | None | Yes | Yes | Yes | Yes |
 | webOS | None | Yes | Yes | Yes | Yes |
@@ -47,7 +49,7 @@ What each platform has. Android TV runs the Android build, and tvOS a build of t
 | :--- | :--- |
 | `file://` | Every platform except the web |
 | `asset:///` | Every platform |
-| `content://` | Android and Android TV |
+| `content://` | Android, Android TV and Wear OS |
 | `http://`, `https://`, HLS, DASH | Every platform. On the web the browser fetches them, under its own rules. |
 | `blob:`, `Media.fromBlob` | The web only |
 
