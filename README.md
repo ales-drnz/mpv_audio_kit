@@ -69,7 +69,7 @@ The build downloads the libmpv binary for each native target and checks its SHA-
 | tvOS | 15.0 | arm64, simulator arm64 and x86_64 | 7.6 MB |
 | Tizen | 6.0 | armv7l, emulator x86_64 | 6.4 MB, 9.0 MB on the emulator |
 | webOS | 26 | armv7l | 6.2 MB |
-| HarmonyOS | API 12 (HarmonyOS 5.0) | arm64-v8a, emulator x86_64 | SIZE_OHOS |
+| HarmonyOS | API 12 (HarmonyOS 5.0) | arm64-v8a, emulator x86_64 | 8.6 MB, 9.0 MB on the emulator |
 | Windows | 10 | arm64, x86_64 | 7.8 to 8.1 MB |
 | Linux | glibc 2.31 | aarch64, x86_64 | 8.7 to 8.9 MB |
 | Web | a cross-origin isolated page | wasm32 | 4.4 MB, 2.1 MB zipped |

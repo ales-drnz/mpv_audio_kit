@@ -54,31 +54,31 @@ const _baseUrl =
 /// SHA-256 of every release asset, from the release's manifest.json.
 const _sha256 = <String, String>{
   'libmpv_android-arm64-v8a.so':
-      '36884ee5c162f3a676cfbbebea737c3379981a372b56d3a0d72006ce560b0899',
+      '70a9d58cf2a56dd0fd389385efcbf719278cae796a5ee250c51a22ce740ee7e6',
   'libmpv_android-armeabi-v7a.so':
-      '050b17820eea37e8e2e64704ed025d9daec7e51a74a18d6c6f0333b15ddc4557',
+      'ba427db72afbfa4e7cc70e1cba84d58d23fa6871e4a71e4ecdface18f393f10b',
   'libmpv_android-x86_64.so':
-      '1eb936ee38b8ba97db4bd6d5f5d8979d7e69a427011ca65b73d1fdc40e9ea549',
+      'c1d64c62e58cd9451b5885a97b871b81166693cad0c7f98fa890f87b2fde09e6',
   'libmpv_ios.xcframework.zip':
-      '18235b759fcd7591dc5da987119a32d16b76f45601e92b73d80d4b80406f09aa',
+      'f252c585511597cc7e61f51a4e643b073209a134db94608e5eacfbb97d6c464d',
   'libmpv_linux-aarch64.so':
-      '4f68d40ac29240d19f4a5770346496cc4b23f0d2436ef608bce8ff65f00727cb',
+      '0db8bd8c55f84cc641209f8523fac11547be5a8d099896430c019065ee3974e6',
   'libmpv_linux-x86_64.so':
-      'b44be4f526d74825fd9f4d2f9b6a2362cd3dabc5434ac83c412f652ff94495cd',
-  // Not published yet: until libmpv-r27, an OHOS build needs the libmpv
-  // user define.
-  'libmpv_ohos-arm64-v8a.so': '',
-  'libmpv_ohos-x86_64.so': '',
+      '5b974ea687640a545f4c43e89be168bca49a3eda29e2dfd85baf551c34ee4b35',
+  'libmpv_ohos-arm64-v8a.so':
+      'da2300580cf7df7f0fc5af4d0fbaae48e81964b07bfb9b56285bf7911f144447',
+  'libmpv_ohos-x86_64.so':
+      '2498f7907406e4c81e1c2e97e847b2b5071db1c7db3165de96ad2d146f0b132e',
   'libmpv_macos.xcframework.zip':
-      'a734a0526b3a536709ceb1cd7ee4caa4a2045e7ddfe910e376269bbe5f4234d3',
+      '5d4dec3d7aea02e280fb472549ca4270380f3183e0c151485f0a1db8b65f14f3',
   'libmpv_tizen-armv7l.so':
-      '6dbe648b566264c7d920d4c52e1ee39b253fc3ac004c4f39a40e2f953fa9f112',
+      '7ac807280291bef753ccc7f6c9776dbeb17f85a17d9db82a5fd3e0b0830ffd4f',
   'libmpv_tizen-x86_64.so':
-      'a388ced43ef043b1b929b56ef5b9dfeb24d302139a29838a56df9ef5189e3876',
+      '279dd4848557db92ca18ac9e2ccfae7abb5753de80932f11ae2451bb671f545f',
   'libmpv_windows-arm64.dll':
-      '50297806c489266eeccffa8d92315a465f382db621dca9173976b5f6a94e1aa7',
+      'caa0666f46a9e5dcff0915d24b8d5db68d0e0aafdb768e9f5433ba799ed66aff',
   'libmpv_windows-x86_64.dll':
-      '1ba497325c21b83f23369f3e51f55792929454f278b2f81dc9f304a0b13eabaa',
+      '46f107c284e18da609748a19839a4efbcaa1fbfb7f7b6d13f1cf08b5882de49a',
 };
 
 /// The tizen user define, true or false. Anything else fails the build: an
