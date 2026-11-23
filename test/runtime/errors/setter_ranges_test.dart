@@ -30,12 +30,21 @@ void main() {
           'setVolume': (
             (p) => p.setVolume(50),
             [(p) => p.setVolume(0), (p) => p.setVolume(1000)],
-            [(p) => p.setVolume(-0.5), (p) => p.setVolume(1000.5)],
+            [
+              (p) => p.setVolume(-0.5),
+              (p) => p.setVolume(1000.5),
+              (p) => p.setVolume(double.infinity),
+              (p) => p.setVolume(double.negativeInfinity),
+            ],
           ),
           'setVolumeGain': (
             (p) => p.setVolumeGain(1),
             [(p) => p.setVolumeGain(-150), (p) => p.setVolumeGain(150)],
-            [(p) => p.setVolumeGain(-151), (p) => p.setVolumeGain(151)],
+            [
+              (p) => p.setVolumeGain(-151),
+              (p) => p.setVolumeGain(151),
+              (p) => p.setVolumeGain(double.infinity),
+            ],
           ),
           'setVolumeGainMin': (
             (p) => p.setVolumeGainMin(-10),
@@ -55,7 +64,7 @@ void main() {
           'setAbLoopCount': (
             (p) => p.setAbLoopCount(2),
             [(p) => p.setAbLoopCount(0), (p) => p.setAbLoopCount(null)],
-            [(p) => p.setAbLoopCount(-1)],
+            [(p) => p.setAbLoopCount(-1), (p) => p.setAbLoopCount(2147483648)],
           ),
           'setAudioBuffer': (
             (p) => p.setAudioBuffer(const Duration(milliseconds: 300)),

@@ -79,6 +79,17 @@ void main() {
       expect(lastStopped(), isTrue);
     });
 
+    test('a play() with nothing to start leaves it stopped', () async {
+      await player.open(Media(defaultFixturePath()), play: true);
+      await waitUntil(() => player.state.playback.playing);
+      await player.stop();
+      await settle();
+      await player.play();
+      await settle();
+      expect(player.state.playback.playWhenReady, isFalse);
+      expect(lastStopped(), isTrue);
+    });
+
     test('a load after the stop clears it', () async {
       await player.open(Media(defaultFixturePath()), play: true);
       await waitUntil(() => player.state.playback.playing);
