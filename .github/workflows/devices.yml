@@ -328,7 +328,13 @@ jobs:
           printf 'hw.cpu.ncore=2\n' >> "$ANDROID_AVD_HOME/tv.avd/config.ini"
           "$ANDROID_HOME/emulator/emulator" -avd tv -no-window -gpu swiftshader_indirect \
             -no-boot-anim -no-snapshot -camera-back none > emu-boot.log 2>&1 &
-          adb wait-for-device
+          # The emulator's own log, for an emulator that goes away or never
+          # comes up.
+          mkdir -p emu-logs
+          trap 'cp emu-boot.log emu-logs/' EXIT
+          # adb waits with no end for an emulator that never comes up.
+          timeout 600 adb wait-for-device ||
+            { tail -60 emu-boot.log; echo "::error::the TV emulator did not come up in 10 minutes"; exit 1; }
           ok=0
           for _ in $(seq 1 300); do
             if [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = 1 ]; then
@@ -343,9 +349,6 @@ jobs:
           adb shell settings put global window_animation_scale 0 || true
           adb shell settings put global transition_animation_scale 0 || true
           adb shell settings put global animator_duration_scale 0 || true
-          # The emulator's own log, for an emulator that goes away.
-          mkdir -p emu-logs
-          trap 'cp emu-boot.log emu-logs/' EXIT
           bash ../scripts/ci/android_emulator.sh "$API-tv"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
