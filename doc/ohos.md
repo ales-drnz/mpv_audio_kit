@@ -18,7 +18,7 @@ hooks:
       ohos: true
 ```
 
-`ohos: false` builds for Linux whatever the compiler. The define counts only for a Linux or OHOS target, so an app that sets it still builds for Android, iOS or the desktop. A build cannot be for Tizen and OHOS at once.
+`ohos: false` builds for Linux whatever the compiler. The define counts only for a Linux or OHOS target: an app that sets it still builds for Android, iOS, macOS and Windows, but `flutter build linux` then bundles the OHOS library too, which a desktop cannot load. Take the define off for a desktop Linux build of the same app. A build cannot be for Tizen and OHOS at once.
 
 ## Output
 

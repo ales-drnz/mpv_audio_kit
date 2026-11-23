@@ -35,7 +35,7 @@
 
 ### HarmonyOS
 **Added**
-- OpenHarmony and HarmonyOS through Flutter-OH 3.41.9 or later. The build hook recognizes an OHOS build by the clang of the OpenHarmony SDK, or by the user define `ohos`, which counts only for a Linux or OHOS target, and bundles the OHOS libmpv. A HarmonyOS topic says what the app declares.
+- OpenHarmony and HarmonyOS through Flutter-OH 3.41.9 or later. The build hook recognizes an OHOS build by the clang of the OpenHarmony SDK, or by the user define `ohos`, which a Linux or OHOS target follows and Android, Apple and Windows ignore, and bundles the OHOS libmpv. A HarmonyOS topic says what the app declares.
 - The media session is an AVSession: the System UI shows the title, the artist and the cover, and its controls reach the player. While the player plays, the package runs the continuous task of audio playback, which keeps the app playing in the background, once the app declares `ohos.permission.KEEP_BACKGROUND_RUNNING` and `backgroundModes: ["audioPlayback"]`.
 
 ### Linux

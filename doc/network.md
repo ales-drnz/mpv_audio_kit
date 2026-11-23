@@ -119,7 +119,7 @@ await player.setCookies(true);                          // off by default
 - TLS verification is on by default, as in mpv and FFmpeg. A server with a self-signed certificate or a private CA fails to open. `setTlsExtraCaFile` with its certificate, or its CA, trusts it on top of the roots, and every other server is verified as before. The host name in the URL still has to match the certificate.
 - `setTlsCaFile` replaces the roots instead: only the servers its file vouches for open. `PlayerConfiguration(tlsVerify: false)` turns verification off.
 - The waveform and the loudness scan follow the same settings. The covers of the media session always verify, against the system roots plus both files.
-- TLS verification uses the CA roots built into libmpv. A CA file replaces them.
+- The built-in roots are those built into libmpv. A file set with `setTlsCaFile` replaces them.
 - The proxy and cookies take effect from the next load. `https://` sources go through the proxy with `CONNECT`.
 
 ## Monitoring

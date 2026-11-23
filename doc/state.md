@@ -47,12 +47,12 @@ A few values live on one side only. `prefetchState`, `prefetchCacheDuration`, `w
 ### Current entry
 
 ```dart
-final s = player.state;
+final playlist = player.state.playback.playlist;
 
 // index is -1 while openAll still builds the queue
-final i = s.playlist.index;
-if (i >= 0 && i < s.playlist.items.length) {
-  print(s.playlist.items[i].uri);
+final i = playlist.index;
+if (i >= 0 && i < playlist.items.length) {
+  print(playlist.items[i].uri);
 }
 ```
 

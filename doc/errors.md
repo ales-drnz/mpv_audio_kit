@@ -113,6 +113,7 @@ A call that fails throws a `PlayerException`:
 | `PlayerInitException` | libmpv could not load or start, or is not of the libmpv release the package pins. Every call on that player throws it |
 | `MpvCommandException` | libmpv rejected the request, such as a seek with no file loaded |
 | `SourceException` | A source could not open, such as a missing asset or an unreadable `content://` URI |
+| `MediaSessionException` | `setMediaSession` was refused: not the root isolate, another player, or another Flutter engine owns the session. Its `reason` says which |
 
 ```dart
 try {
@@ -127,6 +128,8 @@ try {
       print('$name rejected: $message');
     case SourceException(:final uri):
       print('Cannot open $uri');
+    case MediaSessionException(:final reason, :final message):
+      print('No media session (${reason.name}): $message');
   }
 }
 ```

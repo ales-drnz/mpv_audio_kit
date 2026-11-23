@@ -84,7 +84,11 @@ void main() {
   MpvAudioKit.ensureInitialized();
   runApp(const MyApp());
 }
+```
 
+Then, in the app:
+
+```dart
 final player = Player();
 await player.open(Media('https://example.com/audio.flac'));
 await player.play();
@@ -171,7 +175,7 @@ See [Hooks and raw access](https://pub.dev/documentation/mpv_audio_kit/latest/to
 await player.setMediaSession(const MediaSession());
 ```
 
-The player then shows in the system media controls on every platform. On Android this also keeps it playing in the background. See [Media session](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Media%20session-topic.html) for the metadata, the buttons and each platform.
+The player then shows in the system media controls on every platform but Tizen and webOS. On Android and HarmonyOS this also keeps it playing in the background. See [Media session](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Media%20session-topic.html) for the metadata, the buttons and each platform.
 
 ### Visualizer
 
