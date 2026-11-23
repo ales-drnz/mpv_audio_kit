@@ -4,15 +4,14 @@
 # Use of this source code is governed by BSD 3-Clause license that can be
 # found in the LICENSE file.
 
-# test_hap.sh <work dir> <libmpv dir> <wav>: builds a Flutter-OH app with
-# the kit that plays <wav> as an asset, signs its HAP with the OpenHarmony
+# test_hap.sh <work dir> <libmpv dir> <audio>: builds a Flutter-OH app with
+# the kit that plays <audio> as an asset, signs its HAP with the OpenHarmony
 # debug keys and prints the path of the signed HAP. Installed on the Oniro
 # emulator (hdc install, aa start -a EntryAbility -b dev.mak.makohos), it
 # writes MAK_OHOS_RESULT PASS or FAIL to hilog.
 #
 # <libmpv dir> holds libmpv_ohos-<arch>.so (the libmpv user define, until a
-# release pins them). The work dir must have, as the spike of 22-11-2026 set
-# them up:
+# release pins them). The work dir must have what setup.sh puts there:
 #   flutter/        Flutter-OH (gitcode CPF-Flutter/flutter_flutter,
 #                   oh-3.41.9-release) with a local tag 3.41.9, so its version
 #                   resolves in a shallow clone
@@ -35,9 +34,10 @@
 # it, so the unsigned HAP is edited before signing.
 set -euo pipefail
 
-work="$(cd "${1:?usage: test_hap.sh <work dir> <libmpv dir> <wav>}" && pwd)"
+work="$(cd "${1:?usage: test_hap.sh <work dir> <libmpv dir> <audio>}" && pwd)"
 libmpv="$(cd "${2:?}" && pwd)"
-wav="$(cd "$(dirname "${3:?}")" && pwd)/$(basename "$3")"
+audio="$(cd "$(dirname "${3:?}")" && pwd)/$(basename "$3")"
+asset="$(basename "$audio")"
 kit="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 arch="${OHOS_TARGET_PLATFORM:-ohos-x64}"
 
@@ -49,17 +49,17 @@ app="$work/makohos"
 rm -rf "$app"
 (cd "$work" && flutter create --platforms ohos --org dev.mak --project-name makohos makohos >/dev/null) || true
 mkdir -p "$app/assets" "$app/libmpv"
-cp "$wav" "$app/assets/tone.wav"
+cp "$audio" "$app/assets/$asset"
 cp "$libmpv"/libmpv_ohos-*.so "$app/libmpv/"
 rm -rf "$app/test"
 
-python3 -I - "$app" "$kit" <<'PY'
+python3 -I - "$app" "$kit" "$asset" <<'PY'
 import json, re, sys
-app, kit = sys.argv[1], sys.argv[2]
+app, kit, asset = sys.argv[1], sys.argv[2], sys.argv[3]
 p = f'{app}/pubspec.yaml'
 s = open(p).read()
 s = s.replace('dependencies:\n', f'dependencies:\n  mpv_audio_kit:\n    path: {kit}\n', 1)
-s = re.sub(r'(\nflutter:\n)', r'\1  assets:\n    - assets/tone.wav\n', s, count=1)
+s = re.sub(r'(\nflutter:\n)', r'\1  assets:\n    - assets/' + asset + r'\n', s, count=1)
 s += '\nhooks:\n  user_defines:\n    mpv_audio_kit:\n      libmpv: libmpv\n'
 open(p, 'w').write(s)
 p = f'{app}/ohos/build-profile.json5'
@@ -77,7 +77,7 @@ s = re.sub(r'"deviceTypes":\s*\[[^\]]*\]', '"deviceTypes": ["default"]', open(p)
 open(p, 'w').write(s)
 PY
 
-cat > "$app/lib/main.dart" <<'DART'
+sed "s/@ASSET@/$asset/" > "$app/lib/main.dart" <<'DART'
 import 'dart:io';
 
 import 'package:flutter/widgets.dart';
@@ -91,7 +91,7 @@ Future<void> main() async {
     print('MAK_OHOS_LIB os=${Platform.operatingSystem}');
     final player = Player();
     await player.ready;
-    await player.open(Media('asset://assets/tone.wav'));
+    await player.open(Media('asset://assets/@ASSET@'));
     await player.play();
     final at = await player.stream.position
         .firstWhere((p) => p > const Duration(seconds: 2))
