@@ -201,8 +201,13 @@ void main() {
       await player.stop(keepPlaylist: true);
       await eventually(bus.playbackStatus, (s) => s == 'Stopped');
       await eventually(bus.metadata, (m) => m['xesam:title'] == null);
+      // The queue is kept: the desktop's Play stays on and starts it again.
+      await eventually(
+        () => bus.property(MprisBus.playerIface, 'CanPlay'),
+        (v) => v == true,
+      );
 
-      await player.play();
+      await bus.call('Play');
       await eventually(bus.playbackStatus, (s) => s == 'Playing');
 
       await bus.call('Stop');

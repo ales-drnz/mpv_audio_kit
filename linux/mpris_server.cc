@@ -379,8 +379,11 @@ GVariant* MprisServer::PlayerPropertyValue(const char* property) {
   }
   // CanPlay/CanPause require real content, not just an enabled session, so a
   // pre-load shell doesn't advertise actionable transport. And the action.
+  // Stopped or at the end, the title is gone but Play starts the queue
+  // again (a kept stop, the last entry from its start).
   if (!strcmp(property, "CanPlay")) {
-    return g_variant_new_boolean(enabled_ && has_title_ && CanPlayAction());
+    return g_variant_new_boolean(enabled_ && (has_title_ || completed_) &&
+                                 CanPlayAction());
   }
   if (!strcmp(property, "CanPause")) {
     return g_variant_new_boolean(enabled_ && has_title_ && CanPauseAction());
@@ -1001,8 +1004,12 @@ void MprisServer::UpdatePlayback(FlValue* playback) {
     if (seekable_ != was_seekable) MarkChanged("CanSeek");
     if (has_next_ != was_next) MarkChanged("CanGoNext");
     if (has_prev_ != was_prev) MarkChanged("CanGoPrevious");
-    // A completed transition flips Metadata visibility (full ↔ empty).
-    if (completed_ != was_completed) MarkChanged("Metadata");
+    // A completed transition flips Metadata visibility (full ↔ empty),
+    // and CanPlay with it when there is no title.
+    if (completed_ != was_completed) {
+      MarkChanged("Metadata");
+      MarkChanged("CanPlay");
+    }
     if (is_seek && have_pos && connection_) {
       g_dbus_connection_emit_signal(connection_, nullptr, kObjectPath,
                                     kPlayerIface, "Seeked",
