@@ -9,8 +9,9 @@
 # session through Media3 (media_session_test), the media keys of a remote
 # (android_remote_keys_test) and its service through a call
 # (android_focus_foreground_test, F172). <api> names the logs: 36-tv for
-# the Android TV image, 34-wear for the Wear OS one. The same script runs in libmpv-scripts' check of the
-# kit, from its .github/diag.
+# the Android TV image, 34-wear for the Wear OS one. libmpv-scripts' check
+# of the kit runs this script, and android_boot.sh, from the kit it checks
+# out.
 # The F278 test needs audioserver killed from the host while it plays: it
 # prints "[f278] playing" when it is ready, this script then kills
 # audioserver, writes f278_killed in the app's cache once a new one is up,
