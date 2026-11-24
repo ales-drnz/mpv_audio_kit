@@ -289,10 +289,11 @@ def media(t):
     for x in (MS - 16, MS + 16):
         d.add(f'<circle cx="{x}" cy="{yb}" r="2.6" fill="{c["line"]}"/>')
     gy = 206
-    for x, top in zip(xs, (0, 21, 0, 0, 21, 21, 21)):
+    for x, top in zip(xs, (0, 0, 0, 21, 21, 21, 21)):
         d.arrow(f'M{x},{yb} L{x},{gy + top - 6}', kind='sec', both=True)
-    surfaces = [(_ios, 'iOS', 'lock screen'), (_macos, 'macOS', 'Control Center'),
-                (_android, 'Android', 'notification'), (_ohos, 'HarmonyOS', 'control center'),
+    # the phones, the desktops, then the browser
+    surfaces = [(_ios, 'iOS', 'lock screen'), (_android, 'Android', 'notification'),
+                (_ohos, 'HarmonyOS', 'control center'), (_macos, 'macOS', 'Control Center'),
                 (_windows, 'Windows', 'SMTC flyout'), (_linux, 'Linux', 'MPRIS applet'),
                 (_web, 'Web', 'browser controls')]
     for x, (fn, os_, sub) in zip(xs, surfaces):
