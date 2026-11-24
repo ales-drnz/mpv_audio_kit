@@ -477,6 +477,16 @@ jobs:
           # A job the targets input left out is skipped, and that is right.
           chosen = {'plan': True, 'ios-integration': plan.get('ios') == 'true',
                     'android-emu': plan.get('matrix', '[]') != '[]'}
+          # One artifact alone (a run of one device) comes down into
+          # device-logs itself, not into a folder of its name: put it there,
+          # so the reads below find every summary where they look.
+          expected = json.loads(plan.get('expected') or '[]')
+          loose = [f for f in glob.glob('device-logs/*') if os.path.isfile(f)]
+          if len(expected) == 1 and loose:
+              home = 'device-logs/' + expected[0].replace('*', 'run')
+              os.makedirs(home, exist_ok=True)
+              for f in loose:
+                  os.rename(f, os.path.join(home, os.path.basename(f)))
           results, rows, green = {}, [], True
           for job, what in jobs:
               result = needs[job]['result']
@@ -500,7 +510,6 @@ jobs:
           # artifact not uploaded, or not downloaded) means files nobody
           # read, so the run is not green. The names follow the matrix of
           # android-emu and the upload of ios-integration.
-          expected = json.loads(plan.get('expected') or '[]')
           absent = [name for name in expected
                     if not glob.glob(f'device-logs/{name}/summary*.txt')]
           if absent:
