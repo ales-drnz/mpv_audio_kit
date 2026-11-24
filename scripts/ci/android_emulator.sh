@@ -181,17 +181,62 @@ PY
 # Whether the try that left log $1 says nothing about the code: none of
 # its tests started, and the emulator went away or the link is broken.
 link_lost() { ! started "$1" && { lost || ! link_ok; }; }
+# A try in the background: flutter test of file $1 into log $2, its pid in
+# ftpid. A try whose app never attaches ends at 4 minutes, not at the 8 of
+# a try whose tests run: the app is up a second after its install, and
+# flutter test finds it through logcat within seconds when the device
+# works (the TV image's log once stalled and every file after waited 2x8
+# minutes). nostart says when a try ended that way.
+flutter_try() { # file, log
+  timeout -s INT -k 30 480 flutter test "integration_test/$1" -d emulator-5554 -r expanded "${defines[@]}" > "$2" 2>&1 &
+  ftpid=$!
+  ft0=$SECONDS
+  nostart=0
+}
+# Ends the try of log $1 when its 4 minutes to start are over.
+start_deadline() { # log
+  if [ $nostart = 0 ] && ! started "$1" && [ $((SECONDS - ft0)) -ge "${MAK_START_DEADLINE:-240}" ]; then
+    echo "::warning::no test started in ${MAK_START_DEADLINE:-240} s on API $api: ending the try"
+    kill -INT "$ftpid" 2> /dev/null
+    nostart=1
+  fi
+}
+# The size of the capture of logcat: a try during which it did not grow
+# had a device whose log stalled, and flutter test, which reads logcat to
+# find the app, could not attach whatever the code.
+capture_size() { stat -c %s "emu-logs/logcat-$api.txt" 2> /dev/null || echo 0; }
+# Boots the emulator again, for a log that stalled or the second pass.
+reboot_device() { # why
+  echo "::warning::$1 on API $api: booting the emulator again"
+  timeout 30 adb reboot > /dev/null 2>&1 || true
+  sleep 10
+  # A new boot: ready takes its boot_id, which lost() compares against.
+  # adbd comes back unprivileged after a reboot: root again, for F278.
+  mend && ready && { timeout 30 adb root > /dev/null 2>&1 || true; sleep 2; mend && ready; } || return 1
+  start_logcat
+}
 run() {
-  local name=$1 try=0 spent=0 r log result='' hung=0
+  local name=$1 try=0 spent=0 r log result='' hung=0 size0
   while [ $spent -lt 2 ] && [ $try -lt 3 ]; do
     try=$((try + 1))
     log="emu-logs/$name-$api-$try$tag.log"
     echo "== $name on API $api (try $try)"
     prepare "$name" || { echo "::warning::no adb link for $name on API $api"; spent=$((spent + 1)); continue; }
-    timeout -s INT -k 30 480 flutter test "integration_test/$name" -d emulator-5554 -r expanded "${defines[@]}" 2>&1 | tee "$log"
-    r=${PIPESTATUS[0]}
+    size0=$(capture_size)
+    flutter_try "$name" "$log"
+    while kill -0 "$ftpid" 2> /dev/null; do start_deadline "$log"; sleep 2; done
+    wait "$ftpid"
+    r=$?
+    [ $nostart = 1 ] && r=124
+    cat "$log"
     [ "$r" = 0 ] && { result=pass; break; }
     if link_lost "$log"; then recover "$name"; continue; fi
+    # A log that did not grow over a try that never started: the device's
+    # log stalled. It boots again, and the try does not count.
+    if ! started "$log" && [ "$(capture_size)" = "$size0" ]; then
+      reboot_device "the log stalled under $name" || true
+      continue
+    fi
     spent=$((spent + 1))
     if [ "$r" != 124 ] && [ "$r" != 137 ]; then result=fail; break; fi
     started "$log" && hung=1
@@ -242,9 +287,10 @@ run_keys() { # input | dispatch
 keys_try() { # input | dispatch, try
   local via=$1 keys=android_remote_keys_test.dart log pid sent=0 r key cues
   log="emu-logs/keys-$via-$api-$2$tag.log"
-  timeout -s INT -k 30 480 flutter test "integration_test/$keys" -d emulator-5554 -r expanded "${defines[@]}" > "$log" 2>&1 &
-  pid=$!
+  flutter_try "$keys" "$log"
+  pid=$ftpid
   while kill -0 $pid 2>/dev/null; do
+    start_deadline "$log"
     mapfile -t cues < <(grep -o '\[key\] KEYCODE_[A-Z_]*' "$log")
     while [ $sent -lt ${#cues[@]} ]; do
       key=${cues[$sent]#\[key\] }
@@ -271,6 +317,7 @@ keys_try() { # input | dispatch, try
   done
   wait $pid
   r=$?
+  [ $nostart = 1 ] && r=124
   cat "$log"
   if [ $r = 0 ]; then return 0; fi
   if link_lost "$log"; then return 2; fi
@@ -299,11 +346,12 @@ run_f278() {
   log="emu-logs/dead-object-$api${1:+-$1}.log"
   echo "== $f278 on API $api"
   prepare $f278 || echo "::warning::no adb link for $f278 on API $api"
-  timeout -s INT -k 30 480 flutter test "integration_test/$f278" -d emulator-5554 -r expanded "${defines[@]}" > "$log" 2>&1 &
-  pid=$!
+  flutter_try "$f278" "$log"
+  pid=$ftpid
   for _ in $(seq 1 600); do
     grep -q '\[f278\] playing' "$log" && break
     kill -0 $pid 2>/dev/null || break
+    start_deadline "$log"
     sleep 0.5
   done
   if grep -q '\[f278\] playing' "$log"; then
@@ -325,6 +373,7 @@ run_f278() {
   fi
   wait $pid
   r=$?
+  [ $nostart = 1 ] && r=124
   cat "$log"
   if [ $r = 0 ]; then
     outcome $f278 pass
@@ -348,12 +397,7 @@ if [ ${#infra_files[@]} -gt 0 ]; then
   echo "== a second pass for ${#infra_files[@]} file(s) that never started on API $api"
   first=("${infra_files[@]}")
   infra_files=()
-  timeout 30 adb reboot > /dev/null 2>&1 || true
-  sleep 10
-  # A new boot: ready takes its boot_id, which lost() compares against.
-  # adbd comes back unprivileged after a reboot: root again, for F278.
-  if mend && ready && { timeout 30 adb root > /dev/null 2>&1 || true; sleep 2; mend && ready; }; then
-    start_logcat
+  if reboot_device "a second pass"; then
     repass=1
     tag=-repass
     for item in "${first[@]}"; do
