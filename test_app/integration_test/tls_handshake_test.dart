@@ -13,6 +13,7 @@
 // embed_cacert patch.
 
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -55,6 +56,16 @@ void main() {
       (_) async {
         const httpsUrl = 'https://streams.radiomast.io/ref-128k-aaclc-stereo';
 
+        // The stream is a third party's: when Dart's own client, with the
+        // trust of the platform, cannot reach it either, the host is down
+        // and the test says nothing about libmpv. Skipped then, with the
+        // reason; reachable, a failure below is libmpv's.
+        final reachable = await _reachable(Uri.parse(httpsUrl));
+        if (reachable != null) {
+          markTestSkipped('$httpsUrl is not reachable: $reachable');
+          return;
+        }
+
         // Verification ON, no custom CA file: the only possible trust source is
         // the CA bundle compiled into libmpv.
         await player.setTlsVerify(true);
@@ -96,4 +107,22 @@ void main() {
       timeout: const Timeout(Duration(seconds: 30)),
     );
   });
+}
+
+/// Null when [uri] answers a GET with a status under 500 within 10 s,
+/// else what went wrong.
+Future<String?> _reachable(Uri uri) async {
+  final client = HttpClient()..connectionTimeout = const Duration(seconds: 10);
+  try {
+    final request = await client
+        .getUrl(uri)
+        .timeout(const Duration(seconds: 10));
+    final response = await request.close().timeout(const Duration(seconds: 10));
+    await response.detachSocket().then((s) => s.destroy()).catchError((_) {});
+    return response.statusCode < 500 ? null : 'HTTP ${response.statusCode}';
+  } catch (e) {
+    return '$e';
+  } finally {
+    client.close(force: true);
+  }
 }

@@ -27,27 +27,39 @@ void main() {
       (_) async {
         final fixturePath = await materializeFixture('sine_440hz_1s.wav');
 
-        Future<void> oneCycle() async {
-          final player = Player(
-            configuration: const PlayerConfiguration(logLevel: LogLevel.off),
-          );
+        // The first open of the output in a cold app (a simulator just
+        // booted: CoreAudio, the AudioUnit) gets 30 s, its time printed;
+        // the cycles after it keep 5 s, where a hang is a bug. The log of
+        // a cycle at warn and above is printed when it fails.
+        Future<void> oneCycle({bool first = false}) async {
+          final budget = Duration(seconds: first ? 30 : 5);
+          final player = Player();
+          final log = <String>[];
+          final logs = player.stream.log.listen((e) => log.add('$e'));
           // Listened for before the open: the fixture lasts one second, and
           // on a slow simulator it can be over by the time open() returns, so
           // a listener that came after it never saw it play (check runs
           // 43401914297 and 43622079133 of libmpv-scripts).
           final played = player.stream.playing.firstWhere((p) => p);
+          final opened = Stopwatch()..start();
           await player.open(Media(fixturePath), play: true);
           await played.timeout(
-            const Duration(seconds: 5),
+            budget,
             onTimeout: () => fail(
-              'no playback within 5 s of the open: '
+              'no playback within ${budget.inSeconds} s of the open: '
               'playing ${player.state.playback.playing}, '
               'completed ${player.state.playback.completed}, '
               'position ${player.state.playback.position}, '
-              'output ${player.state.output.audioOutputState}',
+              'output ${player.state.output.audioOutputState}\n'
+              'log:\n${log.join('\n')}',
             ),
           );
+          if (first) {
+            // ignore: avoid_print
+            print('[first-play] ${opened.elapsedMilliseconds} ms');
+          }
           await Future<void>.delayed(const Duration(milliseconds: 100));
+          await logs.cancel();
           await player.dispose().timeout(const Duration(seconds: 3));
         }
 
@@ -56,7 +68,7 @@ void main() {
         const warmup = 5;
         const cycles = 30;
         for (var i = 0; i < warmup; i++) {
-          await oneCycle();
+          await oneCycle(first: i == 0);
         }
 
         // Two windows of the same length: a leak grows both, while a

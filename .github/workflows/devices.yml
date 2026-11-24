@@ -36,6 +36,7 @@ on:
       - 'lib/**'
       - 'pubspec.yaml'
       - 'test_app/**'
+      - 'scripts/ci/android_boot.sh'
       - 'scripts/ci/android_emulator.sh'
       - 'scripts/ci/flutter_version.sh'
       - 'scripts/ci/preflight.sh'
@@ -48,12 +49,17 @@ on:
       libmpv_scripts_run:
         description: 'libmpv-scripts Build run id to take libmpv from, instead of the pinned release'
         type: string
+      targets:
+        description: 'Some devices only, comma separated: ios, api24, api29, api34, tv36, wear34 (empty for all)'
+        type: string
 
 # A new push makes the run of the previous commit of the branch stale: the
-# emulators are too long to finish one nobody reads.
+# emulators are too long to finish one nobody reads. A run by hand is never
+# cancelled, and the group of one takes its Build and devices, so a run of
+# one device next to a full run leaves both alone.
 concurrency:
-  group: devices-${{ github.ref }}
-  cancel-in-progress: true
+  group: devices-${{ github.ref }}-${{ inputs.libmpv_scripts_run }}-${{ inputs.targets }}
+  cancel-in-progress: ${{ github.event_name == 'push' }}
 
 permissions:
   contents: read
@@ -75,7 +81,46 @@ jobs:
       libmpv_run: ${{ steps.libmpv.outputs.run }}
       # The pinned release, rN: the one the tests expect without a run.
       pin: ${{ steps.libmpv.outputs.pin }}
+      # The devices of this run (the targets input), as the matrix of
+      # android-emu, whether iOS runs, and the summaries Summary expects.
+      matrix: ${{ steps.targets.outputs.matrix }}
+      ios: ${{ steps.targets.outputs.ios }}
+      expected: ${{ steps.targets.outputs.expected }}
     steps:
+      - name: Devices of this run
+        id: targets
+        env:
+          TARGETS: ${{ inputs.targets }}
+        run: |
+          python3 - <<'EOF'
+          import json, os
+          # name: (matrix entry, summary artifact)
+          android = {
+              'api24': ({'api': 24, 'target': 'google_apis'}, 'android-emu-24'),
+              'api29': ({'api': 29, 'target': 'google_apis'}, 'android-emu-29'),
+              'api34': ({'api': 34, 'target': 'google_apis'}, 'android-emu-34'),
+              # A TV profile: with the default phone screen the SystemUI of
+              # the TV image crashes in a loop and takes the tests down.
+              'tv36': ({'api': 36, 'target': 'android-tv', 'profile': 'tv_1080p'}, 'android-emu-36-tv'),
+              # Wear OS runs the Android build: a round watch screen, with the
+              # emulated audio device as the output (no Bluetooth headset).
+              'wear34': ({'api': 34, 'target': 'android-wear', 'profile': 'wearos_small_round'}, 'android-emu-34-wear'),
+          }
+          raw = [t.strip() for t in (os.environ.get('TARGETS') or '').split(',') if t.strip()]
+          wanted = raw or ['ios', *android]
+          unknown = [t for t in wanted if t != 'ios' and t not in android]
+          if unknown:
+              raise SystemExit(f'::error::unknown targets {unknown}: ios, {", ".join(android)}')
+          matrix = [android[t][0] for t in android if t in wanted]
+          expected = [android[t][1] for t in android if t in wanted]
+          if 'ios' in wanted:
+              expected.append('ios-integration-*')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
+              out.write(f'matrix={json.dumps(matrix)}\n')
+              out.write(f"ios={'true' if 'ios' in wanted else 'false'}\n")
+              out.write(f'expected={json.dumps(expected)}\n')
+          print('devices:', ', '.join(wanted))
+          EOF
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: libmpv-scripts run
         id: libmpv
@@ -97,6 +142,7 @@ jobs:
   ios-integration:
     name: iOS simulator integration tests
     needs: plan
+    if: needs.plan.outputs.ios == 'true'
     runs-on: macos-26
     timeout-minutes: 150
     steps:
@@ -162,12 +208,14 @@ jobs:
           mkdir -p ../logs
           failed=()
           infra=()
-          for f in integration_test/*_test.dart; do
+          # One file, three tries at most: sets result.
+          run_file() { # file, tag of its logs
+            local f=$1 tag=$2 name attempt log rc
             name=$(basename "$f" .dart)
             result=fail
             for attempt in 1 2 3; do
-              log="../logs/$name.$attempt.log"
-              echo "=== $f attempt $attempt $(date -u +%T)"
+              log="../logs/$name.$attempt$tag.log"
+              echo "=== $f attempt $attempt$tag $(date -u +%T)"
               set +e
               perl -e 'alarm shift; exec @ARGV' 600 flutter test "$f" -d "$UDID" -r expanded -v \
                 --dart-define=MAK_CI=true --dart-define=MAK_LIBMPV_RELEASE="$MAK_LIBMPV_RELEASE" > "$log" 2>&1
@@ -183,7 +231,7 @@ jobs:
               xcrun simctl terminate "$UDID" com.example.freshapp >/dev/null 2>&1 || true
               xcrun simctl uninstall "$UDID" com.example.freshapp >/dev/null 2>&1 || true
               if [ $rc -eq 142 ]; then
-                xcrun simctl spawn "$UDID" log show --last 12m --style compact --predicate 'process == "Runner"' > "../logs/$name.$attempt.sim.log" 2>&1 || true
+                xcrun simctl spawn "$UDID" log show --last 12m --style compact --predicate 'process == "Runner"' > "../logs/$name.$attempt$tag.sim.log" 2>&1 || true
                 # Tests running: a progress line past the loading of the file.
                 if grep -E '[0-9]+:[0-9]+ \+[0-9]+[^:]*: ' "$log" | grep -qv ': loading '; then
                   echo "::error::$f timed out with tests running"; result=fail; break
@@ -194,16 +242,48 @@ jobs:
               fi
               echo "::error::$f failed (exit $rc)"; tail -60 "$log"; result=fail; break
             done
+          }
+          for f in integration_test/*_test.dart; do
+            run_file "$f" ''
             echo "--- $f: $result" | tee -a ../logs/summary.txt
             case $result in
               pass | skip) ;;
-              launch-timeout)
-                infra+=("$f")
-                echo "::warning::$f never started on the simulator: infrastructure, not a test result. Run it again before a release."
-                ;;
+              launch-timeout) infra+=("$f") ;;
               *) failed+=("$f") ;;
             esac
           done
+          # The files that never started get one more pass on a simulator
+          # erased and booted again; a file that ran keeps its result. The
+          # summary line says both: "pass (launch-timeout, then re-pass)",
+          # or launch-timeout as it was, which the Summary job fails on.
+          if [ ${#infra[@]} -gt 0 ]; then
+            echo "=== a second pass for ${#infra[@]} file(s) that never started"
+            first=("${infra[@]}")
+            infra=()
+            xcrun simctl shutdown "$UDID" || true
+            xcrun simctl erase "$UDID"
+            xcrun simctl boot "$UDID"
+            xcrun simctl bootstatus "$UDID" -b
+            for f in "${first[@]}"; do
+              run_file "$f" .repass
+              case $result in
+                launch-timeout)
+                  infra+=("$f")
+                  echo "::warning::$f never started on the simulator, twice: infrastructure, not a test result. Run it again before a release."
+                  ;;
+                *)
+                  python3 - "../logs/summary.txt" "$f" "$result" <<'PY'
+          import sys
+          path, name, result = sys.argv[1:]
+          lines = open(path).read().splitlines()
+          lines = [f'--- {name}: {result} (launch-timeout, then re-pass)' if l == f'--- {name}: launch-timeout' else l for l in lines]
+          open(path, 'w').write('\n'.join(lines) + '\n')
+          PY
+                  [ "$result" = fail ] && failed+=("$f")
+                  ;;
+              esac
+            done
+          fi
           {
             echo "### iOS simulator"
             echo
@@ -228,22 +308,20 @@ jobs:
     # tries (the third only after a lost adb link), the F278 file and the
     # boot: a job cut by its timeout could not tell infra from fail.
     timeout-minutes: 230
+    if: needs.plan.outputs.matrix != '[]'
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - {api: 24, target: google_apis}
-          - {api: 29, target: google_apis}
-          - {api: 34, target: google_apis}
-          # A TV profile: with the default phone screen the SystemUI of the
-          # TV image crashes in a loop and takes the tests down with it.
-          - {api: 36, target: android-tv, profile: tv_1080p}
-          # Wear OS runs the Android build: a round watch screen, with the
-          # emulated audio device as the output (no Bluetooth headset).
-          - {api: 34, target: android-wear, profile: wearos_small_round}
+        # The devices of the plan job (the targets input, all by default).
+        include: ${{ fromJSON(needs.plan.outputs.matrix) }}
     defaults:
       run:
         shell: bash
+    env:
+      # Gradle's own retries of a download: 6 with a backoff from 2 s, for
+      # a plugin portal or a Maven mirror that answers late (the defaults
+      # are 3 and 125 ms). Internal properties of Gradle.
+      GRADLE_OPTS: -Dorg.gradle.internal.repository.max.retries=6 -Dorg.gradle.internal.repository.initial.backoff=2000
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: KVM for the emulator
@@ -261,6 +339,7 @@ jobs:
             test_app/android/app/*.gradle*
             test_app/android/gradle/wrapper/gradle-wrapper.properties
             android/*.gradle*
+            .github/flutter-version
       - uses: ./.github/actions/flutter
         with:
           cache: true
@@ -274,11 +353,24 @@ jobs:
         env:
           PIN: ${{ needs.plan.outputs.pin }}
         run: echo "MAK_LIBMPV_RELEASE=$PIN" >> "$GITHUB_ENV"
+      # A download that fails (the plugin portal or a Maven mirror) is tried
+      # again, three times at most, a minute apart; any other build error
+      # fails at once.
       - name: Build the test app once
         working-directory: test_app
         run: |
           flutter pub get
-          flutter build apk --debug
+          for try in 1 2 3; do
+            set +e
+            flutter build apk --debug 2>&1 | tee build.log
+            r=${PIPESTATUS[0]}
+            set -e
+            [ $r = 0 ] && exit 0
+            grep -qE 'Could not resolve|Could not GET|Could not HEAD|was not found in any of the following sources|Received status code 5[0-9][0-9]|Connection reset|Read timed out' build.log || exit $r
+            [ $try = 3 ] && exit $r
+            echo "::warning::a download of the Gradle build failed (try $try): again in a minute"
+            sleep 60
+          done
       - name: Integration tests on the emulator
         if: matrix.target != 'android-tv'
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
@@ -326,26 +418,14 @@ jobs:
           [ -f "$ANDROID_AVD_HOME/tv.ini" ] || printf 'path=%s\npath.rel=avd/tv.avd\ntarget=android-%s\n' \
             "$ANDROID_AVD_HOME/tv.avd" "$API" > "$ANDROID_AVD_HOME/tv.ini"
           printf 'hw.cpu.ncore=2\n' >> "$ANDROID_AVD_HOME/tv.avd/config.ini"
-          "$ANDROID_HOME/emulator/emulator" -avd tv -no-window -gpu swiftshader_indirect \
-            -no-boot-anim -no-snapshot -camera-back none > emu-boot.log 2>&1 &
-          # The emulator's own log, for an emulator that goes away or never
-          # comes up.
+          # Two bounded attempts, the second with its data wiped
+          # (android_boot.sh). An emulator that never boots is infra: a
+          # line of the summary, which the Summary job reports.
           mkdir -p emu-logs
-          trap 'cp emu-boot.log emu-logs/' EXIT
-          # adb waits with no end for an emulator that never comes up.
-          timeout 600 adb wait-for-device ||
-            { tail -60 emu-boot.log; echo "::error::the TV emulator did not come up in 10 minutes"; exit 1; }
-          ok=0
-          for _ in $(seq 1 300); do
-            if [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = 1 ]; then
-              ok=$((ok + 1))
-              [ $ok -ge 2 ] && break
-            else
-              ok=0
-            fi
-            sleep 3
-          done
-          [ $ok -ge 2 ] || { tail -40 emu-boot.log; echo "::error::the TV emulator did not boot"; exit 1; }
+          bash ../scripts/ci/android_boot.sh tv || {
+            echo "boot infra" > "emu-logs/summary-$API-tv.txt"
+            exit 1
+          }
           adb shell settings put global window_animation_scale 0 || true
           adb shell settings put global transition_animation_scale 0 || true
           adb shell settings put global animator_duration_scale 0 || true
@@ -394,13 +474,16 @@ jobs:
               ('ios-integration', 'iOS simulator integration tests'),
               ('android-emu', 'Android emulators'),
           ]
+          # A job the targets input left out is skipped, and that is right.
+          chosen = {'plan': True, 'ios-integration': plan.get('ios') == 'true',
+                    'android-emu': plan.get('matrix', '[]') != '[]'}
           results, rows, green = {}, [], True
           for job, what in jobs:
               result = needs[job]['result']
               results[job] = result
-              if result != 'success':
+              if chosen[job] and result != 'success':
                   green = False
-              rows.append(f'| {what} | {result} |')
+              rows.append(f'| {what} | {result if chosen[job] else "not in this run"} |')
           # The files a device job could not start (an install that never
           # ended, an app that never attached): infra in the summary of an
           # emulator, launch-timeout in the one of the simulator.
@@ -417,9 +500,7 @@ jobs:
           # artifact not uploaded, or not downloaded) means files nobody
           # read, so the run is not green. The names follow the matrix of
           # android-emu and the upload of ios-integration.
-          expected = ['android-emu-24', 'android-emu-29', 'android-emu-34',
-                      'android-emu-36-tv', 'android-emu-34-wear',
-                      'ios-integration-*']
+          expected = json.loads(plan.get('expected') or '[]')
           absent = [name for name in expected
                     if not glob.glob(f'device-logs/{name}/summary*.txt')]
           if absent:

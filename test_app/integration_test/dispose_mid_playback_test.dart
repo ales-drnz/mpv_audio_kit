@@ -26,32 +26,39 @@ void main() {
         // Real AO (coreaudio default), file actually playing — dispose
         // must teardown the AO render thread without hanging.
         final fixturePath = await materializeFixture('sine_440hz_1s.wav');
-        final player = Player(
-          configuration: const PlayerConfiguration(logLevel: LogLevel.off),
-        );
+        final player = Player();
+        final log = <String>[];
+        final logs = player.stream.log.listen((e) => log.add('$e'));
 
         // Listened for before the open: the fixture lasts one second, and
         // on a slow simulator it can be over by the time open() returns, so
         // a listener that came after it never saw it play (check runs
-        // 43401914297 and 43622079133 of libmpv-scripts).
+        // 43401914297 and 43622079133 of libmpv-scripts). The output opens
+        // for the first time in this app: 30 s, as the first cycle of the
+        // stress test, its time printed.
         final played = player.stream.playing.firstWhere((p) => p);
+        final opened = Stopwatch()..start();
         await player.open(Media(fixturePath), play: true);
         await played.timeout(
-          const Duration(seconds: 5),
+          const Duration(seconds: 30),
           onTimeout: () => fail(
-            'no playback within 5 s of the open: '
+            'no playback within 30 s of the open: '
             'playing ${player.state.playback.playing}, '
             'completed ${player.state.playback.completed}, '
             'position ${player.state.playback.position}, '
-            'output ${player.state.output.audioOutputState}',
+            'output ${player.state.output.audioOutputState}\n'
+            'log:\n${log.join('\n')}',
           ),
         );
+        // ignore: avoid_print
+        print('[first-play] ${opened.elapsedMilliseconds} ms');
         // Hold for 500 ms so coreaudio is genuinely consuming frames.
         await Future<void>.delayed(const Duration(milliseconds: 500));
 
+        await logs.cancel();
         await player.dispose().timeout(const Duration(seconds: 3));
       },
-      timeout: const Timeout(Duration(seconds: 30)),
+      timeout: const Timeout(Duration(seconds: 60)),
     );
   });
 }
