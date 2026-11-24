@@ -87,6 +87,7 @@ final class SessionUrlProbe {
         metadata: probe._metadata.stream,
         coverArt: never.cast(),
         mediaTitle: never.cast(),
+        playlist: never.cast(),
         mediaSession: never.cast(),
       ),
       onCommand: (_) {},

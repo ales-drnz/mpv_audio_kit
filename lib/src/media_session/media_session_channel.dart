@@ -7,6 +7,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import '../events/player_exception.dart';
 import '../models/cover_art.dart';
 import '../models/media_session.dart';
 import '../types/enums/loop.dart';
@@ -108,7 +109,7 @@ class MediaSessionPlaybackSnapshot {
   final bool shuffle;
 
   /// End-of-content reached ([PlaybackState.completed]: `eof-reached` on the
-  /// last playlist entry with no loop on). Two native sides map it to a
+  /// last playlist entry with no loop on). Three native sides map it to a
   /// terminal state instead of leaving a finished track parked as "Paused
   /// at full length" on the OS surface:
   ///
@@ -116,10 +117,29 @@ class MediaSessionPlaybackSnapshot {
   /// | :--- | :--- |
   /// | Android | `STATE_ENDED` |
   /// | Linux | MPRIS `PlaybackStatus=Stopped` with empty `Metadata` |
+  /// | OHOS | AVSession `PLAYBACK_STATE_COMPLETED` |
   /// | Apple | not read: no "ended" state, the entry parks as paused |
   /// | Windows | not read: the SMTC entry stays `Paused` |
   /// | Web | not read: `playbackState` stays `paused` |
   final bool completed;
+
+  /// The player stopped ([Player.stop]) and nothing loaded or played since.
+  ///
+  /// | Platform | What it does with `stopped` |
+  /// | :--- | :--- |
+  /// | Linux | MPRIS `PlaybackStatus=Stopped` with empty `Metadata` |
+  /// | OHOS | AVSession `PLAYBACK_STATE_STOP` |
+  /// | Android, Apple, Windows, Web | not read |
+  final bool stopped;
+
+  /// The playlist has entries: stopped or at the end, Play has something
+  /// to start.
+  ///
+  /// | Platform | What it does with `queued` |
+  /// | :--- | :--- |
+  /// | Linux | MPRIS `CanPlay` while stopped or at the end, with no title |
+  /// | Android, Apple, Windows, Web, OHOS | not read |
+  final bool queued;
 
   /// This snapshot originates from a seek landing (PLAYBACK_RESTART), as
   /// opposed to a plain play, pause or rate change. Linux MPRIS uses it to emit
@@ -144,6 +164,7 @@ class MediaSessionPlaybackSnapshot {
   /// | Apple | not read: the published rate follows [playing] |
   /// | Windows | not read: the SMTC timeline carries the pushed position |
   /// | Web | not read: `setPositionState` follows [playing] and [rate] |
+  /// | OHOS | not read: the AVSession position follows [rate] |
   final bool actualPlaying;
 
   /// Buffering or loading. Mapped to a loading state where the OS has one
@@ -153,6 +174,7 @@ class MediaSessionPlaybackSnapshot {
   /// | :--- | :--- |
   /// | Android | `STATE_BUFFERING` |
   /// | Windows | SMTC `PlaybackStatus` `Changing` |
+  /// | OHOS | AVSession `PLAYBACK_STATE_BUFFERING` |
   /// | Apple | not read |
   /// | Linux | not read: MPRIS has no such status |
   /// | Web | not read |
@@ -180,6 +202,8 @@ class MediaSessionPlaybackSnapshot {
     required this.loop,
     required this.shuffle,
     this.completed = false,
+    this.stopped = false,
+    this.queued = false,
     this.seek = false,
     this.actualPlaying = false,
     this.buffering = false,
@@ -189,19 +213,20 @@ class MediaSessionPlaybackSnapshot {
   });
 }
 
-/// Two platform channels: a method channel (`mpv_audio_kit/media_session`,
-/// Dart → native: `enable`, `update*` and `disable`) and an event channel
+/// Two platform channels: a method channel (`mpv_audio_kit/media_session`, Dart
+/// → native: `enable`, `update*` and `disable`) and an event channel
 /// (`.../commands`, native → Dart: the OS remote commands). Method calls
 /// swallow [MissingPluginException] and [PlatformException] so an unwired
-/// platform is a no-op, not a crash; Dart-side state stays correct. The
-/// one exception is an `enable` refused because another Flutter engine of
-/// the process owns the session: it throws [StateError]. Only `enable`
+/// platform is a no-op, not a crash; Dart-side state stays correct. The one
+/// exception is an `enable` refused because another Flutter engine of the
+/// process owns the session: it throws a [MediaSessionException]. Only `enable`
 /// does: an update or a `disable` is sent without anyone awaiting it.
 ///
 /// The event channel has no such net: Flutter reports a listen on a
 /// channel without a native side as a [FlutterError]. So [enable] says
 /// whether a native side answered, and the controller listens to
-/// [commandStream] only when one did (Tizen and webOS have none).
+/// [commandStream] only when one did (Tizen and webOS have none; OHOS has
+/// the AVSession of ohos/, under Flutter-OH).
 @internal
 class MediaSessionChannel {
   static const String _methodName = 'mpv_audio_kit/media_session';
@@ -293,7 +318,8 @@ class MediaSessionChannel {
       return false;
     } on PlatformException catch (e) {
       if (throwsAlreadyOwned && e.code == _alreadyOwned) {
-        throw StateError(
+        throw const MediaSessionException(
+          MediaSessionRefusal.otherEngine,
           'Another Flutter engine of this process owns the OS media '
           'session. It is one per process: it stays with the engine that '
           'enabled it until that engine sets it to null, disposes its '
@@ -369,6 +395,8 @@ class MediaSessionChannel {
         'loop': p.loop.name,
         'shuffle': p.shuffle,
         'completed': p.completed,
+        'stopped': p.stopped,
+        'queued': p.queued,
         'seek': p.seek,
         'actualPlaying': p.actualPlaying,
         'buffering': p.buffering,

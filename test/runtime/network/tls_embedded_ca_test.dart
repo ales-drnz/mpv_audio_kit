@@ -54,6 +54,30 @@ void main() {
       }
     });
 
+    test('the default configuration verifies public HTTPS through the embedded '
+        'roots', () async {
+      if (!embedded) {
+        skipMissing('libmpv predates the embed_cacert patch');
+        return;
+      }
+      if (!networkAvailable) {
+        markTestSkipped('network unreachable');
+        return;
+      }
+      final player = await buildPlayer();
+      addTearDown(() async {
+        await player.stop();
+        await player.dispose();
+      });
+      // No setTlsVerify: 0.8.0 verifies by default.
+      expect(await player.getRawProperty('tls-verify'), 'yes');
+      final params = player.stream.audioParams
+          .firstWhere((p) => p.sampleRate != null)
+          .timeout(const Duration(seconds: 20));
+      await player.open(const Media(publicHttps), play: false);
+      expect((await params).sampleRate, isNotNull);
+    });
+
     test(
       'tls-verify ON + public HTTPS verifies via the embedded CA roots',
       () async {

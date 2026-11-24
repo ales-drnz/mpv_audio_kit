@@ -52,7 +52,7 @@ import '../types/settings/spectrum_settings.dart';
 ///       if (fft != null) painter.bands = fft.bands;
 ///     });
 /// ```
-class BandProcessor {
+final class BandProcessor {
   /// Creates a processor seeded with the given [SpectrumSettings]. The
   /// FFT engine and scratch buffers stay unallocated until the first
   /// [process] call, so an idle processor costs no memory.

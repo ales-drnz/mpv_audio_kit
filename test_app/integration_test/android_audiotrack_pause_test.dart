@@ -96,7 +96,7 @@ void main() {
         final v = 0.1 * math.sin(2 * math.pi * 440 * i / 24000);
         chunk.setInt16(i * 2, (v * 32767).round(), Endian.little);
       }
-      final source = await player.openPcmStream(format);
+      final source = await player.openPcmStream(format, play: true);
       source.add(chunk.buffer.asUint8List());
       await player.stream.currentAo
           .firstWhere((ao) => ao == 'audiotrack')

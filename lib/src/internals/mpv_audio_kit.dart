@@ -18,8 +18,10 @@ import 'passthrough_codecs.dart';
 /// {@category Platforms}
 /// {@category Web}
 /// {@category Android TV}
+/// {@category Wear OS}
 /// {@category Tizen}
 /// {@category webOS}
+/// {@category HarmonyOS}
 abstract final class MpvAudioKit {
   MpvAudioKit._();
 

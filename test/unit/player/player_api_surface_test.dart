@@ -44,7 +44,7 @@ class _ApiProbe implements PlayerApi {
   @override
   Future<PcmSource> openPcmStream(
     PcmFormat format, {
-    bool play = true,
+    bool? play,
     Duration maxBuffered = const Duration(seconds: 30),
     bool lowLatency = false,
     Map<String, Object?>? extras,
@@ -60,7 +60,10 @@ class _ApiProbe implements PlayerApi {
   Future<void> pause() => _record('pause');
 
   @override
-  Future<void> stop() => _record('stop');
+  Future<void> stop({bool keepPlaylist = false}) => _record('stop');
+
+  @override
+  Future<void> get initialized => Future.value();
 
   @override
   Future<void> seekToPercent(
@@ -278,6 +281,9 @@ class _ApiProbe implements PlayerApi {
 
   @override
   Future<void> setTlsCaFile(String path) => _record('setTlsCaFile');
+
+  @override
+  Future<void> setTlsExtraCaFile(String path) => _record('setTlsExtraCaFile');
 
   @override
   Future<void> setHlsBitrate(HlsBitrate hlsBitrate) => _record('setHlsBitrate');

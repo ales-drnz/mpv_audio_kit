@@ -31,20 +31,30 @@ void main() {
     });
 
     test(
-      'setVolumeMax with out-of-range value throws MpvCommandException',
+      'setVolumeMax out of its range throws RangeError and writes nothing',
       () async {
-        // mpv hard-rejects volume-max below 100 with a negative rc.
+        final before = player.state.settings.volumeMax;
+        await expectLater(player.setVolumeMax(50), throwsRangeError);
+        expect(player.state.settings.volumeMax, before);
+        expect(
+          double.parse((await player.getRawProperty('volume-max'))!),
+          before,
+        );
+      },
+      timeout: const Timeout(Duration(seconds: 10)),
+    );
+
+    test(
+      'a value mpv refuses throws MpvCommandException with its rc',
+      () async {
+        // No Dart check stands before a raw write: mpv's refusal comes back.
         await expectLater(
-          player.setVolumeMax(50),
+          player.setRawProperty('volume-max', '50'),
           throwsA(
             isA<MpvCommandException>()
                 .having((e) => e.name, 'name', 'volume-max')
                 .having((e) => e.code, 'code', lessThan(0)),
           ),
-          reason:
-              'A typed setter that hands an out-of-range value to mpv must '
-              'throw MpvCommandException, not silently swallow the rc and leave '
-              'state.volumeMax desynced from the engine.',
         );
       },
       timeout: const Timeout(Duration(seconds: 10)),

@@ -1,4 +1,4 @@
-What each platform has. Android TV runs the Android build, and tvOS a build of the same sources as iOS, so their rows match those platforms except where they say otherwise.
+What each platform has. Android TV and Wear OS run the Android build, and tvOS a build of the same sources as iOS, so their rows match those platforms except where they say otherwise.
 
 ## Output
 
@@ -11,9 +11,11 @@ What each platform has. Android TV runs the Android build, and tvOS a build of t
 | Linux | `pipewire`, `pulse`, `alsa` | Those of each driver | All three |
 | Web | `webaudio` | None, the page's output | No |
 | Android TV | As Android | As Android | As Android, over HDMI |
+| Wear OS | As Android | None, the system routes: the app asks for a Bluetooth output | No |
 | tvOS | As iOS | As iOS | Not checked |
 | Tizen | `tizen` | None | No |
 | webOS | `alsa` | ALSA's devices | Not checked |
+| HarmonyOS | `ohaudio` | None, the system routes | No |
 
 - Each build also has the `null` output, which plays on when no device opens.
 - `auto`, the default, takes the first driver that opens, in the order of the table.
@@ -32,9 +34,11 @@ What each platform has. Android TV runs the Android build, and tvOS a build of t
 | Linux | MPRIS | Yes | Yes | Yes | Yes |
 | Web | `navigator.mediaSession` | No | Yes | Yes | Yes |
 | Android TV | As Android, for the remote's keys | Yes | Yes | Yes | Yes |
+| Wear OS | As Android | Yes | Yes | Yes | Yes |
 | tvOS | Now Playing | Yes | Yes | Yes | Yes |
 | Tizen | None | Yes | Yes | Yes | Yes |
 | webOS | None | Yes | Yes | Yes | Yes |
+| HarmonyOS | AVSession, with the continuous task of audio playback | Yes | Yes | Yes | Yes |
 
 - Analysis is the spectrum, the PCM stream, the taps, the waveform and the loudness scan and meter. While a track passes through, the spectrum, the PCM stream, the taps and the meter emit nothing.
 - Live PCM is `Player.openPcmStream`.
@@ -47,7 +51,7 @@ What each platform has. Android TV runs the Android build, and tvOS a build of t
 | :--- | :--- |
 | `file://` | Every platform except the web |
 | `asset:///` | Every platform |
-| `content://` | Android and Android TV |
+| `content://` | Android, Android TV and Wear OS |
 | `http://`, `https://`, HLS, DASH | Every platform. On the web the browser fetches them, under its own rules. |
 | `blob:`, `Media.fromBlob` | The web only |
 
@@ -59,9 +63,15 @@ What each platform has. Android TV runs the Android build, and tvOS a build of t
 
 See the [Web](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Web-topic.html) topic.
 
-## Where this comes from
+## Where libmpv comes from
+
+Each Flutter toolchain gets the libmpv of the release the package pins in its own way:
+
+<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/libmpv_bundling.png" width="100%" alt="How each Flutter toolchain gets its libmpv: the build hook, the web assets, SwiftPM or CMake">
+
+## Where the rows come from
 
 - The drivers and `smb2://` are those the libmpv build of each target enables. The web build has no SMB client.
 - A device list comes from the driver. A driver without one leaves the choice to the system.
-- The media session rows follow [Media session](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Media%20session-topic.html), [Tizen](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Tizen-topic.html) and [webOS](https://pub.dev/documentation/mpv_audio_kit/latest/topics/webOS-topic.html).
+- The media session rows follow [Media session](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Media%20session-topic.html), [Tizen](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Tizen-topic.html), [webOS](https://pub.dev/documentation/mpv_audio_kit/latest/topics/webOS-topic.html) and [HarmonyOS](https://pub.dev/documentation/mpv_audio_kit/latest/topics/HarmonyOS-topic.html).
 - "Not checked" means the driver's code does not settle it and no test plays it.

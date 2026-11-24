@@ -548,6 +548,9 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
+    env:
+      # Gradle's own retries of a download, as in devices.yml.
+      GRADLE_OPTS: -Dorg.gradle.internal.repository.max.retries=6 -Dorg.gradle.internal.repository.initial.backoff=2000
     strategy:
       fail-fast: false
       matrix:
@@ -612,6 +615,7 @@ jobs:
             test_app/android/app/*.gradle*
             test_app/android/gradle/wrapper/gradle-wrapper.properties
             android/*.gradle*
+            .github/flutter-version
       # Flutter is cached on Linux only, as in Test (macOS).
       - uses: ./.github/actions/flutter
         with:

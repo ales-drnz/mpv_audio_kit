@@ -19,8 +19,9 @@ import '../types/sealed/media_session_artwork.dart';
 /// Apply via [Player.setMediaSession]; pass `null` to disable the
 /// session entirely. Only one [Player] instance per process can have
 /// an active media session at a time; attempting to enable a second
-/// throws [StateError], also from another Flutter engine of the same
-/// process, where the native side refuses the enable.
+/// throws a [MediaSessionException], also from another Flutter engine of
+/// the same process, where the native side refuses the enable: its
+/// [MediaSessionException.reason] says which case it is.
 ///
 /// **Metadata fields** ([title], [artist], [album], [duration]) are
 /// *overrides*: a `null` field falls back to the value derived from
@@ -48,7 +49,7 @@ import '../types/sealed/media_session_artwork.dart';
 /// ```
 ///
 /// {@category Media session}
-class MediaSession {
+final class MediaSession {
   // ── Metadata override (null = derive from mpv) ─────────────────────
 
   /// Track title shown on the lockscreen or SMTC top line. `null` falls

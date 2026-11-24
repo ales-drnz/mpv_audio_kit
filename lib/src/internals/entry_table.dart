@@ -197,8 +197,17 @@ final class EntryTable {
   bool get unseenHeld =>
       _byId.entries.any((e) => e.value._live != null && e.key > _newestListed);
 
+  /// The files mpv started (START_FILE) so far: a call that awaits the
+  /// core tells by it whether a file started meanwhile.
+  int get starts => _starts;
+
+  /// The entry that `Player.stop(keepPlaylist: true)` stopped, which the
+  /// next `Player.play` starts again; `null` once any file starts.
+  int? stopped;
+
   /// mpv started the file of entry [id] (START_FILE).
   void onStartFile(int id) {
+    stopped = null;
     _starts++;
     _loading = id;
     _started = (id, mediaOf(id));

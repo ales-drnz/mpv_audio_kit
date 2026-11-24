@@ -153,6 +153,7 @@ mixin _PropertiesModule on _PlayerBase {
         mediaByEntry: _entries.media,
         previous: _state.playback.playlist,
         skip: hidden,
+        heldId: _entries.stopped,
       );
       _entries.hiddenAt = hidden;
       _updateField(

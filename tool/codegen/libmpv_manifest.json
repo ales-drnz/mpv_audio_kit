@@ -1,5 +1,5 @@
 {
-  "release": "r26",
+  "release": "r27",
   "mpv": "0.42.0",
   "ffmpeg": "9.0.2",
   "license": "LGPL-3.0-or-later",
@@ -113,13 +113,15 @@
       "libsmb2",
       "loudness_scan",
       "pcm_tap",
+      "playlist_no_current",
       "playlist_prev_dos_path",
       "prefetch",
       "read_error",
       "strip_libass",
       "strip_mpv_dead",
       "strip_swscale",
-      "strip_win_resources"
+      "strip_win_resources",
+      "tls_extra_ca"
     ],
     "android-armeabi-v7a": [
       "advanced_editlist",
@@ -142,13 +144,15 @@
       "libsmb2",
       "loudness_scan",
       "pcm_tap",
+      "playlist_no_current",
       "playlist_prev_dos_path",
       "prefetch",
       "read_error",
       "strip_libass",
       "strip_mpv_dead",
       "strip_swscale",
-      "strip_win_resources"
+      "strip_win_resources",
+      "tls_extra_ca"
     ],
     "android-x86_64": [
       "advanced_editlist",
@@ -171,13 +175,15 @@
       "libsmb2",
       "loudness_scan",
       "pcm_tap",
+      "playlist_no_current",
       "playlist_prev_dos_path",
       "prefetch",
       "read_error",
       "strip_libass",
       "strip_mpv_dead",
       "strip_swscale",
-      "strip_win_resources"
+      "strip_win_resources",
+      "tls_extra_ca"
     ],
     "ios": [
       "advanced_editlist",
@@ -199,13 +205,15 @@
       "libsmb2",
       "loudness_scan",
       "pcm_tap",
+      "playlist_no_current",
       "playlist_prev_dos_path",
       "prefetch",
       "read_error",
       "strip_libass",
       "strip_mpv_dead",
       "strip_swscale",
-      "strip_win_resources"
+      "strip_win_resources",
+      "tls_extra_ca"
     ],
     "linux-aarch64": [
       "advanced_editlist",
@@ -227,13 +235,15 @@
       "libsmb2",
       "loudness_scan",
       "pcm_tap",
+      "playlist_no_current",
       "playlist_prev_dos_path",
       "prefetch",
       "read_error",
       "strip_libass",
       "strip_mpv_dead",
       "strip_swscale",
-      "strip_win_resources"
+      "strip_win_resources",
+      "tls_extra_ca"
     ],
     "linux-x86_64": [
       "advanced_editlist",
@@ -255,13 +265,15 @@
       "libsmb2",
       "loudness_scan",
       "pcm_tap",
+      "playlist_no_current",
       "playlist_prev_dos_path",
       "prefetch",
       "read_error",
       "strip_libass",
       "strip_mpv_dead",
       "strip_swscale",
-      "strip_win_resources"
+      "strip_win_resources",
+      "tls_extra_ca"
     ],
     "macos": [
       "advanced_editlist",
@@ -283,13 +295,77 @@
       "libsmb2",
       "loudness_scan",
       "pcm_tap",
+      "playlist_no_current",
       "playlist_prev_dos_path",
       "prefetch",
       "read_error",
       "strip_libass",
       "strip_mpv_dead",
       "strip_swscale",
-      "strip_win_resources"
+      "strip_win_resources",
+      "tls_extra_ca"
+    ],
+    "ohos-arm64-v8a": [
+      "advanced_editlist",
+      "af_command_args",
+      "afmt_reset",
+      "ao_ohaudio",
+      "audio_output_state",
+      "bulk_analysis",
+      "chain_eof",
+      "chapter_list_reset",
+      "dash_keepalive",
+      "embed_cacert",
+      "embedded_cover_art",
+      "fd_pread",
+      "filter_label_tap",
+      "gapless_tail",
+      "hotplug_core_thread",
+      "keep_open_park",
+      "lavfi_eof_passthrough",
+      "libsmb2",
+      "loudness_scan",
+      "pcm_tap",
+      "playlist_no_current",
+      "playlist_prev_dos_path",
+      "prefetch",
+      "read_error",
+      "strip_libass",
+      "strip_mpv_dead",
+      "strip_swscale",
+      "strip_win_resources",
+      "tls_extra_ca"
+    ],
+    "ohos-x86_64": [
+      "advanced_editlist",
+      "af_command_args",
+      "afmt_reset",
+      "ao_ohaudio",
+      "audio_output_state",
+      "bulk_analysis",
+      "chain_eof",
+      "chapter_list_reset",
+      "dash_keepalive",
+      "embed_cacert",
+      "embedded_cover_art",
+      "fd_pread",
+      "filter_label_tap",
+      "gapless_tail",
+      "hotplug_core_thread",
+      "keep_open_park",
+      "lavfi_eof_passthrough",
+      "libsmb2",
+      "loudness_scan",
+      "pcm_tap",
+      "playlist_no_current",
+      "playlist_prev_dos_path",
+      "prefetch",
+      "read_error",
+      "strip_libass",
+      "strip_mpv_dead",
+      "strip_swscale",
+      "strip_win_resources",
+      "tls_extra_ca"
     ],
     "tizen-armv7l": [
       "advanced_editlist",
@@ -312,13 +388,15 @@
       "libsmb2",
       "loudness_scan",
       "pcm_tap",
+      "playlist_no_current",
       "playlist_prev_dos_path",
       "prefetch",
       "read_error",
       "strip_libass",
       "strip_mpv_dead",
       "strip_swscale",
-      "strip_win_resources"
+      "strip_win_resources",
+      "tls_extra_ca"
     ],
     "tizen-x86_64": [
       "advanced_editlist",
@@ -341,13 +419,15 @@
       "libsmb2",
       "loudness_scan",
       "pcm_tap",
+      "playlist_no_current",
       "playlist_prev_dos_path",
       "prefetch",
       "read_error",
       "strip_libass",
       "strip_mpv_dead",
       "strip_swscale",
-      "strip_win_resources"
+      "strip_win_resources",
+      "tls_extra_ca"
     ],
     "tvos": [
       "advanced_editlist",
@@ -369,13 +449,15 @@
       "libsmb2",
       "loudness_scan",
       "pcm_tap",
+      "playlist_no_current",
       "playlist_prev_dos_path",
       "prefetch",
       "read_error",
       "strip_libass",
       "strip_mpv_dead",
       "strip_swscale",
-      "strip_win_resources"
+      "strip_win_resources",
+      "tls_extra_ca"
     ],
     "web": [
       "advanced_editlist",
@@ -395,6 +477,7 @@
       "lavfi_eof_passthrough",
       "loudness_scan",
       "pcm_tap",
+      "playlist_no_current",
       "playlist_prev_dos_path",
       "prefetch",
       "read_error",
@@ -423,13 +506,15 @@
       "libsmb2",
       "loudness_scan",
       "pcm_tap",
+      "playlist_no_current",
       "playlist_prev_dos_path",
       "prefetch",
       "read_error",
       "strip_libass",
       "strip_mpv_dead",
       "strip_swscale",
-      "strip_win_resources"
+      "strip_win_resources",
+      "tls_extra_ca"
     ],
     "windows-arm64": [
       "advanced_editlist",
@@ -451,6 +536,7 @@
       "libsmb2",
       "loudness_scan",
       "pcm_tap",
+      "playlist_no_current",
       "playlist_prev_dos_path",
       "prefetch",
       "read_error",
@@ -458,7 +544,8 @@
       "strip_mpv_dead",
       "strip_swscale",
       "strip_win_resources",
-      "timer_resolution"
+      "timer_resolution",
+      "tls_extra_ca"
     ],
     "windows-x86_64": [
       "advanced_editlist",
@@ -480,6 +567,7 @@
       "libsmb2",
       "loudness_scan",
       "pcm_tap",
+      "playlist_no_current",
       "playlist_prev_dos_path",
       "prefetch",
       "read_error",
@@ -487,32 +575,35 @@
       "strip_mpv_dead",
       "strip_swscale",
       "strip_win_resources",
-      "timer_resolution"
+      "timer_resolution",
+      "tls_extra_ca"
     ]
   },
   "source": {
-    "commit": "ede2de14c605c8985b616a6044585af21b858086",
-    "run": "43921534261"
+    "commit": "49d1845eb1e135ab0650b561d79b00c7d445e105",
+    "run": "45274829541"
   },
   "assets": {
-    "libmpv_android-arm64-v8a.so": "36884ee5c162f3a676cfbbebea737c3379981a372b56d3a0d72006ce560b0899",
-    "libmpv_android-armeabi-v7a.so": "050b17820eea37e8e2e64704ed025d9daec7e51a74a18d6c6f0333b15ddc4557",
-    "libmpv_android-x86_64.so": "1eb936ee38b8ba97db4bd6d5f5d8979d7e69a427011ca65b73d1fdc40e9ea549",
-    "libmpv_ios.xcframework.zip": "18235b759fcd7591dc5da987119a32d16b76f45601e92b73d80d4b80406f09aa",
-    "libmpv_linux-aarch64.so": "4f68d40ac29240d19f4a5770346496cc4b23f0d2436ef608bce8ff65f00727cb",
-    "libmpv_linux-x86_64.so": "b44be4f526d74825fd9f4d2f9b6a2362cd3dabc5434ac83c412f652ff94495cd",
-    "libmpv_macos.xcframework.zip": "a734a0526b3a536709ceb1cd7ee4caa4a2045e7ddfe910e376269bbe5f4234d3",
-    "libmpv_tizen-armv7l.so": "6dbe648b566264c7d920d4c52e1ee39b253fc3ac004c4f39a40e2f953fa9f112",
-    "libmpv_tizen-x86_64.so": "a388ced43ef043b1b929b56ef5b9dfeb24d302139a29838a56df9ef5189e3876",
-    "libmpv_tvos.xcframework.zip": "2ba4ff3cdcb9e63259ce33298ec2144be45640792dccb7dc450617231ec81cd6",
-    "libmpv_web.zip": "2b82ed8cd0b3764c5182db623753675772f8017d1f1895ebd7811202d9e0565d",
-    "libmpv_webos-armv7l.so": "c47e14efaa4469bee3b04bf648774e166f08382046aead73cea6fe298f13b6e9",
-    "libmpv_windows-arm64.dll": "50297806c489266eeccffa8d92315a465f382db621dca9173976b5f6a94e1aa7",
-    "libmpv_windows-x86_64.dll": "1ba497325c21b83f23369f3e51f55792929454f278b2f81dc9f304a0b13eabaa"
+    "libmpv_android-arm64-v8a.so": "70a9d58cf2a56dd0fd389385efcbf719278cae796a5ee250c51a22ce740ee7e6",
+    "libmpv_android-armeabi-v7a.so": "ba427db72afbfa4e7cc70e1cba84d58d23fa6871e4a71e4ecdface18f393f10b",
+    "libmpv_android-x86_64.so": "c1d64c62e58cd9451b5885a97b871b81166693cad0c7f98fa890f87b2fde09e6",
+    "libmpv_ios.xcframework.zip": "d12798c0f72661035bba7108e3b9d7b8a77107675fe76004c0dc7c24d368bdd8",
+    "libmpv_linux-aarch64.so": "0db8bd8c55f84cc641209f8523fac11547be5a8d099896430c019065ee3974e6",
+    "libmpv_linux-x86_64.so": "5b974ea687640a545f4c43e89be168bca49a3eda29e2dfd85baf551c34ee4b35",
+    "libmpv_macos.xcframework.zip": "7709cc28b14b71ba0c80e9d00a561ae6279cf7e3590ba9b9dff8b3db8d3f95cc",
+    "libmpv_ohos-arm64-v8a.so": "0b6e7a8aaedfdb57b28bff2b15a8f8a99ba8d4c974d2c90923e5d66594ca2d1e",
+    "libmpv_ohos-x86_64.so": "2eff5d0ed6b96a6fd223e85fe7b188b2c921b9d62eb99e8c25d36c3e72eba0df",
+    "libmpv_tizen-armv7l.so": "7ac807280291bef753ccc7f6c9776dbeb17f85a17d9db82a5fd3e0b0830ffd4f",
+    "libmpv_tizen-x86_64.so": "279dd4848557db92ca18ac9e2ccfae7abb5753de80932f11ae2451bb671f545f",
+    "libmpv_tvos.xcframework.zip": "14b1ce4754f3be5e80eb145998d5b79ba6baaa8b442c45b284a81df147656b89",
+    "libmpv_web.zip": "d3cdb798603104e9f571d7ade2142acd7cf9a8411d456d0a242dc84cb1e02d03",
+    "libmpv_webos-armv7l.so": "557d4597767075476a20d9f4a4e9f9b42ad604af2ea66f0876382cc2862f436c",
+    "libmpv_windows-arm64.dll": "9db0dc8b80a5b7e40e7867399021cbbf613f712574912a0ca51c482d38c6d6f7",
+    "libmpv_windows-x86_64.dll": "1b3d4a9711d03bb1e02c4db784acd1b56caec0512282ef8ab50f9a33638c0f66"
   },
   "licenses": {
     "asset": "licenses.zip",
-    "sha256": "c9585343e31b698f55eb036add7a5d0cbc2a14daa0fde60a47d70aa19ded2ec0"
+    "sha256": "7e71b1cdcf6bd13245055352d8fff1820c4eb6117bac13286870623ead95cd9b"
   },
   "components": {
     "android-arm64-v8a": {
@@ -598,6 +689,32 @@
       "mozilla-ca": "as of Thu Nov  5 04:12:01 2026 GMT"
     },
     "macos": {
+      "mpv": "0.42.0",
+      "ffmpeg": "9.0.2",
+      "openssl": "4.1.0",
+      "libplacebo": "7.387.0",
+      "libxml2": "2.15.4",
+      "zlib": "1.4",
+      "bzip2": "1.0.8",
+      "xz": "5.8.4",
+      "speexdsp": "1.2.1",
+      "libsmb2": "6.0.0",
+      "mozilla-ca": "as of Thu Nov  5 04:12:01 2026 GMT"
+    },
+    "ohos-arm64-v8a": {
+      "mpv": "0.42.0",
+      "ffmpeg": "9.0.2",
+      "openssl": "4.1.0",
+      "libplacebo": "7.387.0",
+      "libxml2": "2.15.4",
+      "zlib": "1.4",
+      "bzip2": "1.0.8",
+      "xz": "5.8.4",
+      "speexdsp": "1.2.1",
+      "libsmb2": "6.0.0",
+      "mozilla-ca": "as of Thu Nov  5 04:12:01 2026 GMT"
+    },
+    "ohos-x86_64": {
       "mpv": "0.42.0",
       "ffmpeg": "9.0.2",
       "openssl": "4.1.0",
@@ -722,7 +839,7 @@
       "compiler": "Apple clang version 21.0.0 (clang-2100.1.1.101)",
       "meson": "1.12.1",
       "ninja": "1.13.2",
-      "cmake": "4.4.5",
+      "cmake": "4.5.0",
       "xcode": "Xcode 26.6 Build version 17F113",
       "sdk-iphoneos": "26.5",
       "sdk-iphonesimulator": "26.5"
@@ -743,9 +860,21 @@
       "compiler": "Apple clang version 21.0.0 (clang-2100.1.1.101)",
       "meson": "1.12.1",
       "ninja": "1.13.2",
-      "cmake": "4.4.5",
+      "cmake": "4.5.0",
       "xcode": "Xcode 26.6 Build version 17F113",
       "sdk-macosx": "26.5"
+    },
+    "ohos-arm64-v8a": {
+      "compiler": "OHOS (dev) clang version 15.0.4 (llvm-project 3f002d04ba6b3a7659c601207c89d3a896b82546)",
+      "meson": "1.12.1",
+      "ninja": "1.11.1",
+      "cmake": "3.28.3"
+    },
+    "ohos-x86_64": {
+      "compiler": "OHOS (dev) clang version 15.0.4 (llvm-project 3f002d04ba6b3a7659c601207c89d3a896b82546)",
+      "meson": "1.12.1",
+      "ninja": "1.11.1",
+      "cmake": "3.28.3"
     },
     "tizen-armv7l": {
       "compiler": "Ubuntu clang version 18.1.3 (1ubuntu1)",
@@ -763,7 +892,7 @@
       "compiler": "Apple clang version 21.0.0 (clang-2100.1.1.101)",
       "meson": "1.12.1",
       "ninja": "1.13.2",
-      "cmake": "4.4.5",
+      "cmake": "4.5.0",
       "xcode": "Xcode 26.6 Build version 17F113",
       "sdk-appletvos": "26.5",
       "sdk-appletvsimulator": "26.5"
@@ -800,7 +929,7 @@
     "emscripten": "7.0.0",
     "files": {
       "libmpv.mjs": "b71e00645fe180b9e0e97d2896746c48ebd93b9ae8ae76b3c1fbc6fbe70a087e",
-      "libmpv.wasm": "be1898d79cab2994b24dd889438b23abb45c9dcd36fdc355d588ecd2886c9e9b",
+      "libmpv.wasm": "89c46cf6d36b865ba5421973aa4ab25d44cac83c19bedf962adddf7579ca092a",
       "mak_webaudio_processor.js": "253e3882e772051e749292e518768c75e2d61a807355d45d00ad7215f7c7bee4"
     }
   },

@@ -1,6 +1,6 @@
 name: mpv_audio_kit
-description: Dart audio player built on mpv v0.42.0, with audio filters, equalizer, visualizer and waveform. For Android, iOS, macOS, Windows, Linux, web, Android TV, tvOS, Tizen and webOS.
-version: 0.7.2
+description: Audio player on mpv v0.42.0 with filters, equalizer, visualizer and waveform, for Android, iOS, macOS, Windows, Linux, web, Android TV, tvOS, Wear OS, Tizen, webOS and HarmonyOS.
+version: 0.8.0
 homepage: https://github.com/ales-drnz/mpv_audio_kit
 repository: https://github.com/ales-drnz/mpv_audio_kit
 issue_tracker: https://github.com/ales-drnz/mpv_audio_kit/issues
@@ -80,6 +80,11 @@ flutter:
         pluginClass: MpvAudioKitPlugin
         ffiPlugin: true
         sharedDarwinSource: true
+      # Flutter-OH (https://gitcode.com/CPF-Flutter/flutter_flutter) builds
+      # ohos/ as a HAR into the app: the media session (AVSession) and the
+      # continuous task of audio playback. Flutter itself skips the key.
+      ohos:
+        pluginClass: MpvAudioKitPlugin
       # flutter-tvos (https://fluttertv.dev) reads the plugin from
       # tvos/Package.swift, which also links libmpv: see there.
       tvos:

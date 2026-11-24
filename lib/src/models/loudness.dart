@@ -20,7 +20,7 @@ import '../internals/unset_sentinel.dart';
 /// track change, output reopen and rebuild of the stage: [integrated] and
 /// [range] cover only the audio played since then. For the loudness of a
 /// whole track use `PlayerStream.loudnessScan`.
-class Loudness {
+final class Loudness {
   /// Momentary loudness (400 ms window), in LUFS.
   final double? momentary;
 

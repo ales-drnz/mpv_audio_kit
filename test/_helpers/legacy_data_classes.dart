@@ -8,13 +8,113 @@
 // test of the generated ones (test/unit/models/data_classes_test.dart) compares
 // with these. Frozen: never regenerate or edit them.
 //
-// The oracle reads the flat fields of PlayerState, deprecated since
-// 0.7.0, on purpose: it is the 0.6.1 shape.
-// ignore_for_file: deprecated_member_use_from_same_package
+// The oracle reads the flat fields of PlayerState on purpose: it is the
+// 0.6.1 shape. They left the package in 0.8.0, so [_FlatFields] gives
+// them back here, read from the groups.
 
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import 'package:mpv_audio_kit/src/internals/unset_sentinel.dart';
+
+/// The flat fields of 0.6 to 0.7, removed in 0.8.0, which the oracle reads.
+extension _FlatFields on PlayerState {
+  Playlist get playlist => playback.playlist;
+  bool get playing => playback.playing;
+  bool get playWhenReady => playback.playWhenReady;
+  bool get completed => playback.completed;
+  Duration get position => playback.position;
+  Duration get duration => playback.duration;
+  bool get seeking => playback.seeking;
+  bool get seekable => playback.seekable;
+  bool get partiallySeekable => playback.partiallySeekable;
+  double get percentPos => playback.percentPos;
+  Duration get timeRemaining => playback.timeRemaining;
+  Duration get playtimeRemaining => playback.playtimeRemaining;
+  bool get eofReached => playback.eofReached;
+  Duration get audioPts => playback.audioPts;
+  int? get currentChapter => playback.currentChapter;
+  Loop get loop => playback.loop;
+  bool get shuffle => playback.shuffle;
+  Duration? get abLoopA => playback.abLoopA;
+  Duration? get abLoopB => playback.abLoopB;
+  int? get abLoopCount => playback.abLoopCount;
+  int? get remainingAbLoops => playback.remainingAbLoops;
+  bool get buffering => network.buffering;
+  Duration get buffer => network.buffer;
+  double get bufferingPercentage => network.bufferingPercentage;
+  Duration get bufferDuration => network.bufferDuration;
+  DemuxerCacheState get demuxerCacheState => network.demuxerCacheState;
+  bool get pausedForCache => network.pausedForCache;
+  bool get demuxerViaNetwork => network.demuxerViaNetwork;
+  bool get demuxerIdle => network.demuxerIdle;
+  double get cacheSpeed => network.cacheSpeed;
+  int get cacheBufferingState => network.cacheBufferingState;
+  bool? get readError => network.readError;
+  int? get skippedSegments => network.skippedSegments;
+  Map<String, String> get metadata => file.metadata;
+  Map<String, String> get chapterMetadata => file.chapterMetadata;
+  List<Chapter> get chapters => file.chapters;
+  List<MpvTrack> get tracks => file.tracks;
+  MpvTrack? get currentAudioTrack => file.currentAudioTrack;
+  AudioParams get audioParams => file.audioParams;
+  double? get audioBitrate => file.audioBitrate;
+  CoverArt? get coverArt => file.coverArt;
+  String get mediaTitle => file.mediaTitle;
+  String get fileFormat => file.fileFormat;
+  int get fileSize => file.fileSize;
+  String get path => file.path;
+  String get filename => file.filename;
+  String get streamPath => file.streamPath;
+  String get streamOpenFilename => file.streamOpenFilename;
+  String get playlistPath => file.playlistPath;
+  String get currentDemuxer => file.currentDemuxer;
+  Duration get demuxerStartTime => file.demuxerStartTime;
+  AudioParams get audioOutParams => output.audioOutParams;
+  Device get audioDevice => output.audioDevice;
+  List<Device> get audioDevices => output.audioDevices;
+  AudioOutputState get audioOutputState => output.audioOutputState;
+  String get currentAo => output.currentAo;
+  double? get systemVolume => output.systemVolume;
+  bool? get systemMute => output.systemMute;
+  double get volume => settings.volume;
+  bool get mute => settings.mute;
+  double get volumeMax => settings.volumeMax;
+  double get volumeGain => settings.volumeGain;
+  double get volumeGainMin => settings.volumeGainMin;
+  double get volumeGainMax => settings.volumeGainMax;
+  double get rate => settings.rate;
+  double get pitch => settings.pitch;
+  bool get pitchCorrection => settings.pitchCorrection;
+  Duration get audioDelay => settings.audioDelay;
+  Gapless get gapless => settings.gapless;
+  ReplayGainSettings get replayGain => settings.replayGain;
+  List<AudioEffect> get audioEffects => settings.audioEffects;
+  SpectrumSettings get spectrum => settings.spectrum;
+  Cover get coverArtAuto => settings.coverArtAuto;
+  bool get prefetchPlaylist => settings.prefetchPlaylist;
+  CacheSettings get cache => settings.cache;
+  DemuxerSettings get demuxer => settings.demuxer;
+  Duration get networkTimeout => settings.networkTimeout;
+  bool get tlsVerify => settings.tlsVerify;
+  String get tlsCaFile => settings.tlsCaFile;
+  HlsBitrate get hlsBitrate => settings.hlsBitrate;
+  bool get cookies => settings.cookies;
+  String get httpProxy => settings.httpProxy;
+  bool get audioExclusive => settings.audioExclusive;
+  bool get audioMediaRole => settings.audioMediaRole;
+  Duration get audioBuffer => settings.audioBuffer;
+  bool get audioStreamSilence => settings.audioStreamSilence;
+  bool get audioNullUntimed => settings.audioNullUntimed;
+  Set<Spdif> get audioSpdif => settings.audioSpdif;
+  int get audioSampleRate => settings.audioSampleRate;
+  Format get audioFormat => settings.audioFormat;
+  Channels get audioChannels => settings.audioChannels;
+  String get audioClientName => settings.audioClientName;
+  String get audioDriver => settings.audioDriver;
+  MediaSession? get mediaSession => settings.mediaSession;
+  String get mpvVersion => versions.mpvVersion;
+  String get ffmpegVersion => versions.ffmpegVersion;
+}
 
 bool _setEq<T>(Set<T> a, Set<T> b) {
   if (identical(a, b)) return true;

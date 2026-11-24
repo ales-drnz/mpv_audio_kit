@@ -52,7 +52,8 @@ const engineSessionPortName = 'mpv_audio_kit_test_app/engine_session';
 
 /// The entrypoint of the second engine of the media session test. On each
 /// 'enable' from the test it calls setMediaSession and answers 'accepted',
-/// 'refused' (a StateError, with the state left off) or what went wrong.
+/// 'refused' (a MediaSessionException for another engine, with the state
+/// left off) or what went wrong.
 @pragma('vm:entry-point')
 Future<void> engineSessionMain() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -67,9 +68,12 @@ Future<void> engineSessionMain() async {
     try {
       await player.setMediaSession(const MediaSession(title: 'Second engine'));
       test.send('accepted');
-    } on StateError {
+    } on MediaSessionException catch (e) {
+      final off = player.state.settings.mediaSession == null;
       test.send(
-        player.state.settings.mediaSession == null
+        e.reason != MediaSessionRefusal.otherEngine
+            ? 'refused as ${e.reason.name}'
+            : off
             ? 'refused'
             : 'refused, state kept',
       );

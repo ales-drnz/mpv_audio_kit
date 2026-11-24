@@ -28,6 +28,17 @@ void main() {
     await player.dispose();
   });
 
+  test('initialized completes with the PlayerInitException', () async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    MpvAudioKit.ensureInitialized(
+      libmpv: '/nonexistent/libmpv_audio_kit.so',
+      hotRestartCleanup: false,
+    );
+    final player = Player();
+    await expectLater(player.initialized, throwsA(isA<PlayerInitException>()));
+    await player.dispose();
+  });
+
   test('a failed init nobody awaits is no unhandled error', () async {
     TestWidgetsFlutterBinding.ensureInitialized();
     MpvAudioKit.ensureInitialized(

@@ -30,8 +30,8 @@ def architecture(t):
     EV = 350
     d.node(EV, yc[1], 230, 64, 'mpv_wait_event', 'blocks here, off the UI thread', sub2='clock values every 33 ms at most')
     # native
-    d.node(PL, yc[2], 250, 64, 'libmpv', 'mpv 0.41 and ffmpeg: demuxer,', sub2='playback and analysis threads')
-    d.node(MS, yc[2], 180, 64, 'Platform plugin', 'Kotlin, Swift, C++', role='neutral', mono=False)
+    d.node(PL, yc[2], 250, 64, 'libmpv', 'mpv 0.42 and FFmpeg: demuxer,', sub2='playback and analysis threads')
+    d.node(MS, yc[2], 180, 64, 'Platform plugin', 'Kotlin, Swift, C++, ArkTS', role='neutral', mono=False)
     d.outline(MS, yc[2], 180, 64)
     # OS
     d.node(PL, yc[3], 250, 60, 'Audio driver', 'WASAPI, CoreAudio, AAudio,', sub2='PipeWire and others', role='neutral', mono=False)
@@ -137,7 +137,7 @@ def cache_feed(t):
     d.text(X0 - 16, wy + 15, 'partial while decoding', anchor='end')
     d.bracket(X0, AN - 4, wy + amp + 14, 'bins filled from the cache', up=True)
     d.bracket(AN + 4, X1, wy + amp + 14, 'filled is 0: draw a flat baseline', up=True)
-    d.text(d.w / 2, 310, 'stream.loudnessScan reads the same decode, so it adds no download either.')
+    d.rich(d.w / 2, 310, [('stream.loudnessScan', 'code'), (' reads the same decode, so it adds no download either.', 'text')], anchor='middle')
 
     # section 2
     d.rule(338)
@@ -154,8 +154,7 @@ def cache_feed(t):
     _head(d, PH, ya, 17)
     AE = 470
     d.rich(X0, yb - 20, [('analysis', 'strong'), ('  downloads the file again, from the start', 'text')])
-    d.rich(X0, yb + 34, [('with the same ', 'text'), ('tls-verify', 'code'), (', ', 'text'), ('tls-ca-file', 'code'),
-                         (', headers, user agent and cookies as playback', 'text')])
+    d.rich(X0, yb + 34, [('with the same TLS settings, CA files included, headers, user agent and cookies as playback', 'text')])
     _file_bar(d, X0, X1, yb, 22, [(X0, AE)])
     _head(d, AE - 6, yb, 17)
     d.text(d.w / 2, 580, 'Any one of these rules out the single pass:', color='label', weight=600)
@@ -198,7 +197,7 @@ def _android(d, cx, y):
 
 def _macos(d, cx, y):
     c = d.c
-    w, h = 156, 116
+    w, h = 124, 116
     x = cx - w / 2
     y0 = y + 21
     d.rect(x, y0, w, h, c['line'], r=8, op=0.10, stroke=c['line'], sw=2)
@@ -214,7 +213,7 @@ def _macos(d, cx, y):
 
 def _windows(d, cx, y):
     c = d.c
-    w, h = 156, 116
+    w, h = 124, 116
     x = cx - w / 2
     y0 = y + 21
     d.rect(x, y0, w, h, c['line'], r=6, op=0.10, stroke=c['line'], sw=2)
@@ -227,7 +226,7 @@ def _windows(d, cx, y):
 
 def _linux(d, cx, y):
     c = d.c
-    w, h = 156, 116
+    w, h = 124, 116
     x = cx - w / 2
     y0 = y + 21
     d.rect(x, y0, w, h, c['line'], r=6, op=0.10, stroke=c['line'], sw=2)
@@ -237,6 +236,31 @@ def _linux(d, cx, y):
     d.rect(cx - 56, y0 + 22, 112, 88, c['line'], r=9, op=0.3)
     d.now_playing(cx - 50, y0 + 28, 100, 56, prog=True, s=0.9)
     d.rect(cx - 50, y0 + 89, 100, 14, c['neutral'], r=5, op=0.6)
+
+
+def _ohos(d, cx, y):
+    c = d.c
+    x = _phone(d, cx, y)
+    # the control center of the System UI: two rows of toggles, then the
+    # media controls the AVSession feeds
+    for row in range(2):
+        for i in range(4):
+            d.add(f'<circle cx="{x + 18 + i * 17}" cy="{y + 30 + row * 16}" r="5.5" fill="{c["line"]}" fill-opacity="0.45"/>')
+    d.now_playing(x + 6, y + 62, 74, 62, prog=True, s=0.84)
+    d.rect(cx - 17, y + 148, 34, 3.5, c['line'], r=1.75, op=0.85)
+
+
+def _web(d, cx, y):
+    c = d.c
+    w, h = 124, 116
+    x = cx - w / 2
+    y0 = y + 21
+    # a browser window: the tab strip, the address bar, the page's controls
+    d.rect(x, y0, w, h, c['line'], r=8, op=0.10, stroke=c['line'], sw=2)
+    d.rect(x + 1, y0 + 1, w - 2, 13, c['line'], r=7, op=0.30)
+    d.rect(x + 8, y0 + 4, 34, 8, c['neutral'], r=3, op=0.8)
+    d.rect(x + 8, y0 + 18, w - 16, 9, c['line'], r=4.5, op=0.22)
+    d.now_playing(x + 10, y0 + 34, w - 20, 62, s=0.9)
 
 
 def media(t):
@@ -260,20 +284,23 @@ def media(t):
     d.text(MS - 26, yb - 17, 'updates', anchor='end')
     d.text(MS + 26, yb - 33, 'EventChannel', anchor='start', mono=True, color='label')
     d.text(MS + 26, yb - 17, 'OS commands', anchor='start')
-    xs = [100 + i * 190 for i in range(5)]
+    xs = [74 + i * 136 for i in range(7)]
     d.add(f'<path d="M{xs[0]},{yb} H{xs[-1]}" fill="none" stroke="{c["line"]}" stroke-width="1.7"/>')
     for x in (MS - 16, MS + 16):
         d.add(f'<circle cx="{x}" cy="{yb}" r="2.6" fill="{c["line"]}"/>')
     gy = 206
-    for x, top in zip(xs, (0, 21, 0, 21, 21)):
+    for x, top in zip(xs, (0, 0, 0, 21, 21, 21, 21)):
         d.arrow(f'M{x},{yb} L{x},{gy + top - 6}', kind='sec', both=True)
-    surfaces = [(_ios, 'iOS', 'lock screen'), (_macos, 'macOS', 'Control Center'),
-                (_android, 'Android', 'media notification'), (_windows, 'Windows', 'SMTC media flyout'),
-                (_linux, 'Linux', 'MPRIS, panel applet')]
+    # the phones, the desktops, then the browser
+    surfaces = [(_ios, 'iOS', 'lock screen'), (_android, 'Android', 'notification'),
+                (_ohos, 'HarmonyOS', 'control center'), (_macos, 'macOS', 'Control Center'),
+                (_windows, 'Windows', 'SMTC flyout'), (_linux, 'Linux', 'MPRIS applet'),
+                (_web, 'Web', 'browser controls')]
     for x, (fn, os_, sub) in zip(xs, surfaces):
         fn(d, x, gy)
         d.heading(x, gy + 186, os_, sub=sub, anchor='middle')
-    d.caption('Each surface draws only some of the actions in MediaSession.actions.')
+    d.caption([('Each surface draws only some of the actions in ', 'text'), ('MediaSession.actions', 'code'),
+               ('. On the web the session is ', 'text'), ('navigator.mediaSession', 'code'), ('.', 'text')])
     return d
 
 
@@ -289,12 +316,12 @@ def timeline(t):
     marks = [(210, 'play()'), (370, 'seek()'), (520, 'network stall'), (680, 'pause()'), (760, 'play()'),
              (900, 'end of content')]
     rows = [('playWhenReady', 110, [(170, 0), (210, 1), (680, 0), (760, 1), (900, 0)]),
-            ('playing', 210, [(170, 0), (230, 1), (370, 0), (410, 1), (520, 0), (600, 1), (680, 0), (780, 1),
+            ('playing', 210, [(170, 0), (230, 1), (370, 0), (425, 1), (520, 0), (600, 1), (680, 0), (780, 1),
                               (900, 0)]),
             ('completed', 310, [(170, 0), (900, 1)])]
     H = 44
     # waits: playWhenReady true, playing false
-    waits = [(210, 230, None), (370, 410, 'seeking'), (520, 600, 'buffering'), (760, 780, None)]
+    waits = [(210, 230, None), (370, 425, 'seeking'), (520, 600, 'buffering'), (760, 780, None)]
     for a, b, lab in waits:
         d.rect(X(a), 56, X(b) - X(a), 236 - 56, c['band'], op=0.16)
         if lab:
@@ -321,7 +348,7 @@ def timeline(t):
             d.add(f'<path d="{area}" fill="{c["main"]}" fill-opacity="0.16"/>')
         d.arrow(path, head=False, width=2.6)
         d.text(161, y + 4, 'false', anchor='end', size=11); d.text(161, y - H + 4, 'true', anchor='end', size=11)
-    d.legend(d.w / 2, 372, 'playWhenReady is true, playing waits: the load, a seek, a network stall', kind='area',
+    d.legend(d.w / 2, 372, 'playWhenReady is true, playing waits: a load, a resume, a seek, a network stall', kind='area',
              anchor='middle')
     d.caption('At the end of content playWhenReady drops and completed rises, until a new track or a seek back.')
     return d

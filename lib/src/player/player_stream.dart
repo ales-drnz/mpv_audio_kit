@@ -63,7 +63,7 @@ import 'mpv_playback_state_derive.dart';
 /// `loudnessMeter`, `tap`) only delivers what happens after `listen()`.
 ///
 /// {@category State and streams}
-class PlayerStream {
+interface class PlayerStream {
   /// Internal constructor wired by `Player`. Not part of the public API:
   /// the `DefaultPropertyReactives` argument is library-private, so a
   /// downstream call cannot satisfy it without reaching into `src/`.

@@ -11,12 +11,11 @@ mixin _AudioModule on _PlayerBase {
   /// Sets the soft volume in percent: 100 plays at unity and values above
   /// it amplify. mpv's scale is cubic: 130 is about +7 dB, 1000 is +60 dB.
   ///
-  /// Takes 0 to 1000. Throws [RangeError] when negative, and
-  /// [MpvCommandException] above 1000, which mpv refuses.
+  /// Takes 0 to 1000, mpv's range: throws [RangeError] outside it.
   /// [PlayerSettings.volumeMax] does not cap this call: it bounds mpv's
   /// relative steps (`add`, `cycle`) only. Clamp a slider to it yourself.
   Future<void> setVolume(double volume) async {
-    _checkRange(volume, 0, double.maxFinite, 'volume');
+    _checkRange(volume, 0, 1000, 'volume');
     final value = canonicalFloat(volume);
     // The option, not the property: from mpv 0.42 the property refuses a
     // value above volume-max, the option takes its own 0 to 1000.
@@ -158,14 +157,14 @@ mixin _AudioModule on _PlayerBase {
 
   /// Sets volume gain in dB (pre-amplification on top of [setVolume]).
   ///
-  /// Takes -150 to +150 dB: mpv refuses a value outside it, and the call
-  /// throws [MpvCommandException]. [setVolumeGainMin] and
+  /// Takes -150 to +150 dB, mpv's range: throws [RangeError] outside it.
+  /// [setVolumeGainMin] and
   /// [setVolumeGainMax] do not cap this call: they bound mpv's relative
   /// steps (`add`, `cycle`) only. 0 dB = unity. Values above about +6 dB
   /// risk clipping unless [setReplayGain] or a downstream limiter is in
   /// the chain.
   Future<void> setVolumeGain(double gainDb) async {
-    _checkFinite(gainDb, 'gainDb');
+    _checkRange(gainDb, -150, 150, 'gainDb');
     final value = canonicalFloat(gainDb);
     // The option, as for setVolume: the property refuses a value outside
     // volume-gain-min and volume-gain-max from mpv 0.42.
@@ -179,12 +178,13 @@ mixin _AudioModule on _PlayerBase {
   }
 
   /// Sets mpv's `volume-gain-min`, in dB. Range -150 to 0; default -96.
+  /// Throws [RangeError] outside it.
   ///
   /// It is the floor of mpv's relative steps on the gain (`add` and
   /// `cycle` through [Player.sendRawCommand]), not of [setVolumeGain],
   /// which takes down to -150 whatever this value.
   Future<void> setVolumeGainMin(double gainDb) async {
-    _checkFinite(gainDb, 'gainDb');
+    _checkRange(gainDb, -150, 0, 'gainDb');
     final value = canonicalFloat(gainDb);
     await _write(
       'volume-gain-min',
@@ -196,12 +196,13 @@ mixin _AudioModule on _PlayerBase {
   }
 
   /// Sets mpv's `volume-gain-max`, in dB. Range 0 to 150; default +12.
+  /// Throws [RangeError] outside it.
   ///
   /// It is the top of mpv's relative steps on the gain (`add` and `cycle`
   /// through [Player.sendRawCommand]), not of [setVolumeGain], which takes
   /// up to +150 whatever this value.
   Future<void> setVolumeGainMax(double gainDb) async {
-    _checkFinite(gainDb, 'gainDb');
+    _checkRange(gainDb, 0, 150, 'gainDb');
     final value = canonicalFloat(gainDb);
     await _write(
       'volume-gain-max',
@@ -282,10 +283,10 @@ mixin _AudioModule on _PlayerBase {
   /// relative volume steps (`add` and `cycle` through
   /// [Player.sendRawCommand]), and a natural top for a volume slider, read
   /// back from [PlayerSettings.volumeMax]. It does not cap [setVolume], which
-  /// takes up to 1000 whatever this value. mpv refuses values outside the
+  /// takes up to 1000 whatever this value. Throws [RangeError] outside the
   /// range.
   Future<void> setVolumeMax(double limit) async {
-    _checkFinite(limit, 'limit');
+    _checkRange(limit, 100, 1000, 'limit');
     final value = canonicalFloat(limit);
     await _write(
       'volume-max',

@@ -80,6 +80,7 @@ void main() {
         metadata: metadata.stream,
         coverArt: const Stream.empty(),
         mediaTitle: const Stream.empty(),
+        playlist: const Stream.empty(),
         mediaSession: const Stream.empty(),
       ),
       onCommand: commands.add,

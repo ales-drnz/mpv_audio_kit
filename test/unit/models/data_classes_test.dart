@@ -1194,7 +1194,7 @@ String _className(String source) => RegExp(
 /// The parameters of the unnamed constructor of [name] in the library
 /// The fields of the groups added after 0.6.1, which the code written by
 /// hand never had: the generated code has nothing to match them against.
-const _since070 = {'durationEstimated'};
+const _since070 = {'durationEstimated', 'tlsExtraCaFile'};
 
 /// [source], in their order: each `this.x`.
 List<String> _constructorFields(String source, String name) {

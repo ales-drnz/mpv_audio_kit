@@ -18,7 +18,7 @@
 
 ## Made for your media library
 
-The package is an audio player for Flutter apps that play a media library, from a server or from the device. It runs mpv and FFmpeg behind a typed Dart API, on Android, iOS, macOS, Windows, Linux and the web.
+The package is an audio player for Flutter apps that play a media library, from a server or from the device. It runs mpv and FFmpeg behind a typed Dart API, on Android, iOS, macOS, Windows, Linux, the web, Android TV, tvOS, Wear OS, Tizen, webOS and HarmonyOS.
 
 <table>
 <tr>
@@ -56,7 +56,7 @@ The package is an audio player for Flutter apps that play a media library, from 
 
 ```yaml
 dependencies:
-  mpv_audio_kit: ^0.7.2
+  mpv_audio_kit: ^0.8.0
 ```
 
 The build downloads the libmpv binary for each native target and checks its SHA-256, so the first build needs network access. On the web the module ships with the package.
@@ -69,6 +69,7 @@ The build downloads the libmpv binary for each native target and checks its SHA-
 | tvOS | 15.0 | arm64, simulator arm64 and x86_64 | 7.6 MB |
 | Tizen | 6.0 | armv7l, emulator x86_64 | 6.4 MB, 9.0 MB on the emulator |
 | webOS | 26 | armv7l | 6.2 MB |
+| HarmonyOS | API 12 (HarmonyOS 5.0) for libmpv, Flutter-OH's for the app | arm64-v8a, emulator x86_64 | 8.6 MB, 9.0 MB on the emulator |
 | Windows | 10 | arm64, x86_64 | 7.8 to 8.1 MB |
 | Linux | glibc 2.31 | aarch64, x86_64 | 8.7 to 8.9 MB |
 | Web | a cross-origin isolated page | wasm32 | 4.4 MB, 2.1 MB zipped |
@@ -83,7 +84,11 @@ void main() {
   MpvAudioKit.ensureInitialized();
   runApp(const MyApp());
 }
+```
 
+Then, in the app:
+
+```dart
 final player = Player();
 await player.open(Media('https://example.com/audio.flac'));
 await player.play();
@@ -170,7 +175,7 @@ See [Hooks and raw access](https://pub.dev/documentation/mpv_audio_kit/latest/to
 await player.setMediaSession(const MediaSession());
 ```
 
-The player then shows in the system media controls on every platform. On Android this also keeps it playing in the background. See [Media session](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Media%20session-topic.html) for the metadata, the buttons and each platform.
+The player then shows in the system media controls on every platform but Tizen and webOS. On Android and HarmonyOS this also keeps it playing in the background. See [Media session](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Media%20session-topic.html) for the metadata, the buttons and each platform.
 
 ### Visualizer
 
@@ -220,6 +225,10 @@ For background playback, add the Background Modes capability in Signing & Capabi
 
 Android TV, Fire TV and Google TV run the Android build. The app needs a leanback entry and a banner in its manifest, and the media session for the keys of the remote. See [Android TV](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Android%20TV-topic.html) for the manifest and HDMI passthrough.
 
+### Wear OS
+
+Wear OS watches run the Android build. Google's rules for media apps want a Bluetooth headset, not the watch's speaker: the app checks the output before it plays, and with the media session on the package pauses when that output goes away. See [Wear OS](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Wear%20OS-topic.html) for the manifest and the output.
+
 ### tvOS
 
 Build with [flutter-tvos](https://fluttertv.dev). It installs no code asset, so on tvOS the plugin's `tvos/Package.swift` links libmpv instead of the build hook: Swift Package Manager downloads `libmpv_tvos.xcframework.zip` of the release and checks its checksum.
@@ -231,6 +240,10 @@ Build with [flutter-tizen](https://github.com/flutter-tizen/flutter-tizen). The 
 ### webOS
 
 Build with [flutter-webos](https://github.com/lg-flutter-webos/flutter-webos), for webOS 26 and later. It runs no build hook, so the package's `webos/CMakeLists.txt` bundles libmpv instead. See [webOS](https://pub.dev/documentation/mpv_audio_kit/latest/topics/webOS-topic.html).
+
+### HarmonyOS
+
+Build with [Flutter-OH](https://gitcode.com/CPF-Flutter/flutter_flutter), 3.41.9 or later, for OpenHarmony and HarmonyOS. The build hook bundles the OHOS libmpv, which plays through OHAudio, and the media session is an AVSession with the continuous task of audio playback, which keeps the app playing in the background. See [HarmonyOS](https://pub.dev/documentation/mpv_audio_kit/latest/topics/HarmonyOS-topic.html).
 
 ### macOS
 
@@ -276,7 +289,9 @@ Inside a container the `alsa` driver cannot reach the sound card. Use `pipewire`
   - [Hooks and raw access](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Hooks%20and%20raw%20access-topic.html): the source resolver, mpv hooks and raw properties
   - [Visualizer and analysis](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Visualizer%20and%20analysis-topic.html): spectrum, PCM, waveform and loudness
   - [Media session](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Media%20session-topic.html): lock screen, notification and system controls
+  - [Platforms](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Platforms-topic.html): what each platform has, output, media session and features
   - [Web](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Web-topic.html): serving the page, autoplay and the browser's limits
+  - [Android TV](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Android%20TV-topic.html), [Wear OS](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Wear%20OS-topic.html), [Tizen](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Tizen-topic.html), [webOS](https://pub.dev/documentation/mpv_audio_kit/latest/topics/webOS-topic.html) and [HarmonyOS](https://pub.dev/documentation/mpv_audio_kit/latest/topics/HarmonyOS-topic.html): what each one needs on top
 - [Example app](example/) and [mpv_studio](https://github.com/ales-drnz/mpv_studio), a full player
 - [CHANGELOG](CHANGELOG.md) and [MIGRATION](MIGRATION.md)
 

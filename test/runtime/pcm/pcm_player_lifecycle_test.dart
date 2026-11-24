@@ -34,6 +34,19 @@ void main() {
 
     const f = PcmFormat(sampleRate: 24000, channels: 1);
 
+    for (final autoPlay in [false, true]) {
+      test('openPcmStream without play follows autoPlay $autoPlay', () async {
+        final player = await buildPlayer(
+          configuration: PlayerConfiguration(autoPlay: autoPlay),
+        );
+        addTearDown(player.dispose);
+        final source = await player.openPcmStream(f);
+        addTearDown(source.abort);
+        expect(player.state.playback.playWhenReady, autoPlay);
+        expect(await player.getRawProperty('pause'), autoPlay ? 'no' : 'yes');
+      });
+    }
+
     test('dispose ends the sources the player holds as stopped', () async {
       final player = await buildPlayer();
       final a = await player.openPcmStream(f, play: false);
@@ -60,7 +73,7 @@ void main() {
     for (final takeOver in ['open', 'stop']) {
       test('openPcmStream superseded by $takeOver ends as stopped', () async {
         final player = await buildPlayer();
-        final opening = player.openPcmStream(f);
+        final opening = player.openPcmStream(f, play: true);
         if (takeOver == 'open') {
           await player.open(Media(defaultFixturePath()), play: false);
         } else {
@@ -174,7 +187,10 @@ void main() {
       final player = await buildPlayer();
       await player.dispose();
       await expectLater(
-        player.openPcmStream(const PcmFormat(sampleRate: 24000, channels: 1)),
+        player.openPcmStream(
+          const PcmFormat(sampleRate: 24000, channels: 1),
+          play: true,
+        ),
         throwsA(isA<PlayerDisposedException>()),
       );
       expect(native.sources, isEmpty);

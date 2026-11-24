@@ -35,7 +35,7 @@ import 'dart:typed_data';
 ///   _vuController.value = peak;
 /// });
 /// ```
-class PcmFrame {
+final class PcmFrame {
   /// Creates a frame. The player's pipelines build them, and an app can
   /// build one to run through a [BandProcessor].
   const PcmFrame({

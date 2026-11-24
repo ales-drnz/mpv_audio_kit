@@ -8,6 +8,7 @@
 // lookups (mpv_library_opened.dart).
 
 import 'dart:ffi';
+import 'dart:io';
 
 import 'package:ffi/ffi.dart';
 
@@ -38,7 +39,7 @@ abstract interface class MpvLibrary {
           'Failed to load the libmpv bundled with mpv_audio_kit.\n'
           'Error: $e\n'
           'The build hook (hook/build.dart) provides it; check the build '
-          'output for a hook failure.',
+          'output for a hook failure.${_ohosHint()}',
         );
       }
       return const BundledMpvLibrary();
@@ -191,3 +192,12 @@ class MpvLibraryException implements Exception {
   @override
   String toString() => 'MpvLibraryException: $message';
 }
+
+/// On OHOS, the define that makes the hook bundle the OHOS libmpv: a
+/// Flutter-OH whose hook input no longer names the SDK's clang gets the
+/// desktop Linux one, which does not load there.
+String _ohosHint() => Platform.operatingSystem == 'ohos'
+    ? '\nOn OpenHarmony and HarmonyOS, set the ohos user define to true '
+          '(hooks: user_defines: mpv_audio_kit: ohos: true) so the hook '
+          'bundles libmpv_ohos.'
+    : '';

@@ -24,7 +24,7 @@ import '../types/state/loudness_scan_state.dart';
 ///
 /// The measurement fields are non-null only when [state] is
 /// [LoudnessScanState.ready].
-class LoudnessScan {
+final class LoudnessScan {
   /// Scan lifecycle state. The stream emits [LoudnessScanState.scanning]
   /// snapshots (carrying [progress]) while the scan runs, then a terminal
   /// state ([LoudnessScanState.ready], [LoudnessScanState.failed],

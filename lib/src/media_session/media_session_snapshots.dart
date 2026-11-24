@@ -173,6 +173,7 @@ MediaSessionPlaybackSnapshot playbackSnapshot(
   required bool seek,
   required bool? pushedSeekable,
   required int appPauses,
+  bool stopped = false,
 }) {
   // Navigability: a real multi-item mpv playlist reflects its bounds
   // (loop=playlist wraps both ways); a single item stays navigable so an
@@ -196,6 +197,8 @@ MediaSessionPlaybackSnapshot playbackSnapshot(
     // `playWhenReady` at true EOF, which already drives a playback push,
     // so the completed transition is carried on that same snapshot.
     completed: state.playback.completed,
+    stopped: stopped,
+    queued: pl.items.isNotEmpty,
     seek: seek,
     // Actual output + buffering, for extrapolation gating and the loading
     // state. Independent of the intent axis the button binds to.

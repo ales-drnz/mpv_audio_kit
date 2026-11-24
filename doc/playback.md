@@ -68,6 +68,7 @@ A `PcmSource` plays raw PCM as it arrives, such as speech from a socket.
 ```dart
 final source = await player.openPcmStream(
   const PcmFormat(sampleRate: 24000, channels: 1), // s16le by default
+  play: true, // null follows PlayerConfiguration.autoPlay, as for open
 );
 await source.addStream(socket
     .where((m) => m is List<int>)
@@ -162,6 +163,10 @@ await player.stop();
 // A play and pause button
 player.state.playback.playWhenReady ? await player.pause() : await player.play();
 ```
+
+`stop()` unloads the file and clears the playlist. `stop(keepPlaylist: true)` keeps it, with the index on the entry that stopped: `next()` and `previous()` move that index with nothing loaded, and `play()` starts the entry from its beginning.
+
+<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/stop_keep_playlist.png" width="100%" alt="stop() clears the playlist; stop(keepPlaylist: true) keeps it, next moves the index with nothing loaded, and play starts the entry from its beginning">
 
 `playWhenReady` holds what the user asked for. See the [State and streams](https://pub.dev/documentation/mpv_audio_kit/latest/topics/State%20and%20streams-topic.html) topic for the other flags.
 

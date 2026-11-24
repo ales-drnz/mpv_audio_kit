@@ -15,7 +15,9 @@ weights, the radii, the closing caption). The diagrams are grouped by
 kind: signals.py draws the signal itself (effects, spectrum, demuxer
 cache), system.py the parts and the time (architecture, analysis cache
 feed, media session, playWhenReady), flows.py the flows and sequences
-(lifecycle, prefetch, cover art, errors, on_load hook, source resolver).
+(lifecycle, prefetch, cover art, errors, on_load hook, source resolver), choices.py
+the choices and routes (TLS trust, the web, the libmpv of each toolchain,
+stop and keepPlaylist).
 
 Run from the repository root: python3 tool/diagrams/generate.py
 """
@@ -27,6 +29,7 @@ from base import NAVY  # noqa: E402
 from flows import cover, errors, hook, lifecycle, prefetch, resolver  # noqa: E402
 from signals import cache, effects, spectrum  # noqa: E402
 from system import architecture, cache_feed, media, timeline  # noqa: E402
+from choices import libmpv_bundling, stop_keep_playlist, tls_trust, web_pipeline  # noqa: E402
 
 OUT = os.path.join('imgs', 'diagrams')
 ICON = os.path.join('imgs', 'mpv_audio_kit.png')
@@ -35,7 +38,7 @@ ICON = os.path.join('imgs', 'mpv_audio_kit.png')
 GLYPH = '#FFFFFF'
 
 ALL = [architecture, lifecycle, effects, timeline, prefetch, cover, errors, hook, resolver, spectrum, media,
-       cache_feed, cache]
+       cache_feed, cache, tls_trust, web_pipeline, libmpv_bundling, stop_keep_playlist]
 
 
 def icon_svg():

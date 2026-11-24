@@ -81,6 +81,7 @@ import 'player_configuration.dart';
 import 'player_state.dart';
 import 'player_stream.dart';
 import 'playlist_nav_gate.dart';
+import 'state/player_settings.dart';
 
 part 'effects_chain.part.dart';
 part 'lifecycle.part.dart';
@@ -118,7 +119,7 @@ part 'transport.part.dart';
 /// (`class MockPlayer extends Mock implements PlayerApi {}`).
 ///
 /// {@category Playback}
-class Player extends _PlayerBase
+interface class Player extends _PlayerBase
     with
         _PcmCutModule,
         _PropertiesModule,

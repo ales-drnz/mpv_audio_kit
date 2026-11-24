@@ -9,12 +9,13 @@ import '../models/cover_art.dart';
 export 'artwork_download_io.dart'
     if (dart.library.js_interop) 'artwork_download_web.dart';
 
-/// Loads an artwork URL into a [CoverArt], trusting the extra CA bundle
-/// `caFile` (the player's `tls-ca-file`, empty for none) on top of the
-/// system roots; `null` on any failure. The URL comes as the app wrote it:
+/// Loads an artwork URL into a [CoverArt], trusting the PEM files
+/// `caFiles` (the player's `tls-ca-file` and `ca_extra_file`, those set)
+/// on top of the system roots; `null` on any failure. The URL comes as the app wrote it:
 /// parsing it into a [Uri] would lower the case of an Android authority
 /// and of the first part of an `asset://` key.
-typedef ArtworkFetcher = Future<CoverArt?> Function(String url, String caFile);
+typedef ArtworkFetcher =
+    Future<CoverArt?> Function(String url, List<String> caFiles);
 
 /// Whether the media session loads artwork URLs in Dart on [platform]:
 /// it downloads an `http(s)://` one, reads a `file://`, an `asset://` and
@@ -35,7 +36,8 @@ bool downloadsArtworkOn(TargetPlatform platform) => switch (platform) {
   TargetPlatform.windows ||
   TargetPlatform.iOS ||
   TargetPlatform.macOS => true,
-  _ => false,
+  // Flutter-OH's TargetPlatform.ohos, which Flutter's enum lacks.
+  _ => platform.name == 'ohos',
 };
 
 /// Whether an artwork URL the fetcher could not load goes to the media

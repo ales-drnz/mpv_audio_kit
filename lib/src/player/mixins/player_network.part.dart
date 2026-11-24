@@ -71,8 +71,15 @@ mixin _NetworkModule on _PlayerBase {
   /// for high-latency wireless outputs (Bluetooth, network speakers);
   /// decrease for live monitoring or low-latency listening. During a live
   /// [PcmSource] entry opened with `lowLatency`, a new value holds only
-  /// until that entry ends.
+  /// until that entry ends. Throws [RangeError] outside 0 to 10 seconds.
   Future<void> setAudioBuffer(Duration size) async {
+    if (size.isNegative || size > const Duration(seconds: 10)) {
+      throw RangeError.value(
+        size.inMicroseconds,
+        'size',
+        'microseconds, must be in [0, 10 s]',
+      );
+    }
     await _write(
       'audio-buffer',
       durationToSeconds(size).toStringAsFixed(6),
@@ -110,7 +117,16 @@ mixin _NetworkModule on _PlayerBase {
   /// For `smb2://` sources, with [Duration.zero] the connection gets 30
   /// seconds, with no limit on the reads after it, and a stop, a track
   /// change or a dispose interrupts a connect or a read at once.
+  ///
+  /// Throws [RangeError] for a negative [timeout].
   Future<void> setNetworkTimeout(Duration timeout) async {
+    if (timeout.isNegative) {
+      throw RangeError.value(
+        timeout.inMicroseconds,
+        'timeout',
+        'microseconds, must not be negative',
+      );
+    }
     if (timeout > _kMaxNetworkTimeout) timeout = _kMaxNetworkTimeout;
     // mpv's `network-timeout` accepts a fractional second value (e.g.
     // "0.5"). Truncating with `inSeconds` would collapse any sub-second
@@ -126,8 +142,11 @@ mixin _NetworkModule on _PlayerBase {
 
   /// Whether to verify TLS (SSL) certificates for network streams.
   ///
-  /// Off by default (see [PlayerSettings.tlsVerify]); a later release
-  /// turns it on by default.
+  /// On by default ([PlayerConfiguration.tlsVerify]). For a home server
+  /// with a self-signed certificate, [setTlsCaFile] with a bundle that
+  /// holds its certificate keeps verification on. That file replaces the
+  /// built-in roots, so it also holds those of the other servers the app
+  /// plays from.
   Future<void> setTlsVerify(bool enable) async {
     await _write(
       'tls-verify',
@@ -157,6 +176,47 @@ mixin _NetworkModule on _PlayerBase {
       _reactives.tlsCaFile,
       path,
       (s) => s.copyWith(tlsCaFile: path),
+    );
+  }
+
+  /// Trusts the certificates of the PEM file at [path] on top of the roots
+  /// in use: the built-in ones, or those of [setTlsCaFile]. `''` trusts
+  /// nothing more. Where [setTlsCaFile] replaces the roots, this adds to
+  /// them, so a home server with a self-signed certificate (the
+  /// certificate itself, whose host name still has to match) or a private
+  /// CA plays, and every other `https://` source is verified as before.
+  /// Read when the certificate is verified ([setTlsVerify]), from the next
+  /// load on. The waveform, the loudness scan and the covers the media
+  /// session downloads trust it too.
+  ///
+  /// It is FFmpeg's `ca_extra_file`, set in `stream-lavf-o`: a global
+  /// `stream-lavf-o` the app writes itself replaces it. Throws
+  /// [ArgumentError] for a path with a comma, CR, LF or NUL, which the
+  /// option list cannot hold.
+  Future<void> setTlsExtraCaFile(String path) async {
+    if (_kForbiddenInLavfValue.hasMatch(path)) {
+      throw ArgumentError.value(
+        path,
+        'path',
+        'must not contain CR, LF, NUL, or comma',
+      );
+    }
+    await _gate();
+    await _calls.commandChecked([
+      'change-list',
+      'stream-lavf-o',
+      if (path.isEmpty) ...[
+        'remove',
+        'ca_extra_file',
+      ] else ...[
+        'add',
+        'ca_extra_file=$path',
+      ],
+    ]);
+    _updateField(
+      (s) => s.copyWith(tlsExtraCaFile: path),
+      _reactives.tlsExtraCaFile,
+      path,
     );
   }
 
@@ -255,3 +315,6 @@ mixin _NetworkModule on _PlayerBase {
     );
   }
 }
+
+/// What an entry of the comma-separated `stream-lavf-o` list cannot hold.
+final RegExp _kForbiddenInLavfValue = RegExp(r'[\r\n,\x00]');

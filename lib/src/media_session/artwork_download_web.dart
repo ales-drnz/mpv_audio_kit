@@ -54,7 +54,7 @@ extension type _Chunk._(JSObject _) implements JSObject {
 /// with CORS, without credentials, or a `blob:` one of the page, and
 /// returns the image with the MIME type the server gives; `null` for a URL
 /// the page cannot read (no CORS, a network error, an error status), for a
-/// `file://` URL (no file system), and past 20 MB. [caFile] has no meaning
+/// `file://` URL (no file system), and past 20 MB. [caFiles] has no meaning
 /// there: the browser verifies certificates.
 ///
 /// The fetch is aborted when the download ends any other way than with
@@ -64,7 +64,7 @@ extension type _Chunk._(JSObject _) implements JSObject {
 @internal
 Future<CoverArt?> downloadArtwork(
   Uri uri, [
-  String caFile = '',
+  List<String> caFiles = const [],
   ArtworkCancel? cancel,
 ]) async {
   if (uri.scheme != 'http' && uri.scheme != 'https' && uri.scheme != 'blob') {
@@ -134,12 +134,12 @@ Future<Uint8List?> _readBody(_Response response) async {
 @internal
 Future<CoverArt?> loadArtwork(
   String url, [
-  String caFile = '',
+  List<String> caFiles = const [],
   ArtworkCancel? cancel,
 ]) async {
   if (artworkScheme(url) == 'asset') return readArtworkAsset(url);
   final uri = Uri.tryParse(url);
-  return uri == null ? null : downloadArtwork(uri, caFile, cancel);
+  return uri == null ? null : downloadArtwork(uri, caFiles, cancel);
 }
 
 String? _header(_Response response, String name) {

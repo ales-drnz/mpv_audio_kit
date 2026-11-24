@@ -365,7 +365,8 @@ final class _LibcEnvironment implements ProcessEnvironment {
 
   static DynamicLibrary _openLibc() => switch (Platform.operatingSystem) {
     'linux' => DynamicLibrary.open('libc.so.6'),
-    'android' => DynamicLibrary.open('libc.so'),
+    // Flutter-OH on OpenHarmony and HarmonyOS: musl.
+    'android' || 'ohos' => DynamicLibrary.open('libc.so'),
     // macOS and iOS.
     _ => DynamicLibrary.open('libSystem.B.dylib'),
   };

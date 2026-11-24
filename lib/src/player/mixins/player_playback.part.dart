@@ -6,17 +6,18 @@ part of '../player.dart';
 /// Transport setters: play, pause, stop, seek, chapter navigation,
 /// and the A-B loop controls.
 mixin _PlaybackModule on _PlayerBase, _PropertiesModule {
-  /// Starts or resumes playback. Idempotent: a no-op when already
-  /// playing, including the last moments of the queue while the output
-  /// buffer still plays. Once the queue has ended ([PlaybackState.completed])
-  /// it starts the last track again from its beginning; a source that
-  /// cannot seek back there (a live stream, a closed [PcmSource]) stays at
-  /// its end and the intent stays off. With nothing loaded (before any
-  /// open, after [stop]) there is nothing to resume and the intent stays
-  /// off too. The future completes once mpv has taken the unpause; the
-  /// playback itself is observable via [PlayerStream.playing]. A [pause],
-  /// [stop] or load called after it has the last word: then it writes
-  /// nothing.
+  /// Starts or resumes playback. Idempotent: a no-op when already playing,
+  /// including the last moments of the queue while the output buffer still
+  /// plays. Once the queue has ended ([PlaybackState.completed]) it starts the
+  /// last track again from its beginning; a source that cannot seek back there
+  /// (a live stream, a closed [PcmSource]) stays at its end and the intent
+  /// stays off. With nothing loaded (before any open, after [stop]) there is
+  /// nothing to resume and the intent stays off too; after
+  /// `stop(keepPlaylist: true)` it starts the entry that stopped from its
+  /// beginning, as [jump] does. The future completes once mpv has taken the
+  /// unpause; the playback itself is observable via [PlayerStream.playing].
+  /// A [pause], [stop] or load called after it has the last word: then it
+  /// writes nothing.
   ///
   /// On the web it also resumes the page's audio output when the
   /// browser's autoplay policy holds it (see
@@ -89,7 +90,7 @@ mixin _PlaybackModule on _PlayerBase, _PropertiesModule {
     var idle = _transport.loadsInFlight == 0;
     if (idle) idle = await _readString('idle-active') == 'yes';
     if (idle && _transport.loadsInFlight == 0 && _transport.owns(intent)) {
-      _transport.writeIntent(false);
+      await _playOnIdle(intent);
     }
   }
 
@@ -158,15 +159,104 @@ mixin _PlaybackModule on _PlayerBase, _PropertiesModule {
   }
 
   /// Stops playback and unloads the current file. Distinct from [pause]:
-  /// the demuxer is torn down, the playhead is reset, and the next call
-  /// must be [open] (not [play]) to start a new track.
-  Future<void> stop() {
+  /// the demuxer is torn down and the playhead is reset.
+  ///
+  /// By default the playlist is cleared, and the next call must be [open]
+  /// (not [play]) to start a new track. With [keepPlaylist] the entries
+  /// stay and `state.playback.playlist.index` stays on the entry that
+  /// stopped, with no file loaded: [play] starts that entry from its
+  /// beginning, [jump] starts another, and [Player.next] and
+  /// [Player.previous] move to the entry after or before it without
+  /// loading it (wrapping around with [Loop.playlist]). Removed before the
+  /// [play], the entry leaves nothing to start. A live PCM entry stays
+  /// without its source, as after a skip (see [PcmSource]).
+  ///
+  /// The media session shows the stop where the platform has a stopped
+  /// state: MPRIS reports `Stopped` on Linux.
+  Future<void> stop({bool keepPlaylist = false}) {
     _mediaSessionController?.appPaused();
-    return _stop();
+    return _stop(keepPlaylist: keepPlaylist);
+  }
+
+  /// [play] on an idle core: after stop(keepPlaylist: true) the entry that
+  /// stopped starts; with nothing to start the intent goes back off.
+  Future<void> _playOnIdle(int intent) async {
+    if (await _resumeKeptStop(intent)) return;
+    // The resume read the core: a call since may own the intent now.
+    if (_transport.owns(intent) && _transport.loadsInFlight == 0) {
+      _transport.writeIntent(false);
+    }
+  }
+
+  /// Starts the entry a kept stop left, for the [play] that claimed
+  /// [intent] on an idle core and has written the unpause. Whether it did.
+  Future<bool> _resumeKeptStop(int intent) async {
+    if (_entries.stopped == null || _entries.hiddenAt != null) return false;
+    final node = await _readPlaylist() ?? const <Object?>[];
+    // A pause() called since keeps the entry for the next play().
+    if (!_transport.owns(intent)) return false;
+    // Read after the await: a next() or previous() since moved it.
+    final id = _entries.stopped;
+    _entries.stopped = null;
+    final index = node.indexWhere((e) => e is Map && e['id'] == id);
+    if (id == null || index < 0) return false;
+    await _calls.commandChecked(['playlist-play-index', '$index']);
+    if (_transport.wantsPlay(intent)) _transport.writeIntent(true);
+    return true;
+  }
+
+  /// The playlist and the position in it of the entry a kept stop holds
+  /// (-1 when it left the playlist), while the core is idle; `null`
+  /// otherwise.
+  Future<(List<Object?>, int)?> _keptStopEntry() async {
+    final id = _entries.stopped;
+    if (id == null || _transport.loadsInFlight != 0) return null;
+    if (_entries.hiddenAt != null) return null;
+    if (await _readString('idle-active') != 'yes') return null;
+    final node = await _readPlaylist();
+    if (node == null || _entries.stopped != id) return null;
+    return (node, node.indexWhere((e) => e is Map && e['id'] == id));
+  }
+
+  /// After stop(keepPlaylist: true), moves the entry that stopped by
+  /// [delta] with no file loaded, wrapping around with [Loop.playlist]:
+  /// whether it moved, or `null` when no kept stop holds the core.
+  Future<bool?> _moveKeptStop(int delta) async {
+    final kept = await _keptStopEntry();
+    if (kept == null) return null;
+    final (node, at) = kept;
+    if (at < 0) {
+      // The entry left the playlist: nothing to move from, and mpv, with
+      // no current entry, would load the last or the first.
+      _entries.stopped = null;
+      return false;
+    }
+    var to = at + delta;
+    if (to < 0 || to >= node.length) {
+      if (_state.playback.loop != Loop.playlist) return false;
+      to %= node.length;
+    }
+    final entry = node[to];
+    if (entry is! Map || entry['id'] is! int) return false;
+    _entries.stopped = entry['id'] as int;
+    // A fresh read: a remove or a move since may have changed the list.
+    final fresh = await _readPlaylist();
+    if (fresh != null) _updatePlaylistFromNode(fresh);
+    return true;
+  }
+
+  /// mpv's id of the current entry, or `null` when there is none.
+  Future<int?> _currentEntryId() async {
+    for (final entry in await _readPlaylist() ?? const <Object?>[]) {
+      if (entry is Map && entry['current'] == true && entry['id'] is int) {
+        return entry['id'] as int;
+      }
+    }
+    return null;
   }
 
   /// [stop] for a command of the media session (see [_pause]).
-  Future<void> _stop() async {
+  Future<void> _stop({bool keepPlaylist = false}) async {
     _checkNotDisposed();
     // Claim the load epoch synchronously so an in-flight open() that is
     // still resolving its URI aborts instead of resuming after this call
@@ -175,10 +265,26 @@ mixin _PlaybackModule on _PlayerBase, _PropertiesModule {
     await _gate();
     // Stop unloads the file; intent returns to "not playing" so the OS
     // button settles on play. mpv may not emit `pause` here, so set it.
-    _transport.claimIntent(false);
+    final intent = _transport.claimIntent(false);
+    final starts = _entries.starts;
     // Execute in-flight transport writes first; see [CoreCalls.settleWrites].
     await _calls.settleWrites();
-    await _calls.commandChecked(['stop']);
+    final stoppedId = keepPlaylist ? await _currentEntryId() : null;
+    await _calls.commandChecked(['stop', if (keepPlaylist) 'keep-playlist']);
+    // A load called meanwhile, or the file it started, has the last word:
+    // no entry to start again, no stopped state over its playback.
+    if (_entries.starts == starts && _transport.loadsInFlight == 0) {
+      _entries.stopped = stoppedId;
+      // The app's stop and the session's own Stop: the OS shows it stopped
+      // until the next load.
+      _mediaSessionController?.stopped();
+    }
+    // Kept entries: mpv would play one its own playlist commands start
+    // (a raw playlist-next) over the intent, which is off. Not over the
+    // pause write of a call that claimed the intent since.
+    if (keepPlaylist && _transport.owns(intent)) {
+      await _calls.prop('pause', 'yes');
+    }
     // mpv clears its playlist on stop but reports the change only when a
     // file was playing. Idle (after a failed load) it stays silent, so the
     // state would keep the old entries and the live sources they hold.
@@ -359,10 +465,11 @@ mixin _PlaybackModule on _PlayerBase, _PropertiesModule {
   /// with 3 the section is heard 4 times. Pass `null` for infinite looping
   /// (mpv's `inf`); `0` turns the A-B loop off even with both points set.
   /// Unlike the points, the count stays for the next files. Mirrors mpv's
-  /// `--ab-loop-count` option.
+  /// `--ab-loop-count` option. Throws [RangeError] for a negative count.
   Future<void> setAbLoopCount(int? count) async {
-    if (count != null && count < 0) {
-      throw ArgumentError.value(count, 'count', 'must be null (= inf) or >= 0');
+    // mpv keeps the count in a C int.
+    if (count != null) {
+      RangeError.checkValueInInterval(count, 0, 2147483647, 'count');
     }
     await _write(
       'ab-loop-count',

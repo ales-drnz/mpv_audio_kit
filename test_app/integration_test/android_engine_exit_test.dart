@@ -16,10 +16,10 @@
 //
 // The OS media session is one per process (P4.1): a second engine started
 // on `engineSessionMain` asks for it while the test's engine owns it. The
-// enable is refused, setMediaSession throws StateError there, and the
-// first engine's entry stays, also when the second engine goes. Once the
-// first turns it off, a new second engine takes it, and its destruction
-// turns it off. Skipped off Android.
+// enable is refused, setMediaSession throws MediaSessionException
+// (otherEngine) there, and the first engine's entry stays, also when the
+// second engine goes. Once the first turns it off, a new second engine
+// takes it, and its destruction turns it off. Skipped off Android.
 
 import 'dart:async';
 import 'dart:io' show Platform;

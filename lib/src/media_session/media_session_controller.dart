@@ -189,6 +189,7 @@ class MediaSessionController {
     // Loading ends: push the metadata held back while it lasted.
     _subscriptions.add(
       _inputs.buffering.listen((buffering) {
+        if (buffering) _clearStopped();
         _markPlayback();
         if (!buffering) _markMetadata();
       }),
@@ -207,6 +208,8 @@ class MediaSessionController {
     // MPRIS `LoopStatus` and `Shuffle`, MediaSession actions).
     _subscriptions.add(_inputs.loop.listen((_) => _markPlayback()));
     _subscriptions.add(_inputs.shuffle.listen((_) => _markPlayback()));
+    // The queue drives next, previous, and Play while stopped.
+    _subscriptions.add(_inputs.playlist.listen((_) => _markPlayback()));
 
     // Metadata signals: drive `updateMetadata`.
     _subscriptions.add(_inputs.duration.listen((_) => _markMetadata()));
@@ -307,6 +310,22 @@ class MediaSessionController {
     _markPlayback();
   }
 
+  /// The player stopped: the OS shows a stopped state, where it has one,
+  /// until a load starts. A play with nothing to start leaves it stopped.
+  void stopped() {
+    _stopped = true;
+    _markPlayback();
+  }
+
+  /// Set by [stopped], cleared by the next load.
+  bool _stopped = false;
+
+  void _clearStopped() {
+    if (!_stopped) return;
+    _stopped = false;
+    _markPlayback();
+  }
+
   void _markMetadata() {
     _metadataDirty = true;
     _scheduleFlush();
@@ -368,6 +387,7 @@ class MediaSessionController {
       seek: seek,
       pushedSeekable: _pushedSeekable,
       appPauses: _appPauses,
+      stopped: _stopped,
     );
     _pushedSeekable = snap.seekable;
     return snap;
@@ -398,8 +418,12 @@ class MediaSessionController {
   CoverArt? _downloadedArtwork(String uri) {
     if (uri == _fetchedArtUri) return _fetchedArt;
     final loader = _artworkLoader!;
-    final caFile = _stateSnapshot().settings.tlsCaFile;
-    final kept = loader.cached(uri, caFile);
+    final settings = _stateSnapshot().settings;
+    final caFiles = [
+      for (final f in [settings.tlsCaFile, settings.tlsExtraCaFile])
+        if (f.isNotEmpty) f,
+    ];
+    final kept = loader.cached(uri, caFiles);
     if (kept != null) {
       // The load of the track skipped past is not worth finishing.
       if (_pendingArtUri != null) loader.cancel();
@@ -418,7 +442,7 @@ class MediaSessionController {
       }
       _artAttempts++;
       unawaited(
-        loader.load(uri, caFile).then((cover) {
+        loader.load(uri, caFiles).then((cover) {
           if (_disposed || uri != _pendingArtUri) return;
           _pendingArtUri = null;
           _fetchedArtUri = uri;

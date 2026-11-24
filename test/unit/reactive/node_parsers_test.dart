@@ -23,6 +23,40 @@ void main() {
       expect(p.index, 0);
     });
 
+    test('with no current entry, heldId picks the entry by id, not the '
+        'first equal Media', () {
+      final raw = [
+        {'filename': 'a.mp3', 'id': 1},
+        {'filename': 'a.mp3', 'id': 2},
+        {'filename': 'b.mp3', 'id': 3},
+      ];
+      const a = Media('a.mp3');
+      const previous = Playlist([a, a, Media('b.mp3')], index: 1);
+      final held = parsePlaylistNode(
+        raw: raw,
+        mediaCache: const {},
+        previous: previous,
+        heldId: 2,
+      );
+      expect(held.index, 1);
+      final byMedia = parsePlaylistNode(
+        raw: raw,
+        mediaCache: const {},
+        previous: previous,
+      );
+      expect(byMedia.index, 0, reason: 'without it, the first equal Media');
+      final flagged = parsePlaylistNode(
+        raw: [
+          ...raw.take(2),
+          {'filename': 'b.mp3', 'id': 3, 'current': true},
+        ],
+        mediaCache: const {},
+        previous: previous,
+        heldId: 2,
+      );
+      expect(flagged.index, 2, reason: "mpv's current entry wins");
+    });
+
     test('current flag on second item maps to index=1', () {
       final p = parsePlaylistNode(
         raw: [

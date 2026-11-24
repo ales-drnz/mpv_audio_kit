@@ -1,6 +1,49 @@
-## [0.7.2] - 16-11-2026
+## [0.8.0] - 24-11-2026
 
-A new engine under the same API: mpv 0.42.0, FFmpeg 9.0.2 and OpenSSL 4.1.0. Decoding, network and what mpv reports can differ in places from 0.7.1, so try an app's own files and servers before updating.
+### libmpv-r27
+**All platforms**
+- The libraries say `mpv v0.42.0+r27`, on the mpv 0.42.0 and FFmpeg 9.0.2 of r26.
+- FFmpeg's TLS option `ca_extra_file`: certificates trusted on top of the roots in use, where `ca_file` replaces them.
+- `playlist-prev-playlist` and `playlist-next-playlist` with no current entry fail. mpv 0.42.0 read the source playlist of the missing entry and the process ended.
+
+**HarmonyOS**
+- `libmpv_ohos-arm64-v8a.so` for the devices and `libmpv_ohos-x86_64.so` for the emulators, built with the OpenHarmony SDK, playing through `ohaudio`, an output over OHAudio. They make only the calls of API 12 (HarmonyOS 5.0).
+
+### All platforms
+**Breaking**
+- TLS certificates are verified by default, as in mpv and FFmpeg: a server with a self-signed certificate fails to open. `setTlsExtraCaFile` trusts such a server on top of the built-in roots, and `PlayerConfiguration.tlsVerify` turns verification off before the first load. `http://` sources, local files and SMB are not affected.
+- The 96 flat fields of `PlayerState`, deprecated since 0.7.0, are gone: read each one from its group.
+- `openPcmStream` follows `PlayerConfiguration.autoPlay` when `play` is null, as `open` does. It played at once.
+- `setMediaSession` throws `MediaSessionException`, a `PlayerException` with a `reason`, where it threw `StateError`.
+- The setters with a range throw `RangeError` before writing: `setVolume`, `setVolumeGain`, `setVolumeGainMin`, `setVolumeGainMax`, `setVolumeMax`, `setAbLoopCount`, `setAudioBuffer`, `setNetworkTimeout` and `setAudioSampleRate`.
+- The value classes are `final`, and `Player` and `PlayerStream` are `interface` classes: a fake still implements them.
+- A class that implements `PlayerApi` takes the new signatures: `stop` has `keepPlaylist`, `openPcmStream` a nullable `play`, and `initialized` is new.
+
+**Added**
+- `stop(keepPlaylist: true)` unloads the file and keeps the playlist. The index stays on the entry that stopped, `next` and `previous` move it with nothing loaded, and `play` starts it from its beginning.
+- `state.playbackState`, the value `stream.playbackState` emitted last.
+- `initialized` completes once the player has started, or with the `PlayerInitException` of a start that failed.
+- `setTlsExtraCaFile` trusts the certificates of a file on top of the roots in use, for a home server with a self-signed certificate or a private CA, while every other server is verified as before. The covers of the media session trust it too.
+
+**Fixed**
+- The next and previous buttons of the OS follow a change of the queue at once. They followed it only at the next play, pause or seek.
+- `nextPlaylist` and `previousPlaylist` return false when no entry is current. mpv 0.42 ended the process there.
+
+**Docs**
+- A Wear OS topic: the manifest, the Bluetooth output, and what is left to the app. The CI runs the Android integration tests on the Wear OS emulator.
+- The README and the description on pub.dev list every platform. The README links the Platforms topic and the topics of each TV, of Wear OS and of HarmonyOS.
+
+### HarmonyOS
+**Added**
+- OpenHarmony and HarmonyOS through Flutter-OH 3.41.9 or later. The build hook recognizes an OHOS build by the clang of the OpenHarmony SDK, or by the user define `ohos`, which a Linux or OHOS target follows and Android, Apple and Windows ignore, and bundles the OHOS libmpv. A HarmonyOS topic says what the app declares.
+- The media session is an AVSession: the System UI shows the title, the artist and the cover, and its controls reach the player. While the player plays, the package runs the continuous task of audio playback, which keeps the app playing in the background, once the app declares `ohos.permission.KEEP_BACKGROUND_RUNNING` and `backgroundModes: ["audioPlayback"]`.
+
+### Linux
+**Fixed**
+- MPRIS reports `Stopped`, with no metadata, after a stop of the app or of the desktop controls. It reported `Paused`.
+- While stopped or at the end, MPRIS offers Play when the queue has entries, and not when it is empty.
+
+## [0.7.2] - 16-11-2026
 
 ### libmpv-r26
 **All platforms**
@@ -283,8 +326,6 @@ A new engine under the same API: mpv 0.42.0, FFmpeg 9.0.2 and OpenSSL 4.1.0. Dec
 
 ## [0.6.0] - 2-11-2026
 
-The web, and libmpv-r20. See [MIGRATION.md](MIGRATION.md) for the few changes an app may need.
-
 ### Contributions
 - [@2697a](https://github.com/2697a): asked for Flutter Web support ([#26](https://github.com/ales-drnz/mpv_audio_kit/issues/26)).
 - [@erikjara](https://github.com/erikjara): reported that the waveform of an HTTP stream served without byte ranges never filled from mpv's cache ([#29](https://github.com/ales-drnz/mpv_audio_kit/issues/29)).
@@ -478,8 +519,6 @@ The web, and libmpv-r20. See [MIGRATION.md](MIGRATION.md) for the few changes an
 - Updated libmpv to `libmpv-r17` across all platforms.
 
 ## [0.5.0] - 14-10-2026
-
-A revision of the whole package. See [MIGRATION.md](MIGRATION.md) for the changes to make in an app.
 
 ### Contributions
 - [@erikjara](https://github.com/erikjara): reported that the waveform analyzer downloaded a remote file a second time ([#22](https://github.com/ales-drnz/mpv_audio_kit/issues/22)).
@@ -911,8 +950,6 @@ A revision of the whole package. See [MIGRATION.md](MIGRATION.md) for the change
 - Updated libmpv to `libmpv-r6` across all platforms.
 
 ## [0.1.0] - 5-05-2026
-
-Major release. The Dart API has been redesigned for type safety, ergonomics, and atomic state mutations.
 
 ### Added
 - A new `AudioEffects` bundle covering equalizer, compressor, loudness, pitch, tempo, bass, treble, stereo width, headphone crossfeed, silence trim, and raw lavfi effects applied atomically through one setter.

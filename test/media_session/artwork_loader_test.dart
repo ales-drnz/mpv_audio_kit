@@ -28,7 +28,11 @@ class _Fetches {
   final tokens = <ArtworkCancel>[];
   final results = <Completer<CoverArt?>>[];
 
-  Future<CoverArt?> call(String url, String caFile, ArtworkCancel cancel) {
+  Future<CoverArt?> call(
+    String url,
+    List<String> caFiles,
+    ArtworkCancel cancel,
+  ) {
     urls.add(url);
     tokens.add(cancel);
     results.add(Completer<CoverArt?>());
@@ -42,8 +46,8 @@ void main() {
       final fetches = _Fetches();
       final loader = ArtworkLoader(fetches.call);
 
-      final first = loader.load('https://a/1.jpg', '');
-      final second = loader.load('https://a/2.jpg', '');
+      final first = loader.load('https://a/1.jpg', const []);
+      final second = loader.load('https://a/2.jpg', const []);
       expect(fetches.tokens[0].isCancelled, isTrue);
       expect(fetches.tokens[1].isCancelled, isFalse);
       expect(await first, isNull);
@@ -51,7 +55,7 @@ void main() {
       // The fetch that was left may still end with a cover: it is dropped.
       fetches.results[0].complete(_cover(1));
       await pumpEventQueue();
-      expect(loader.cached('https://a/1.jpg', ''), isNull);
+      expect(loader.cached('https://a/1.jpg', const []), isNull);
 
       final cover = _cover(2);
       fetches.results[1].complete(cover);
@@ -61,7 +65,7 @@ void main() {
     test('cancel ends the load in flight with null', () async {
       final fetches = _Fetches();
       final loader = ArtworkLoader(fetches.call);
-      final load = loader.load('https://a/1.jpg', '');
+      final load = loader.load('https://a/1.jpg', const []);
       loader.cancel();
       expect(fetches.tokens.single.isCancelled, isTrue);
       expect(await load, isNull);
@@ -74,7 +78,7 @@ void main() {
         timeLimit: const Duration(milliseconds: 50),
       );
       final watch = Stopwatch()..start();
-      expect(await loader.load('https://a/slow.jpg', ''), isNull);
+      expect(await loader.load('https://a/slow.jpg', const []), isNull);
       expect(watch.elapsed, lessThan(const Duration(seconds: 5)));
       expect(fetches.tokens.single.isCancelled, isTrue);
     });
@@ -84,9 +88,9 @@ void main() {
         (_, _, _) async => _cover(1),
         timeLimit: const Duration(milliseconds: 20),
       );
-      final cover = await loader.load('https://a/1.jpg', '');
+      final cover = await loader.load('https://a/1.jpg', const []);
       await Future<void>.delayed(const Duration(milliseconds: 60));
-      expect(loader.cached('https://a/1.jpg', ''), same(cover));
+      expect(loader.cached('https://a/1.jpg', const []), same(cover));
     });
 
     test(
@@ -98,28 +102,32 @@ void main() {
           return _cover(urls.length);
         }, capacity: 2);
 
-        final a = await loader.load('a', '');
-        await loader.load('b', '');
+        final a = await loader.load('a', const []);
+        await loader.load('b', const []);
         // Used again: b is now the older of the two.
-        expect(await loader.load('a', ''), same(a));
-        await loader.load('c', '');
+        expect(await loader.load('a', const []), same(a));
+        await loader.load('c', const []);
 
         expect(urls, ['a', 'b', 'c'], reason: 'the second a loaded nothing');
-        expect(loader.cached('a', ''), same(a));
-        expect(loader.cached('b', ''), isNull);
-        expect(loader.cached('c', ''), isNotNull);
+        expect(loader.cached('a', const []), same(a));
+        expect(loader.cached('b', const []), isNull);
+        expect(loader.cached('c', const []), isNotNull);
       },
     );
 
     test('keeps a cover per CA bundle, and no failure', () async {
       var calls = 0;
       final loader = ArtworkLoader(
-        (_, caFile, _) async => ++calls == 1 ? null : _cover(calls),
+        (_, caFiles, _) async => ++calls == 1 ? null : _cover(calls),
       );
-      expect(await loader.load('a', ''), isNull);
-      expect(await loader.load('a', ''), isNotNull, reason: 'fetched again');
+      expect(await loader.load('a', const []), isNull);
+      expect(
+        await loader.load('a', const []),
+        isNotNull,
+        reason: 'fetched again',
+      );
       expect(calls, 2);
-      await loader.load('a', '/ca.pem');
+      await loader.load('a', const ['/ca.pem']);
       expect(calls, 3, reason: 'another trust, another load');
     });
 
@@ -128,24 +136,28 @@ void main() {
         (url, _, _) async => _cover(1, url == 'big' ? 100 : 40),
         byteBudget: 100,
       );
-      await loader.load('a', '');
-      await loader.load('b', '');
-      expect(loader.cached('a', ''), isNotNull);
-      await loader.load('c', '');
-      expect(loader.cached('b', ''), isNull, reason: '120 bytes are too many');
-      await loader.load('big', '');
-      expect(loader.cached('a', ''), isNull);
-      expect(loader.cached('c', ''), isNull);
-      expect(loader.cached('big', ''), isNotNull);
+      await loader.load('a', const []);
+      await loader.load('b', const []);
+      expect(loader.cached('a', const []), isNotNull);
+      await loader.load('c', const []);
+      expect(
+        loader.cached('b', const []),
+        isNull,
+        reason: '120 bytes are too many',
+      );
+      await loader.load('big', const []);
+      expect(loader.cached('a', const []), isNull);
+      expect(loader.cached('c', const []), isNull);
+      expect(loader.cached('big', const []), isNotNull);
     });
 
     test('a fetch that throws is a failure', () async {
       final loader = ArtworkLoader((_, _, _) => throw StateError('boom'));
-      expect(await loader.load('a', ''), isNull);
+      expect(await loader.load('a', const []), isNull);
       final late = ArtworkLoader.uncancellable(
         (_, _) => Future.error(StateError('late')),
       );
-      expect(await late.load('a', ''), isNull);
+      expect(await late.load('a', const []), isNull);
     });
   });
 
@@ -204,7 +216,11 @@ void main() {
       final cancel = ArtworkCancel();
       final seen = requested.stream.first;
       final watch = Stopwatch()..start();
-      final download = downloadArtwork(base.resolve('/stall'), '', cancel);
+      final download = downloadArtwork(
+        base.resolve('/stall'),
+        const [],
+        cancel,
+      );
       await seen;
       cancel.cancel();
 
@@ -221,7 +237,10 @@ void main() {
       final cancel = ArtworkCancel()..cancel();
       var requests = 0;
       final sub = requested.stream.listen((_) => requests++);
-      expect(await downloadArtwork(base.resolve('/stall'), '', cancel), isNull);
+      expect(
+        await downloadArtwork(base.resolve('/stall'), const [], cancel),
+        isNull,
+      );
       await sub.cancel();
       expect(requests, 0);
     });
@@ -232,7 +251,10 @@ void main() {
         timeLimit: const Duration(milliseconds: 400),
       );
       final watch = Stopwatch()..start();
-      expect(await loader.load(base.resolve('/drip').toString(), ''), isNull);
+      expect(
+        await loader.load(base.resolve('/drip').toString(), const []),
+        isNull,
+      );
       expect(watch.elapsed, lessThan(const Duration(seconds: 5)));
       await dropped.future.timeout(const Duration(seconds: 5));
     });

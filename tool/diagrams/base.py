@@ -1,7 +1,7 @@
 """Shared drawing kit for the README diagrams: the palette, the D canvas
 with its helpers, and the signal shapes the waveform diagrams draw.
 
-The rules every diagram follows, so the thirteen read as one set in the
+The rules every diagram follows, so the seventeen read as one set in the
 README, where each one is shown at the column's full width:
 - the canvas is W wide and keeps M clear on the left and the right;
 - node titles 14, semibold; text 12; headings 13, semibold; 11 only for

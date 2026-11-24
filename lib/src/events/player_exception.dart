@@ -2,7 +2,8 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-/// Every exception a [Player] method throws when libmpv or a source fails.
+/// Every exception a [Player] method throws when libmpv, a source or the
+/// OS media session fails or refuses.
 /// Switch on it to handle each case:
 ///
 /// ```dart
@@ -14,6 +15,7 @@
 ///     case PlayerInitException(:final message, :final cause):
 ///     case MpvCommandException(:final name, :final code):
 ///     case SourceException(:final uri):
+///     case MediaSessionException(:final reason):
 ///   }
 /// }
 /// ```
@@ -100,4 +102,35 @@ final class SourceException extends PlayerException {
 
   @override
   String toString() => 'SourceException($uri): $message';
+}
+
+/// Why [Player.setMediaSession] refused to publish a [Player].
+enum MediaSessionRefusal {
+  /// The [Player] lives in another isolate than the root one, the only
+  /// one the OS sends the commands of its media session to.
+  notRootIsolate,
+
+  /// Another [Player] of this isolate owns the session: it is one per
+  /// process.
+  otherPlayer,
+
+  /// Another Flutter engine of this process (add-to-app, a second window)
+  /// owns the session.
+  otherEngine,
+}
+
+/// [Player.setMediaSession] could not publish the [Player] to the OS media
+/// session. The state goes back to no session.
+final class MediaSessionException extends PlayerException {
+  /// Creates the exception for a session refused for [reason].
+  const MediaSessionException(this.reason, this.message);
+
+  /// Why the session was refused.
+  final MediaSessionRefusal reason;
+
+  /// What to do about it.
+  final String message;
+
+  @override
+  String toString() => 'MediaSessionException(${reason.name}): $message';
 }

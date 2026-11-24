@@ -1,0 +1,233 @@
+name: OHOS emulator
+
+# The kit on OpenHarmony 7.0, on the Oniro emulator (x86_64, KVM; Apache-2.0,
+# no Huawei account: github.com/eclipse-oniro4openharmony/device_board_oniro),
+# with the libmpv_ohos-x86_64.so of the pinned release or of a libmpv-scripts
+# Build. An app built with Flutter-OH (gitcode CPF-Flutter/flutter_flutter)
+# and signed with OpenHarmony's debug keys plays .github/ohos/sine_5s_cover.flac
+# (test/fixtures/sine_5s.flac with the cover of sine_with_cover.flac) as an
+# asset and writes MAK_OHOS_RESULT to hilog; the emulator's sound card
+# writes a WAV file, and check_tone.py finds the 440 Hz sine in it. The app
+# then turns the media session on: the AVSession the system holds, its title
+# and its cover in the System UI and a command of the system that reaches
+# Dart.
+#
+# Not covered by this image: playback in the background. Its continuous task
+# service refuses every task (no text for its notification), and its System
+# UI pauses a new audio session as it swaps its media notifications.
+# .github/ohos/setup.sh sets the tools up at their pins, test_hap.sh builds
+# and signs the HAP.
+#
+# Not covered: HarmonyOS NEXT and its services (an OpenHarmony image), a
+# phone's audio policy and routes, arm64 (the HAP is ohos-x64), Impeller
+# (off in the HAP: its Vulkan start crashes on the emulator).
+#
+# Runs on the release branches when what an OHOS app bundles changes, and by
+# hand, on any branch, with the libmpv-scripts Build to try. A branch named
+# wip/<something>-ohos-ci runs it too, at a push that changes one of the
+# paths below: GitHub starts a workflow by hand only once it is on the
+# default branch.
+on:
+  push:
+    branches: ['release/**', 'wip/*-ohos-ci']
+    paths:
+      - 'hook/**'
+      - 'lib/**'
+      - 'pubspec.yaml'
+      - 'scripts/ci/resolve_libmpv_run.sh'
+      - 'ohos/**'
+      - '.github/ohos/**'
+      - '.github/workflows/ohos-emulator.yml'
+  workflow_dispatch:
+    inputs:
+      libmpv_scripts_run:
+        description: 'libmpv-scripts Build run id to take libmpv from, instead of the pinned release'
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  # A libmpv-scripts Build to take libmpv from, by hand. Empty: the pinned
+  # release when it is published, else the latest Build of its release
+  # branch, as ci.yml does (scripts/ci/resolve_libmpv_run.sh).
+  LIBMPV_SCRIPTS_RUN: ${{ inputs.libmpv_scripts_run || vars.LIBMPV_SCRIPTS_RUN }}
+  # The Oniro emulator, release v7.0.3 of device_board_oniro.
+  ONIRO_ZIP: https://github.com/eclipse-oniro4openharmony/device_board_oniro/releases/download/v7.0.3/oniro_emulator.zip
+  ONIRO_SHA256: 06a37a703546d3899a6906728258bf93d025be54437d0d8f8d8080a745bd4a46
+  HDC_TARGET: 127.0.0.1:55555
+
+jobs:
+  ohos:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: kit
+      # hap-sign-tool and hvigor's Java.
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: '17'
+      # Flutter-OH, with the engine artifacts it downloads from Huawei's
+      # storage at the first build (slow from here), and the command-line
+      # tools. The 3.5 GB of the SDK come from Huawei's mirror at each run
+      # (setup.sh streams the 1.3 GB it needs, a minute or two).
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ runner.temp }}/ohos/flutter
+            ${{ runner.temp }}/ohos/cmdtools
+          key: ohos-tools-${{ hashFiles('kit/.github/ohos/setup.sh') }}
+      - name: Flutter-OH, the command-line tools and the OpenHarmony SDK
+        run: |
+          bash kit/.github/ohos/setup.sh "$RUNNER_TEMP/ohos"
+          . "$RUNNER_TEMP/ohos/env.sh"
+          {
+            echo "OHOS_BASE_SDK_HOME=$OHOS_BASE_SDK_HOME"
+            echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+            echo "PATH=$PATH"
+          } >> "$GITHUB_ENV"
+          flutter doctor -v | sed -n '/HarmonyOS/,/^$/p'
+      # From a Build, its library; from the pinned release, the asset at the
+      # SHA-256 of the hook. Either way test_hap.sh bundles it through the
+      # libmpv user define.
+      - name: libmpv
+        env:
+          GH_TOKEN: ${{ secrets.LIBMPV_SCRIPTS_TOKEN }}
+          RELEASE_TOKEN: ${{ github.token }}
+        run: |
+          asset=libmpv_ohos-x86_64.so
+          mkdir -p "$RUNNER_TEMP/libmpv"
+          run="$(kit/scripts/ci/resolve_libmpv_run.sh)"
+          if [[ -n "$run" ]]; then
+            gh run download "$run" -R ales-drnz/libmpv-scripts -n ohos-x86_64 -D "$RUNNER_TEMP/libmpv"
+          else
+            release="libmpv-$(sed -n "s/^const String libmpvRelease = '\([^']*\)';/\1/p" kit/lib/src/internals/libmpv_release.dart)"
+            sha="$(grep -A1 "^  '$asset':" kit/hook/build.dart | grep -oE '[0-9a-f]{64}' || true)"
+            if [[ -z "$sha" ]]; then
+              echo "::error title=libmpv::$release has no $asset pinned in hook/build.dart: give a libmpv-scripts Build (libmpv_scripts_run)."
+              exit 1
+            fi
+            curl -fsSL --retry 3 -o "$RUNNER_TEMP/libmpv/$asset" \
+              "https://github.com/ales-drnz/mpv_audio_kit/releases/download/$release/$asset"
+            echo "$sha  $RUNNER_TEMP/libmpv/$asset" | sha256sum -c -
+          fi
+          ls -la "$RUNNER_TEMP/libmpv"
+          test -f "$RUNNER_TEMP/libmpv/$asset"
+      - name: The HAP
+        run: |
+          hap="$(bash kit/.github/ohos/test_hap.sh "$RUNNER_TEMP/ohos" "$RUNNER_TEMP/libmpv" \
+            kit/.github/ohos/sine_5s_cover.flac)"
+          echo "HAP=$hap" >> "$GITHUB_ENV"
+          unzip -l "$hap" | grep -E 'libs/.*\.so'
+          # The library the hook bundled is the one under test. hvigor strips
+          # it again (DoNativeStrip), so the code is compared, not the file.
+          llvm="$OHOS_BASE_SDK_HOME/26/native/llvm/bin"
+          unzip -p "$hap" libs/x86_64/libmpv_audio_kit.so > bundled.so
+          text() { "$llvm/llvm-objcopy" -O binary --only-section=.text "$1" text.bin && sha256sum < text.bin | cut -d' ' -f1; }
+          echo "bundled $(text bundled.so), under test $(text "$RUNNER_TEMP/libmpv/libmpv_ohos-x86_64.so")"
+          test "$(text bundled.so)" = "$(text "$RUNNER_TEMP/libmpv/libmpv_ohos-x86_64.so")"
+          "$llvm/llvm-readelf" -d bundled.so | grep -q 'libohaudio.so'
+      - name: KVM for the runner's user
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Start the Oniro emulator
+        run: |
+          sudo apt-get update
+          # ipxe-qemu: the virtio NIC's option ROM; libatomic1: hdc's.
+          sudo apt-get install -y --no-install-recommends qemu-system-x86 ipxe-qemu libatomic1
+          # hdc enumerates USB through libusb: one fake node lets its server
+          # start on a runner without a USB bus.
+          if [ ! -d /dev/bus/usb ]; then
+            sudo mkdir -p /dev/bus/usb/001
+            sudo mknod /dev/bus/usb/001/001 c 189 0 || true
+            sudo chmod 666 /dev/bus/usb/001/001 || true
+          fi
+          mkdir -p "$RUNNER_TEMP/emu"
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/emu/images.zip" "$ONIRO_ZIP"
+          echo "$ONIRO_SHA256  $RUNNER_TEMP/emu/images.zip" | sha256sum -c -
+          unzip -q "$RUNNER_TEMP/emu/images.zip" -d "$RUNNER_TEMP/emu"
+          rm "$RUNNER_TEMP/emu/images.zip"
+          cd "$RUNNER_TEMP/emu/images"
+          nohup ./run.sh --headless --accel kvm -c "$HDC_TARGET" \
+            --audio "wav,path=$RUNNER_TEMP/emu/out.wav" > "$RUNNER_TEMP/emu/qemu.log" 2>&1 &
+          deadline=$(( $(date +%s) + 600 ))
+          until [ "$(hdc -t "$HDC_TARGET" shell param get bootevent.boot.completed 2>/dev/null | tr -d '\r\n ')" = true ]; do
+            if [ "$(date +%s)" -gt "$deadline" ]; then
+              echo "::error title=OHOS emulator::no boot in 10 minutes"
+              tail -30 "$RUNNER_TEMP/emu/qemu.log"
+              exit 1
+            fi
+            hdc tconn "$HDC_TARGET" >/dev/null 2>&1 || true
+            sleep 5
+          done
+          hdc -t "$HDC_TARGET" shell "uname -a; param get const.ohos.apiversion; param get const.product.software.version"
+      - name: Install, play and read the result
+        run: |
+          h() { hdc -t "$HDC_TARGET" "$@"; }
+          h shell "hilog -Q pidoff; hilog -Q domainoff; hilog -G 16M" || true
+          h install "$HAP" | tee install.txt
+          grep -q "install bundle successfully" install.txt
+          # The first byte of this run in the sound card's file.
+          stat -c %s "$RUNNER_TEMP/emu/out.wav" > wav.start 2>/dev/null || echo 0 > wav.start
+          h shell "hilog -r" || true
+          # The keyguard goes by itself a few seconds after the boot; a
+          # start is refused until then.
+          for i in $(seq 20); do
+            h shell "power-shell wakeup" >/dev/null 2>&1 || true
+            if h shell "aa start -a EntryAbility -b dev.mak.makohos" | tee start.txt | grep -q "start ability successfully"; then
+              break
+            fi
+            sleep 3
+          done
+          grep -q "start ability successfully" start.txt
+          for i in $(seq 60); do
+            h shell "hilog -x" > hilog.txt 2>&1 || true
+            grep -q MAK_OHOS_RESULT hilog.txt && break
+            sleep 3
+          done
+          # The media session, 2 s after the app turned it on: the one the
+          # AVSession service holds for the app.
+          sleep 2
+          h shell "hidumper -s AVSessionService -a '-show_session_info'" > session.txt 2>&1 || true
+          for i in $(seq 20); do
+            h shell "hilog -x" > hilog.txt 2>&1 || true
+            grep -q MAK_OHOS_SESSION hilog.txt && break
+            sleep 2
+          done
+          grep -E "MAK_OHOS_|ohaudio" hilog.txt | tail -20
+          grep -E "bundle name|session type|session tag|is active" session.txt || true
+          h shell "ls -l /data/log/faultlog/faultlogger/ | grep makohos" || true
+          grep -q "MAK_OHOS_LIB os=ohos" hilog.txt
+          grep -q "MAK_OHOS_RESULT PASS" hilog.txt
+          # An active AVSession of type audio, of the app, with the tag of
+          # the plugin, and its title and artist in the System UI.
+          grep -Eq "bundle name *: dev.mak.makohos" session.txt
+          grep -Eq "session tag *: mpv_audio_kit" session.txt
+          grep -Eq "session type *: audio" session.txt
+          grep -Eq "is active *: true" session.txt
+          grep -q '"musicTitle":"mpv_audio_kit on OHOS","musicAuthor":"makohos"' hilog.txt
+          grep -q "mediaImg show success: true" hilog.txt
+          # A command of the system reaches Dart: the System UI of OpenHarmony
+          # 7.0 on the Oniro emulator pauses a new audio session as it swaps
+          # its media notifications, and the pause arrives on
+          # stream.mediaSessionCommands and pauses the player.
+          grep -q "MAK_OHOS_SESSION commands=\[MediaSessionCommandPause\] playing=false" hilog.txt
+      - name: What the sound card played
+        run: python3 -I kit/.github/ohos/check_tone.py "$RUNNER_TEMP/emu/out.wav" "$(cat wav.start)"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: ohos-emulator-logs
+          path: |
+            hilog.txt
+            install.txt
+            start.txt
+            session.txt
+            ${{ runner.temp }}/emu/qemu.log
+            ${{ runner.temp }}/emu/out.wav
+          if-no-files-found: ignore

@@ -166,7 +166,7 @@ public class MediaSessionPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
         result(invalidArgs("enable")); return
       }
       // Answered after the ownership check: Dart turns already_owned into
-      // a StateError and leaves its state off.
+      // a MediaSessionException and leaves its state off.
       onMain {
         if self.enable(args: args) {
           result(nil)

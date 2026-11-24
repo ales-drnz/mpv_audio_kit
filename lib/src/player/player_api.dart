@@ -59,6 +59,12 @@ abstract interface class PlayerApi {
 
   // ── Lifecycle ──────────────────────────────────────────────────────
 
+  /// Completes once the player has started its core, or with a
+  /// [PlayerInitException] when it could not. Every call already waits
+  /// for it, so awaiting it is only needed to learn of a failed start
+  /// before the first call, as when a screen shows an error at once.
+  Future<void> get initialized;
+
   /// Tears down the player. Idempotent: every call returns the same
   /// teardown future.
   ///
@@ -91,10 +97,11 @@ abstract interface class PlayerApi {
   Future<void> openPlaylistFile(Media playlist, {bool? play});
 
   /// Creates a live [PcmSource] of [format] and opens it as the sole
-  /// playlist entry. See [Player.openPcmStream].
+  /// playlist entry. When [play] is null the configuration's autoplay
+  /// value decides, as for [open]. See [Player.openPcmStream].
   Future<PcmSource> openPcmStream(
     PcmFormat format, {
-    bool play = true,
+    bool? play,
     Duration maxBuffered = const Duration(seconds: 30),
     bool lowLatency = false,
     Map<String, Object?>? extras,
@@ -105,16 +112,20 @@ abstract interface class PlayerApi {
   /// Starts or resumes playback (sets the play-pause intent to play).
   /// Idempotent while playing. Once the queue has ended
   /// ([PlaybackState.completed]) it starts the last track again from its
-  /// beginning; with nothing loaded, or at the end of a source that cannot
-  /// seek back, the intent stays off.
+  /// beginning; after `stop(keepPlaylist: true)` it starts the entry that
+  /// stopped from its beginning; with nothing loaded, or at the end of a
+  /// source that cannot seek back, the intent stays off.
   Future<void> play();
 
   /// Pauses playback, preserving the playhead position. Idempotent.
   Future<void> pause();
 
-  /// Stops playback and unloads the current file; the next track must be
-  /// loaded with [open].
-  Future<void> stop();
+  /// Stops playback and unloads the current file. The playlist is cleared
+  /// and the next track must be loaded with [open], unless [keepPlaylist]
+  /// keeps the entries: the playlist index stays on the entry that
+  /// stopped, [next] and [previous] move it with nothing loaded, and [play]
+  /// starts it from its beginning.
+  Future<void> stop({bool keepPlaylist = false});
 
   /// Seeks within the current file. With [relative] `false` [position] is
   /// an absolute timestamp, a negative one going to the start; with `true`
@@ -174,12 +185,16 @@ abstract interface class PlayerApi {
 
   /// Advances to the next playlist entry and returns `true`, or `false`
   /// when there is none. With [force] true, advancing past the last entry
-  /// stops playback; the default does nothing at the end.
+  /// stops playback; the default does nothing at the end. After
+  /// `stop(keepPlaylist: true)` it moves the entry that stopped, with
+  /// nothing loaded.
   Future<bool> next({bool force});
 
   /// Returns to the previous playlist entry and returns `true`, or `false`
   /// when there is none. With [force] true, going back past the first
-  /// entry stops playback; the default does nothing at the start.
+  /// entry stops playback; the default does nothing at the start. After
+  /// `stop(keepPlaylist: true)` it moves the entry that stopped, with
+  /// nothing loaded.
   Future<bool> previous({bool force});
 
   /// Jumps to the next entry from a different source playlist
@@ -389,8 +404,13 @@ abstract interface class PlayerApi {
   /// Enables or disables TLS server-certificate verification.
   Future<void> setTlsVerify(bool enable);
 
-  /// Sets the path to a custom CA bundle for TLS verification.
+  /// Sets the path to a CA bundle that replaces the built-in roots for TLS
+  /// verification, `''` for those roots. See [Player.setTlsCaFile].
   Future<void> setTlsCaFile(String path);
+
+  /// Trusts the certificates of the PEM file at [path] on top of the roots
+  /// in use, `''` for none. See [Player.setTlsExtraCaFile].
+  Future<void> setTlsExtraCaFile(String path);
 
   /// Sets the HLS variant-selection policy for adaptive streams.
   Future<void> setHlsBitrate(HlsBitrate hlsBitrate);
@@ -413,13 +433,12 @@ abstract interface class PlayerApi {
   /// Google Assistant, and the platform's audio-session lifecycle per
   /// [MediaSession.interruptionPolicy].
   ///
-  /// Pass `null` to disable the session and remove the entry from the
-  /// system. Only one [Player] per process can have an active session
-  /// at a time: calling this with a non-null [session] on a second
-  /// [Player] throws [StateError], also when that [Player] belongs to
-  /// another Flutter engine of the process. The session stays with the
-  /// first until it is set to `null`, its [Player] is disposed or its
-  /// engine is destroyed.
+  /// Pass `null` to disable the session and remove the entry from the system.
+  /// Only one [Player] per process can have an active session at a time:
+  /// calling this with a non-null [session] on a second [Player] throws a
+  /// [MediaSessionException], also when that [Player] belongs to another
+  /// Flutter engine of the process. The session stays with the first until it
+  /// is set to `null`, its [Player] is disposed or its engine is destroyed.
   ///
   /// Incoming OS commands (play-pause from the lockscreen, next track
   /// from a Bluetooth headset, …) are auto-applied to this [Player]

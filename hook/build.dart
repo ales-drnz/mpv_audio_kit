@@ -31,6 +31,14 @@
 //     user_defines:
 //       mpv_audio_kit:
 //         tizen: true
+//
+// OpenHarmony and HarmonyOS (OHOS), through Flutter-OH
+// (https://gitcode.com/CPF-Flutter/flutter_flutter), are linux here too,
+// with the arch of the HAP: they take the libmpv_ohos assets, which are
+// built against the musl of the OHOS native SDK. A build is OHOS when the
+// target OS is ohos or when the C compiler Flutter-OH passes is the clang
+// of the OpenHarmony SDK; `ohos: true` or `ohos: false` says it outright,
+// for a linux or ohos target only.
 
 import 'dart:io';
 
@@ -47,27 +55,31 @@ const _baseUrl =
 /// SHA-256 of every release asset, from the release's manifest.json.
 const _sha256 = <String, String>{
   'libmpv_android-arm64-v8a.so':
-      '36884ee5c162f3a676cfbbebea737c3379981a372b56d3a0d72006ce560b0899',
+      '70a9d58cf2a56dd0fd389385efcbf719278cae796a5ee250c51a22ce740ee7e6',
   'libmpv_android-armeabi-v7a.so':
-      '050b17820eea37e8e2e64704ed025d9daec7e51a74a18d6c6f0333b15ddc4557',
+      'ba427db72afbfa4e7cc70e1cba84d58d23fa6871e4a71e4ecdface18f393f10b',
   'libmpv_android-x86_64.so':
-      '1eb936ee38b8ba97db4bd6d5f5d8979d7e69a427011ca65b73d1fdc40e9ea549',
+      'c1d64c62e58cd9451b5885a97b871b81166693cad0c7f98fa890f87b2fde09e6',
   'libmpv_ios.xcframework.zip':
-      '18235b759fcd7591dc5da987119a32d16b76f45601e92b73d80d4b80406f09aa',
+      'd12798c0f72661035bba7108e3b9d7b8a77107675fe76004c0dc7c24d368bdd8',
   'libmpv_linux-aarch64.so':
-      '4f68d40ac29240d19f4a5770346496cc4b23f0d2436ef608bce8ff65f00727cb',
+      '0db8bd8c55f84cc641209f8523fac11547be5a8d099896430c019065ee3974e6',
   'libmpv_linux-x86_64.so':
-      'b44be4f526d74825fd9f4d2f9b6a2362cd3dabc5434ac83c412f652ff94495cd',
+      '5b974ea687640a545f4c43e89be168bca49a3eda29e2dfd85baf551c34ee4b35',
+  'libmpv_ohos-arm64-v8a.so':
+      '0b6e7a8aaedfdb57b28bff2b15a8f8a99ba8d4c974d2c90923e5d66594ca2d1e',
+  'libmpv_ohos-x86_64.so':
+      '2eff5d0ed6b96a6fd223e85fe7b188b2c921b9d62eb99e8c25d36c3e72eba0df',
   'libmpv_macos.xcframework.zip':
-      'a734a0526b3a536709ceb1cd7ee4caa4a2045e7ddfe910e376269bbe5f4234d3',
+      '7709cc28b14b71ba0c80e9d00a561ae6279cf7e3590ba9b9dff8b3db8d3f95cc',
   'libmpv_tizen-armv7l.so':
-      '6dbe648b566264c7d920d4c52e1ee39b253fc3ac004c4f39a40e2f953fa9f112',
+      '7ac807280291bef753ccc7f6c9776dbeb17f85a17d9db82a5fd3e0b0830ffd4f',
   'libmpv_tizen-x86_64.so':
-      'a388ced43ef043b1b929b56ef5b9dfeb24d302139a29838a56df9ef5189e3876',
+      '279dd4848557db92ca18ac9e2ccfae7abb5753de80932f11ae2451bb671f545f',
   'libmpv_windows-arm64.dll':
-      '50297806c489266eeccffa8d92315a465f382db621dca9173976b5f6a94e1aa7',
+      '9db0dc8b80a5b7e40e7867399021cbbf613f712574912a0ca51c482d38c6d6f7',
   'libmpv_windows-x86_64.dll':
-      '1ba497325c21b83f23369f3e51f55792929454f278b2f81dc9f304a0b13eabaa',
+      '1b3d4a9711d03bb1e02c4db784acd1b56caec0512282ef8ab50f9a33638c0f66',
 };
 
 /// The tizen user define, true or false. Anything else fails the build: an
@@ -80,6 +92,46 @@ bool _tizen(BuildInput input) => switch (input.userDefines['tizen']) {
   ),
 };
 
+/// Whether the build is for OHOS: the ohos user define, true or false, or
+/// when it is not set, a target OS of ohos (a Flutter-OH that stops writing
+/// linux) or the SDK's clang as the C compiler. Anything else fails the
+/// build. The define counts only where Flutter-OH builds, a target OS of
+/// linux or ohos: an app that sets it builds for Android or Windows too.
+bool _ohos(BuildInput input) {
+  final define = switch (input.userDefines['ohos']) {
+    final bool value => value,
+    null => null,
+    final other => throw ArgumentError(
+      'mpv_audio_kit: the ohos user define is true or false, not $other',
+    ),
+  };
+  final os = _targetOSName(input);
+  if (os != 'linux' && os != 'ohos') return false;
+  return define ?? (os == 'ohos' || _ohosCompiler(input));
+}
+
+/// Whether the C compiler of the input is the clang of the OpenHarmony SDK,
+/// `<sdk>/<version>/openharmony/native/llvm/bin/clang`, which Flutter-OH
+/// passes to the hooks of an OHOS build (`cCompilerConfigOhos`). Read raw,
+/// as [_targetOSName].
+bool _ohosCompiler(BuildInput input) {
+  final extensions = input.config.json['extensions'];
+  final code = extensions is Map ? extensions['code_assets'] : null;
+  final compiler = code is Map ? code['c_compiler'] : null;
+  final cc = compiler is Map ? compiler['cc'] : null;
+  if (cc is! String) return false;
+  return cc.replaceAll(r'\', '/').contains('/openharmony/native/llvm/bin/');
+}
+
+/// The target architecture as the hook protocol writes it, read raw: an
+/// OHOS target OS is one code_assets cannot parse.
+String? _targetArchitectureName(BuildInput input) {
+  final extensions = input.config.json['extensions'];
+  final code = extensions is Map ? extensions['code_assets'] : null;
+  final arch = code is Map ? code['target_architecture'] : null;
+  return arch is String ? arch : null;
+}
+
 void main(List<String> args) async {
   await build(args, (input, output) async {
     if (!input.config.buildCodeAssets) return;
@@ -89,12 +141,23 @@ void main(List<String> args) async {
     // input.config.code, which code_assets before 2.0.0 cannot parse for
     // an OS it does not know.
     if (_targetOSName(input) == 'tvos') return;
-    final code = input.config.code;
-    final target = _Target.of(
-      code,
-      iOSVersion: _iOSVersion(input),
-      tizen: _tizen(input),
-    );
+    final tizen = _tizen(input);
+    final ohos = _ohos(input);
+    if (tizen && ohos) {
+      throw ArgumentError(
+        'mpv_audio_kit: a build is for Tizen or for OHOS, not both',
+      );
+    }
+    // OHOS before input.config.code, which fails on a target OS of ohos.
+    final _Target target;
+    final CodeConfig? code;
+    if (ohos) {
+      code = null;
+      target = _Target.ohos(_targetArchitectureName(input));
+    } else {
+      code = input.config.code;
+      target = _Target.of(code, iOSVersion: _iOSVersion(input), tizen: tizen);
+    }
     final out = File.fromUri(input.outputDirectory.resolve(target.fileName));
 
     final local = input.userDefines.path('libmpv');
@@ -132,7 +195,7 @@ void main(List<String> args) async {
           asset,
           unpacked,
           target,
-          code.targetArchitecture,
+          code!.targetArchitecture,
           out,
           zipSha256: local == null ? _sha256[target.asset] : null,
         );
@@ -190,6 +253,16 @@ class _Target {
   /// The xcframework directory holding the slice, on Apple.
   final String? appleSlice;
 
+  /// OHOS on [arch], the target architecture's name in the hook protocol:
+  /// arm64 for the devices, x64 for the emulators. No 32-bit arm build.
+  static _Target ohos(String? arch) => _Target(switch (arch) {
+    'arm64' => 'libmpv_ohos-arm64-v8a.so',
+    'x64' => 'libmpv_ohos-x86_64.so',
+    _ => throw UnsupportedError(
+      'mpv_audio_kit: no libmpv for ohos $arch in $_release',
+    ),
+  }, 'libmpv_audio_kit.so');
+
   static _Target of(CodeConfig code, {int? iOSVersion, bool tizen = false}) {
     final arch = code.targetArchitecture;
     Never unsupported() => throw UnsupportedError(
@@ -211,6 +284,8 @@ class _Target {
       // writes linux with the arch of the Tizen build: arm for the TVs,
       // which Flutter's Linux desktop never builds, and x64 for the TV
       // emulator, which it does, so there the app sets the tizen user define.
+      // Flutter-OH writes linux too, but its builds never get here: they
+      // are _Target.ohos.
       OS.linux => _Target(switch ((arch, tizen)) {
         (Architecture.arm, _) => 'libmpv_tizen-armv7l.so',
         (Architecture.x64, true) => 'libmpv_tizen-x86_64.so',

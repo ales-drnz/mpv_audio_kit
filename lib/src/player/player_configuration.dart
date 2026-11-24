@@ -17,7 +17,7 @@ import '../types/enums/log_level.dart';
 /// before the first `setX` can land ([initialVolume], [logLevel]). The
 /// audio-only library invariants (video and scripting disabled, …) are fixed
 /// and deliberately not configurable.
-class PlayerConfiguration {
+final class PlayerConfiguration {
   /// If `true`, playback starts automatically as soon as a track finishes
   /// loading. Default: `false`.
   final bool autoPlay;
@@ -67,6 +67,15 @@ class PlayerConfiguration {
   /// path (e.g. `getTemporaryDirectory()`) when spilling the cache to disk.
   final String? demuxerCacheDir;
 
+  /// Whether `https://` sources must present a certificate a trusted root
+  /// signed (mpv's `--tls-verify`), set before the first load. Default
+  /// `true`, as mpv and FFmpeg have it. A home server with a self-signed
+  /// certificate fails to open then: pass [Player.setTlsCaFile] a bundle
+  /// with its certificate (the file replaces the built-in roots, so it also
+  /// needs those of the other servers the app plays from), or turn
+  /// verification off here or with [Player.setTlsVerify].
+  final bool tlsVerify;
+
   /// Creates a configuration; every field defaults to its documented value.
   const PlayerConfiguration({
     this.autoPlay = false,
@@ -78,5 +87,6 @@ class PlayerConfiguration {
     this.hlsBitrate = HlsBitrate.max,
     this.normalizeDownmix = false,
     this.demuxerCacheDir,
+    this.tlsVerify = true,
   });
 }

@@ -189,6 +189,43 @@ void main() {
       await eventually(bus.playbackStatus, (s) => s == 'Paused');
     }, skip: !Platform.isLinux);
 
+    testWidgets('a stop shows Stopped until the next play', (_) async {
+      final fixture = await materializeFixture('with_chapters.mka');
+      await player.openAll([Media(fixture), Media(fixture)], play: true);
+      await player.stream.playing
+          .firstWhere((p) => p)
+          .timeout(const Duration(seconds: 10));
+      // Stop is not among the default actions: without it the bus's Stop
+      // is ignored.
+      await player.setMediaSession(
+        MediaSession(
+          appName: _appName,
+          actions: {...session.actions, MediaAction.stop},
+        ),
+      );
+      await eventually(bus.playbackStatus, (s) => s == 'Playing');
+
+      await player.stop(keepPlaylist: true);
+      await eventually(bus.playbackStatus, (s) => s == 'Stopped');
+      await eventually(bus.metadata, (m) => m['xesam:title'] == null);
+      // The queue is kept: the desktop's Play stays on and starts it again.
+      await eventually(
+        () => bus.property(MprisBus.playerIface, 'CanPlay'),
+        (v) => v == true,
+      );
+
+      await bus.call('Play');
+      await eventually(bus.playbackStatus, (s) => s == 'Playing');
+
+      // The session's Stop clears the queue: nothing for Play to start.
+      await bus.call('Stop');
+      await eventually(bus.playbackStatus, (s) => s == 'Stopped');
+      await eventually(
+        () => bus.property(MprisBus.playerIface, 'CanPlay'),
+        (v) => v == false,
+      );
+    }, skip: !Platform.isLinux);
+
     testWidgets('SetPosition and Seek from the bus move the player', (_) async {
       final fixture = await materializeFixture('with_chapters.mka');
       await player.open(Media(fixture), play: false);

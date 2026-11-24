@@ -33,4 +33,8 @@ final class ArtworkCancel {
 /// any failure.
 @internal
 typedef CancellableArtworkFetcher =
-    Future<CoverArt?> Function(String url, String caFile, ArtworkCancel cancel);
+    Future<CoverArt?> Function(
+      String url,
+      List<String> caFiles,
+      ArtworkCancel cancel,
+    );

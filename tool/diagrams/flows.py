@@ -67,7 +67,9 @@ def prefetch(t):
     d.text(t3, fy + 44, 'B opens from scratch,', color='label', weight=600)
     d.text(t3, fy + 60, 'when A ends')
     d.text(t4, fy + 44, 'failed stays until', color='label', weight=600)
-    d.text(t4, fy + 60, 'the next loading')
+    d.text(t4, fy + 60, 'the next loading or a stop')
+    for t in (t1, t3, t4):
+        d.guide(t, fy + 18, fy + 30)
     d.text(420, fy + 44, 'open failed', color='fail', weight=600)
     d.text(420, fy + 60, 'network, codec or hook')
     d.caption('A cancel or a dropped prefetch turns loading, ready and used back into idle. failed stays.')
@@ -116,7 +118,7 @@ def cover(t):
     d.arrow(f'M{bx + bw + 4},{y2} L{n1 - w1 / 2 - 4},{y2}', kind='sec')
     d.text(lx, y2 - 10, 'setCoverArtAuto(Cover.exact)', mono=True, color='label')
     d.text(lx, y2 + 22, 'loaded as an extra track')
-    d.node(n1, y2, w1, 72, 'state.tracks', 'external and albumArt,', sub2='with externalFilename', role='lib')
+    d.node(n1, y2, w1, 72, 'state.file.tracks', 'external and albumArt,', sub2='with externalFilename', role='lib')
     d.arrow(f'M{n1 + w1 / 2 + 4},{y2} L{n2 - w2 / 2 - 4},{y2}', kind='sec')
     d.node(n2, y2, w2, 64, 'File(path)', 'you read the image', role='app')
     # the wall between the two: a no, not an error, so grey
@@ -164,11 +166,11 @@ def errors(t):
     kind(ly, 'EndFileError')
     # log message and audio output: two arrows into one LogError
     turn = cl - 30
-    for y, cond, k in ((rows[1], 'at error or fatal', -9), (rows[2], 'when failed', 9)):
+    for y, cond, k in ((rows[1], 'at error or fatal', -9), (rows[2], 'when failed or silent', 9)):
         ly = y + 50
         d.dot(fork, y, kind='fail', r=4)
         d.arrow(f'M{fork},{y} L{fork},{ly} L{turn},{ly} L{turn},{lg + k} L{cl - 4},{lg + k}', kind='fail')
-        d.text((dx + 135 + turn) / 2, ly - 9, cond, color='fail')
+        d.text(turn - 14, ly - 9, cond, anchor='end', color='fail')
     kind(lg, 'LogError')
     return d
 
@@ -182,7 +184,7 @@ def hook(t):
     gaps = {'pl': [(ys[5] - 30, ys[5] - 6)]}   # where a label crosses a lifeline
     for k, n, role in (('app', 'Your code', 'app'), ('pl', 'Player', 'lib'), ('mpv', 'mpv', 'lib')):
         x = X[k]
-        d.node(x, 40, 180, 48, n, role=role, mono=False)
+        d.node(x, 40, 180, 48, n, role=role, mono=n == 'Player')
         y = 66
         for g0, g1 in gaps.get(k, []) + [(530, 530)]:
             d.lifeline(x, y, g0)
@@ -216,9 +218,10 @@ def hook(t):
     msg(7, 'pl', 'mpv', 'mpv_hook_continue', 'sec')
     # 8: mpv goes on and opens the stream
     y8 = ys[8]
-    d.arrow(f'M{X["mpv"]},{y8 - 12} L{X["mpv"] + 44},{y8 - 12} L{X["mpv"] + 44},{y8 + 12} L{X["mpv"] + 8},{y8 + 12}', kind='sec')
-    d.badge(X['mpv'] - 140, y8, 8, 'sec')
-    d.text(X['mpv'] - 122, y8 + 4.5, 'opens the stream', anchor='start', color='label')
+    # the loop on the left of the lifeline, its label beside it
+    d.arrow(f'M{X["mpv"]},{y8 - 12} L{X["mpv"] - 44},{y8 - 12} L{X["mpv"] - 44},{y8 + 12} L{X["mpv"] - 8},{y8 + 12}', kind='sec')
+    d.badge(X['mpv'] - 190, y8, 8, 'sec')
+    d.text(X['mpv'] - 172, y8 + 4.5, 'opens the stream', anchor='start', color='label')
     d.caption('With a timeout in registerHook, the library calls continueHook itself when your code is late.')
     return d
 
@@ -246,7 +249,7 @@ def resolver(t):
     d.arrow(f'M{cx[3]},{r1 + 30} L{cx[3]},{r1 + 70} L{cx[0]},{r1 + 70} L{cx[0]},{r2 - 32}', kind='fail')
     d.text((cx[0] + cx[3]) / 2, r1 + 61, 'the open failed', color='fail')
     row(r2, 'on_load_fail', 'after the failure', 'true', 'cdn.example/42?token=B', 'fresh token, one retry', 'main',
-        'plays', 'lib')
+        'plays, or fails again', 'lib')
     # dead ends
     d.node(cx[3], r3, 2 * hw[3], 56, 'stream.error', 'EndFileError', role='fail')
     d.arrow(f'M{cx[1]},{r2 + 30} L{cx[1]},{r3} L{cx[3] - hw[3] - 4},{r3}', kind='fail', dash=True)

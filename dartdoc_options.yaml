@@ -26,10 +26,14 @@ dartdoc:
       markdown: doc/web.md
     "Android TV":
       markdown: doc/android_tv.md
+    "Wear OS":
+      markdown: doc/wear_os.md
     "Tizen":
       markdown: doc/tizen.md
     "webOS":
       markdown: doc/webos.md
+    "HarmonyOS":
+      markdown: doc/ohos.md
   categoryOrder:
     - "Playback"
     - "Effects"
@@ -44,5 +48,7 @@ dartdoc:
     - "Platforms"
     - "Web"
     - "Android TV"
+    - "Wear OS"
     - "Tizen"
     - "webOS"
+    - "HarmonyOS"

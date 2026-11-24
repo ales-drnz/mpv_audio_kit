@@ -43,6 +43,24 @@ void main() {
         expect(player.state.settings.tlsVerify, isTrue);
       }, timeout: const Timeout(Duration(seconds: 15)));
 
+      for (final verify in [true, false]) {
+        test('PlayerConfiguration(tlsVerify: $verify) sets mpv and the state '
+            'from the start', () async {
+          final p = await buildPlayer(
+            configuration: PlayerConfiguration(tlsVerify: verify),
+          );
+          addTearDown(p.dispose);
+          expect(p.state.settings.tlsVerify, verify);
+          expect(await p.getRawProperty('tls-verify'), verify ? 'yes' : 'no');
+        });
+      }
+
+      test('tls-verify is on by default', () async {
+        expect(const PlayerConfiguration().tlsVerify, isTrue);
+        expect(const PlayerSettings().tlsVerify, isTrue);
+        expect(await player.getRawProperty('tls-verify'), 'yes');
+      });
+
       test('a networkTimeout above the FFmpeg limit is capped, and an http '
           'URL still opens', () async {
         final server = await RangeHttpServer.start({

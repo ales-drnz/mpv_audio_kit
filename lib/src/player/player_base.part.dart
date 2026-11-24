@@ -181,7 +181,11 @@ abstract class _PlayerBase {
     int? wakeupCounterAddress,
   }) : _session = createMpvSession(wakeupCounterAddress: wakeupCounterAddress) {
     // Pure-Dart setup runs on the main isolate (microseconds).
-    _reactives = DefaultPropertyReactives();
+    _reactives = DefaultPropertyReactives(tlsVerify: configuration.tlsVerify);
+    // The state starts with the value mpv starts with, before it reports.
+    _state = PlayerState(
+      settings: PlayerSettings(tlsVerify: configuration.tlsVerify),
+    );
     _durationHint = DurationHint(_reactives);
     _registry = PropertyRegistry()
       ..registerAll(
@@ -202,9 +206,12 @@ abstract class _PlayerBase {
     // this one: see `_InitModule._start`.
   }
 
-  /// Test-only: allows tests to await the post-`Player()` init that
-  /// runs in the background. Public methods already
-  /// `await _ready` internally so consumers don't normally need this.
+  /// Completes once the core has started, or with a
+  /// [PlayerInitException] when it could not. Every call already awaits
+  /// it: await it to learn of a failed start before the first call.
+  Future<void> get initialized => _ready;
+
+  /// Test-only alias of [initialized].
   @visibleForTesting
   Future<void> get ready => _ready;
 
@@ -247,10 +254,17 @@ abstract class _PlayerBase {
   /// reject the property write at the FFI boundary. Catching it on the
   /// wrapper side gives the caller a precise [ArgumentError] naming the
   /// parameter, instead of an opaque [MpvCommandException] from libmpv.
-  /// Throws [RangeError] unless [value] is finite and within
-  /// `[min, max]`, the range mpv accepts for the option behind it.
+  /// Throws [ArgumentError] for NaN, and [RangeError] for a value outside
+  /// `[min, max]`, the range mpv accepts for the option behind it, an
+  /// infinite one included.
   void _checkRange(double value, double min, double max, String paramName) {
-    _checkFinite(value, paramName);
+    if (value.isNaN) {
+      throw ArgumentError.value(
+        value,
+        paramName,
+        'Expected a number (got NaN)',
+      );
+    }
     if (value < min || value > max) {
       throw RangeError.value(
         value,
@@ -410,6 +424,7 @@ abstract class _PlayerBase {
         _reactives.audioDevice.close(),
         _reactives.audioEffects.close(),
         _reactives.tlsCaFile.close(),
+        _reactives.tlsExtraCaFile.close(),
         _reactives.spectrum.close(),
         // Set by the duration specs, outside their own cells.
         _reactives.durationEstimated.close(),

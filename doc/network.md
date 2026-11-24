@@ -104,8 +104,9 @@ It applies to that entry only. Leave it `null` for servers that do not throttle,
 ```dart
 await player.setNetworkTimeout(const Duration(seconds: 10)); // default 60 s
 
-await player.setTlsVerify(true);                     // off by default
-await player.setTlsCaFile('/path/to/company-ca.pem'); // '' for the built-in roots
+await player.setTlsVerify(false);                    // on by default
+await player.setTlsCaFile('/path/to/company-ca.pem'); // replaces the built-in roots, '' for them
+await player.setTlsExtraCaFile('/path/to/nas.pem');   // trusted on top of the roots, '' for none
 
 await player.setHttpProxy('http://proxy.example:8080'); // '' clears it
 await player.setCookies(true);                          // off by default
@@ -113,8 +114,12 @@ await player.setCookies(true);                          // off by default
 
 - `Duration.zero` uses FFmpeg's default timeout for each protocol. For `smb2://` it gives the connection 30 s and no limit on the reads.
 - The longest timeout is about 36 minutes, and a longer one is capped there.
-- TLS verification is off by default, so a server with a self-signed certificate plays. A later release turns it on by default.
-- TLS verification uses the CA roots built into libmpv. A CA file replaces them.
+<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/tls_trust.png" width="100%" alt="Which servers open with each TLS setting: the built-in roots, setTlsExtraCaFile, setTlsCaFile and verification off">
+
+- TLS verification is on by default, as in mpv and FFmpeg. A server with a self-signed certificate or a private CA fails to open. `setTlsExtraCaFile` with its certificate, or its CA, trusts it on top of the roots, and every other server is verified as before. The host name in the URL still has to match the certificate.
+- `setTlsCaFile` replaces the roots instead: only the servers its file vouches for open. `PlayerConfiguration(tlsVerify: false)` turns verification off.
+- The waveform and the loudness scan follow the same settings. The covers of the media session always verify, against the system roots plus both files.
+- The built-in roots are those built into libmpv. A file set with `setTlsCaFile` replaces them.
 - The proxy and cookies take effect from the next load. `https://` sources go through the proxy with `CONNECT`.
 
 ## Monitoring

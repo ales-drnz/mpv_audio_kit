@@ -7,8 +7,9 @@ Show the player in the system media controls and apply the commands they send ba
 | Windows | SMTC |
 | Linux | MPRIS |
 | Web | `navigator.mediaSession` |
+| HarmonyOS | AVSession: the media controls of the System UI |
 
-See the [Web](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Web-topic.html) topic for the web session.
+See the [Web](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Web-topic.html) topic for the web session, and [HarmonyOS](https://pub.dev/documentation/mpv_audio_kit/latest/topics/HarmonyOS-topic.html) for what an OHOS app declares to play in the background.
 
 <img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/media_session_flow.png" width="100%" alt="The media session on each platform and the commands it sends back">
 
@@ -19,7 +20,7 @@ await player.setMediaSession(const MediaSession()); // title, artist, album and 
 await player.setMediaSession(null);                 // remove
 ```
 
-One `Player` per process owns the session, and it must live in the root isolate. A second player throws `StateError`, even from another Flutter engine in the same process. The owner keeps the session until it passes `null` or is disposed.
+One `Player` per process owns the session, and it must live in the root isolate. A second player throws `MediaSessionException`, even from another Flutter engine in the same process: its `reason` says which case it is. The owner keeps the session until it passes `null` or is disposed.
 
 ## Metadata
 

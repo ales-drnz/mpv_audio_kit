@@ -28,8 +28,10 @@ import 'reactive_property.dart';
 /// (`audioParams`, `cache`, `replayGain`) are aggregate cells that several
 /// specs share so dedup happens on the full struct.
 class DefaultPropertyReactives {
-  /// Creates the bundle with every cell seeded to mpv's documented default.
-  DefaultPropertyReactives();
+  /// Creates the bundle with every cell seeded to mpv's documented default,
+  /// and [tlsVerify] to the value the player starts mpv with.
+  DefaultPropertyReactives({bool tlsVerify = true})
+    : tlsVerify = ReactiveProperty<bool>(tlsVerify);
 
   // Lifecycle.
 
@@ -178,10 +180,14 @@ class DefaultPropertyReactives {
 
   /// Whether the server certificate is verified for TLS streams
   /// (`tls-verify`).
-  final ReactiveProperty<bool> tlsVerify = ReactiveProperty<bool>(false);
+  final ReactiveProperty<bool> tlsVerify;
 
   /// Path to a custom CA bundle for TLS verification (`tls-ca-file`).
   final ReactiveProperty<String> tlsCaFile = ReactiveProperty<String>('');
+
+  /// Path to a PEM file trusted on top of the roots (`ca_extra_file` of
+  /// `stream-lavf-o`).
+  final ReactiveProperty<String> tlsExtraCaFile = ReactiveProperty<String>('');
 
   /// HLS variant-selection policy (`hls-bitrate`).
   final ReactiveProperty<HlsBitrate> hlsBitrate = ReactiveProperty<HlsBitrate>(

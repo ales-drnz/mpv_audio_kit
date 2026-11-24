@@ -31,7 +31,7 @@ import 'dart:typed_data';
 /// ```
 ///
 /// {@category Visualizer and analysis}
-class FftFrame {
+final class FftFrame {
   /// Creates a frame. The spectrum pipeline and [BandProcessor] build
   /// them.
   const FftFrame({

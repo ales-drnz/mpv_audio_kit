@@ -1,5 +1,7 @@
 Run the same player in the browser, with libmpv built as WebAssembly. Effects, taps, waveform, loudness, hooks, playlists and live PCM work as on the other platforms.
 
+<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/web_pipeline.png" width="100%" alt="The player in a browser: Dart on the main thread, libmpv in WebAssembly on web workers, an AudioWorklet that plays, and fetch for the network">
+
 ## Serving the page
 
 libmpv runs on threads, so the page must be cross-origin isolated. Every response needs these two headers:
