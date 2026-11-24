@@ -115,7 +115,7 @@ def spectrum(t):
     d.add(f'<rect x="{x0 + ix + iw * b0:.1f}" y="{py + 10}" width="{iw * (b1 - b0):.1f}" height="{ph - 20}" rx="6" '
           f'fill="{c["main"]}" fill-opacity="0.16"/>')
     d.trace(sig, x0 + ix, mid, iw, 46, width=1.3)
-    caption(0, 'mixed to mono,', 'one block at a time')
+    caption(0, 'every channel; the FFT', 'mixes them to mono')
 
     # 2. that block times the Hann window: the edges fade to zero
     x0 = xs[1]
@@ -176,8 +176,8 @@ def spectrum(t):
     oy = 350
     top = py + ph + 52
     cx = [x + pw / 2 for x in xs]
-    d.node(cx[0], oy, pw, 56, 'stream.pcm', 'PcmFrame: samples', role='app')
-    d.node(cx[3], oy, 210, 56, 'stream.fft', 'FftFrame: bands, bins', role='app')
+    d.node(cx[0], oy, pw, 56, 'stream.pcm', 'PcmFrame: every channel', role='lib')
+    d.node(cx[3], oy, 210, 56, 'stream.fft', 'FftFrame: bands, bins', role='lib')
     d.arrow(f'M{cx[0]},{top} L{cx[0]},{oy - 31}', kind='sec')
     d.arrow(f'M{cx[2]},{top} L{cx[2]},{oy} L{cx[3] - 108},{oy}', kind='sec')
     d.text(cx[2] + 10, oy - 9, 'bins', anchor='start')

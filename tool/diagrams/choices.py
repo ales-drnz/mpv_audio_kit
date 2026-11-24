@@ -7,7 +7,9 @@ def _mark(d, x, y, kind):
     """A result in a grid: ok (blue tick), fail (red cross) or unchecked
     (a grey tick, it opens with nothing verified)."""
     col = {'ok': d.c['main'], 'fail': d.c['fail'], 'unchecked': d.c['neutral']}[kind]
-    d.add(f'<circle cx="{x}" cy="{y}" r="13" fill="{col}"/>')
+    # the grey disc gets an edge, or it vanishes on a white page
+    edge = f' stroke="{d.c["line"]}" stroke-opacity="0.6" stroke-width="1"' if kind == 'unchecked' else ''
+    d.add(f'<circle cx="{x}" cy="{y}" r="13" fill="{col}"{edge}/>')
     if kind == 'fail':
         s = 4.6
         d.add(f'<path d="M{x - s},{y - s} L{x + s},{y + s} M{x + s},{y - s} L{x - s},{y + s}" '
@@ -29,18 +31,17 @@ def tls_trust(t):
     for x, a, b in cols:
         d.text(x, 40, a, mono=True, size=12, color='label', weight=600)
         d.text(x, 58, b)
-    rows = [("default", "tlsVerify: true", "the roots built into libmpv", ['ok', 'fail', 'ok']),
-            ("setTlsExtraCaFile('nas.pem')", None, "the roots, plus the file", ['ok', 'ok', 'ok']),
-            ("setTlsCaFile('nas.pem')", None, "the file, in place of the roots", ['fail', 'ok', 'ok']),
-            ("tlsVerify: false", None, "nothing is checked", ['unchecked', 'unchecked', 'ok'])]
+    rows = [("default", "tlsVerify: true", "the roots built into libmpv", ['ok', 'fail', 'unchecked']),
+            ("setTlsExtraCaFile('nas.pem')", None, "the roots, plus the file", ['ok', 'ok', 'unchecked']),
+            ("setTlsCaFile('nas.pem')", None, "the file, in place of the roots", ['fail', 'ok', 'unchecked']),
+            ("tlsVerify: false", None, "nothing is checked", ['unchecked', 'unchecked', 'unchecked'])]
     y0, step = 116, 76
     # the row a home server wants
     d.rect(M, y0 + step - 34, d.w - 2 * M, 68, d.c['band'], r=14, op=0.12)
     for i, (title, code, sub, marks) in enumerate(rows):
         y = y0 + i * step
-        d.node(LX, y, 300, 56, title, sub, role='app' if i == 1 else 'neutral', size=13)
-        if i != 1:
-            d.outline(LX, y, 300, 56)
+        d.node(LX, y, 300, 56, title, sub, role='neutral', size=13)
+        d.outline(LX, y, 300, 56)
         for (x, _, _), k in zip(cols, marks):
             _mark(d, x, y, k)
     d.text(LX + 160, y0 + step + 4, 'a home server', anchor='start', color='label', weight=600)
@@ -112,7 +113,7 @@ def libmpv_bundling(t):
             ('flutter-webos', 'LG TVs', 'no hook: webos/CMakeLists.txt', 'downloads it, with its SHA-256',
              'libmpv_webos', 'armv7l')]
     step = 74
-    d = D('libmpv_bundling', 90 + step * len(rows) + 50, t,
+    d = D('libmpv_bundling', 90 + step * len(rows) + 30, t,
           'How each Flutter toolchain gets its libmpv: the build hook, the web assets, SwiftPM or CMake')
     TX, HX, FX = M + 115, 480, d.w - M - 125
     for x, h in ((TX, 'toolchain'), (HX, 'how it gets libmpv'), (FX, 'what the app bundles')):
@@ -143,7 +144,7 @@ def _queue(d, cx, y, current, mode, empty=False):
     for i, n in enumerate('ABCD'):
         x = x0 + i * (s + g)
         if n == current and mode == 'plays':
-            d.rect(x, y - s / 2, s, s, NAVY, r=6)
+            d.rect(x, y - s / 2, s, s, NAVY, r=6, stroke=d.c['line'], sw=1, sop=0.5)
             col = '#FFFFFF'
         elif n == current:
             d.rect(x, y - s / 2, s, s, d.c['main'], r=6, op=0.15, stroke=d.c['main'], sw=2)
@@ -180,12 +181,12 @@ def stop_keep_playlist(t):
     # the heading gives the whole call, longer than the gap
     for (a, b), lab in zip(zip(xs, xs[1:]), ['stop(…)', 'next()', 'play()']):
         d.arrow(f'M{a + 90},{y2} L{b - 95},{y2}')
-        d.text((a + b) / 2, y2 - 9, lab, mono=True, color='label', size=11)
-    d.text(xs[1], y2 + 56, 'nothing loaded', color=INK2)
-    d.text(xs[2], y2 + 56, 'still nothing loaded', color=INK2)
+        d.text((a + b) / 2, y2 - 9, lab, mono=True, color='label')
+    d.text(xs[1], y2 + 56, 'nothing loaded')
+    d.text(xs[2], y2 + 56, 'still nothing loaded')
     yl = 310
-    d.rect(330, yl - 11, 14, 14, NAVY, r=3)
-    d.text(352, yl, 'the entry that plays', anchor='start')
-    d.rect(470, yl - 11, 14, 14, d.c['main'], r=3, op=0.15, stroke=d.c['main'], sw=2)
-    d.text(492, yl, 'the index, nothing loaded', anchor='start')
+    d.rect(300, yl - 11, 14, 14, NAVY, r=3, stroke=d.c['line'], sw=1, sop=0.5)
+    d.text(322, yl, 'the entry that plays', anchor='start')
+    d.rect(500, yl - 11, 14, 14, d.c['main'], r=3, op=0.15, stroke=d.c['main'], sw=2)
+    d.text(522, yl, 'the index, nothing loaded', anchor='start')
     return d
