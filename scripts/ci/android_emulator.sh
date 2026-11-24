@@ -110,6 +110,39 @@ echo "adb as $(a shell id -un | tr -d '\r'), API $(a shell getprop ro.build.vers
 # installs that never finish (API 24).
 a shell settings put global verifier_verify_adb_installs 0 || true
 a shell settings put global package_verifier_enable 0 || true
+# flutter test installs the app with adb install, which streams the APK
+# into cmd package install. On Android 7 (API 24 and 25) that stream
+# stalls on some hosts: the install session starts (free_cache in the
+# log), the APK never arrives, and the try waits to its end. Seen on the
+# AWS runners from 24-11-2026, on half of the installs; the Azure ones
+# install in 5 s. adb install --no-streaming pushes the APK and runs pm
+# install instead, and emu-logs/flutter-adb-<api>.log lists those
+# installs. flutter takes <sdk>/cmdline-tools/adb before
+# platform-tools/adb (AndroidSdk.getPlatformToolsPath in flutter_tools),
+# so an adb there that adds the flag reaches flutter's installs alone:
+# the adb calls of this script are unchanged.
+api_level=$(a shell getprop ro.build.version.sdk | tr -d '\r')
+sdk_dir=${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}
+if [ -n "$api_level" ] && [ "$api_level" -lt 26 ] && [ -n "$sdk_dir" ] &&
+  [ -x "$sdk_dir/platform-tools/adb" ] && [ ! -e "$sdk_dir/cmdline-tools/adb" ]; then
+  flutter_adb="$sdk_dir/cmdline-tools/adb"
+  mkdir -p "$sdk_dir/cmdline-tools"
+  cat > "$flutter_adb" <<EOF
+#!/usr/bin/env bash
+# From scripts/ci/android_emulator.sh: adb install without streaming.
+args=()
+added=0
+for x in "\$@"; do
+  args+=("\$x")
+  if [ \$added = 0 ] && [ "\$x" = install ]; then args+=(--no-streaming); added=1; fi
+done
+[ \$added = 1 ] && echo "\$(date +%T) \${args[*]}" >> "$PWD/emu-logs/flutter-adb-$api.log"
+exec "$sdk_dir/platform-tools/adb" "\${args[@]}"
+EOF
+  chmod +x "$flutter_adb"
+  trap 'rm -f "$flutter_adb"' EXIT
+  echo "flutter installs with adb install --no-streaming on API $api_level"
+fi
 a logcat -b all -c || true
 # events carries the activity relaunches and configuration changes.
 : > "emu-logs/logcat-$api.txt"
