@@ -145,6 +145,7 @@ infras=0
 summary="emu-logs/summary-$api.txt"
 : > "$summary"
 infra_files=()
+streak=0
 repass=0
 # The logs of the second pass: <name>-<api>-<try>-repass.log.
 tag=''
@@ -170,12 +171,21 @@ PY
   fi
   echo "$1 $2" | tee -a "$summary"
   case $2 in
-    fail) fails=$((fails + 1)); echo "::error::$1 failed on API $api" ;;
+    fail) fails=$((fails + 1)); streak=0; echo "::error::$1 failed on API $api" ;;
     infra)
       infras=$((infras + 1))
       infra_files+=("$1")
+      streak=$((streak + 1))
       echo "::warning::$1 never started on API $api: a second pass runs it again at the end."
+      # Two files in a row that never started: the device is stuck (an
+      # install that never ends, seen on API 24 for every file after
+      # one), and the next files would only spend their tries on it.
+      if [ $streak -ge 2 ]; then
+        reboot_device "two files in a row never started" || true
+        streak=0
+      fi
       ;;
+    *) streak=0 ;;
   esac
 }
 # Whether the try that left log $1 says nothing about the code: none of
